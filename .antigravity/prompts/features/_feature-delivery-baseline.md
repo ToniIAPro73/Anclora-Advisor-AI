@@ -1,8 +1,9 @@
 # Feature Delivery Baseline
 
-1. Resumir alcance, riesgos y contratos afectados.
-2. Definir plan tecnico verificable en pasos.
-3. Implementar cambios minimos con tipado estricto.
-4. Ejecutar `lint`, `type-check`, `build`.
-5. Verificar `/api/chat` en exito y error.
-6. Entregar diff, evidencias y riesgos residuales.
+1. Resumir alcance, riesgos, dependencias y contratos afectados.
+2. Definir plan tecnico por capas (DB -> backend -> frontend -> QA).
+3. Congelar contrato antes de implementar.
+4. Implementar cambios minimos con tipado estricto y sin secretos.
+5. Ejecutar `lint`, `type-check`, `build`.
+6. Verificar `/api/chat` en exito/error y edge cases.
+7. Registrar evidencias y riesgos residuales en SDD.

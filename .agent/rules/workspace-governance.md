@@ -32,6 +32,19 @@ Si hay conflicto, gana el nivel superior.
 5. Validar `/api/chat` con casos de exito y error.
 6. Cerrar con `QA_REPORT_*.md` y `GATE_FINAL_*.md`.
 
+## Baseline QA/Gate obligatorio
+
+- Referencia base: `.antigravity/prompts/features/_qa-gate-baseline.md`.
+- Referencia de entrega: `.antigravity/prompts/features/_feature-delivery-baseline.md`.
+- Cualquier `agent-d-qa` y `gate-final` debe incluir:
+  1. Validacion de entorno leyendo `.env.local` y `.env.example`.
+  2. Verificacion de coherencia entre variables publicas y servidor.
+  3. Prohibido hardcodear secretos o project refs en codigo/prompts.
+  4. Validacion i18n de todo texto nuevo en `es` y `en`.
+  5. Validacion de migraciones aplicadas cuando la feature toca Supabase.
+  6. Limpieza de artefactos temporales de debug/testing.
+- Si falla cualquier punto, el gate es NO-GO.
+
 ## QA/Gate minimo
 
 - Sin errores P0 en chat UI o navegacion.

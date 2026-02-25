@@ -8,3 +8,4 @@ Skills para ejecutar features de forma consistente:
 - `supabase-data-quality-and-rls/`: calidad de datos y politicas RLS.
 - `conversation-ux-and-accessibility/`: UX de chat y accesibilidad.
 - `observability-and-error-intelligence/`: monitoreo, errores y trazas.
+- `chat-response-reliability-and-safety/`: playbook especifico de la feature ANCLORA-CRRS-001.
