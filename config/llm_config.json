@@ -1,0 +1,17 @@
+{
+  "primary_llm": {
+    "type": "local",
+    "model": "mistral:7b-instruct",
+    "provider": "ollama",
+    "base_url": "http://localhost:11434",
+    "temperature": 0.2,
+    "max_tokens": 2048
+  },
+  "fallback_llm": {
+    "type": "api",
+    "model": "claude-3-5-sonnet-20241022",
+    "provider": "anthropic",
+    "temperature": 0.2,
+    "max_tokens": 2048
+  }
+}

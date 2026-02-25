@@ -1,0 +1,24 @@
+{
+  "name": "anclora-advisor-ai",
+  "version": "1.0.0",
+  "description": "Asesoría fiscal, laboral y mercado para autónomos",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --ext .ts,.tsx",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.21.0",
+    "@supabase/supabase-js": "^2.38.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "typescript": "^5.3.3",
+    "zod": "^3.22.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

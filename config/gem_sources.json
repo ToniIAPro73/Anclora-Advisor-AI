@@ -1,0 +1,7 @@
+{
+  "gems": [
+    { "id": "gem_fiscal", "name": "GEM Fiscal & Administrativo", "priority": 1 },
+    { "id": "gem_laboral", "name": "GEM Riesgo Laboral", "priority": 2 },
+    { "id": "gem_mercado", "name": "GEM Mercado Inmobiliario", "priority": 3 }
+  ]
+}
