@@ -3,13 +3,16 @@ param(
   [string]$FeatureId = "ANCLORA-CRRS-001",
   [string]$FeatureCode = "CRRS_001",
   [string]$Owner = "@ToniIAPro73",
+  [Parameter(Mandatory = $true)]
+  [ValidateNotNullOrEmpty()]
+  [string]$TargetRepoPath,
   [switch]$Force
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function Ensure-Dir {
+function New-DirectoryIfMissing {
   param([Parameter(Mandatory = $true)][string]$Path)
   if (-not (Test-Path -LiteralPath $Path)) {
     New-Item -ItemType Directory -Path $Path | Out-Null
@@ -30,13 +33,18 @@ function Write-TextFile {
   }
 
   $parent = Split-Path -Parent $Path
-  if ($parent) { Ensure-Dir -Path $parent }
+  if ($parent) { New-DirectoryIfMissing -Path $parent }
   $encoding = New-Object System.Text.UTF8Encoding($false)
   [System.IO.File]::WriteAllText($Path, $Content, $encoding)
   Write-Host "Wrote file: $Path"
 }
 
-$root = Resolve-Path (Join-Path $PSScriptRoot "..")
+$expandedTargetRepoPath = [Environment]::ExpandEnvironmentVariables($TargetRepoPath)
+$resolvedRoot = Resolve-Path -LiteralPath $expandedTargetRepoPath -ErrorAction Stop
+if (-not (Test-Path -LiteralPath $resolvedRoot.Path -PathType Container)) {
+  throw "TargetRepoPath no es un directorio valido: $TargetRepoPath"
+}
+$root = $resolvedRoot.Path
 
 $dirs = @(
   ".agent/rules",
@@ -56,7 +64,7 @@ $dirs = @(
 )
 
 foreach ($dir in $dirs) {
-  Ensure-Dir -Path (Join-Path $root $dir)
+  New-DirectoryIfMissing -Path (Join-Path $root $dir)
 }
 
 $files = @{
@@ -331,6 +339,7 @@ foreach ($relativePath in $files.Keys) {
 
 Write-Host ""
 Write-Host "Bootstrap complete."
+Write-Host "Target repo: $root"
 Write-Host "Feature scaffold: sdd/features/$FeatureName"
 Write-Host "Feature ID: $FeatureId"
 Write-Host "Use -Force to overwrite existing files."
