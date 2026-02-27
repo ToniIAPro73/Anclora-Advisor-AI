@@ -63,7 +63,12 @@ const FISCAL_KEYWORDS  = ['iva', 'irpf', 'reta', 'hacienda', 'fiscal', 'tributar
 const LABOR_KEYWORDS   = ['despido', 'laboral', 'pluriactividad', 'contrato', 'salario', 'convenio', 'trabajador', 'seguridad social', 'baja', 'nómina', 'preavis', 'indemnización'];
 const MARKET_KEYWORDS  = ['mercado', 'mallorca', 'alquiler', 'vivienda', 'inmobiliario', 'venta', 'compra', 'propiedad', 'arrendamiento', 'plusvalía'];
 
-function detectSpecialist(query: string): { primary: SpecialistType; secondary: SpecialistType[]; reasoning: string } {
+function detectSpecialist(query: string): {
+  primary: SpecialistType;
+  secondary: SpecialistType[];
+  reasoning: string;
+  topScore: number;
+} {
   const q = query.toLowerCase();
   const scores: Record<SpecialistType, number> = { fiscal: 0, labor: 0, market: 0 };
 
@@ -81,7 +86,7 @@ function detectSpecialist(query: string): { primary: SpecialistType; secondary: 
     ? `Se detectaron ${topScore} término(s) de la categoría '${primary}'.`
     : "Consulta general: categoría fiscal asignada por defecto.";
 
-  return { primary, secondary, reasoning };
+  return { primary, secondary, reasoning, topScore };
 }
 
 // ----------------------------------------------------------------
@@ -102,13 +107,22 @@ interface RetrievalAttempt {
   limit: number;
 }
 
-async function retrieveWithCascade(query: string, primaryCategory: DbCategory): Promise<RAGChunk[]> {
+async function retrieveWithCascade(
+  query: string,
+  primaryCategory: DbCategory,
+  allowGlobalFallback: boolean
+): Promise<RAGChunk[]> {
   const attempts: RetrievalAttempt[] = [
     { category: primaryCategory, threshold: 0.35, limit: 5 },
     { category: primaryCategory, threshold: 0.25, limit: 5 },
-    { threshold: 0.30, limit: 5 },
-    { threshold: 0.20, limit: 5 },
   ];
+
+  if (allowGlobalFallback) {
+    attempts.push(
+      { threshold: 0.30, limit: 5 },
+      { threshold: 0.20, limit: 5 }
+    );
+  }
 
   for (const attempt of attempts) {
     const chunks = await retrieveContext(query, {
@@ -181,7 +195,7 @@ export class Orchestrator {
   ): Promise<OrchestratorResponse> {
 
     // 1. Routing
-    const { primary, secondary, reasoning } = detectSpecialist(query);
+    const { primary, secondary, reasoning, topScore } = detectSpecialist(query);
     const routing: RoutingResult = {
       primarySpecialist:    primary,
       secondarySpecialists: secondary,
@@ -191,7 +205,7 @@ export class Orchestrator {
 
     // 2. Retrieval with cascade (domain strict -> domain relaxed -> global)
     const dbCategory = SPECIALIST_TO_DB[primary];
-    const retrievedChunks = await retrieveWithCascade(query, dbCategory);
+    const retrievedChunks = await retrieveWithCascade(query, dbCategory, topScore > 0);
 
     const hasEvidence = retrievedChunks.length > 0;
 
