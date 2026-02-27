@@ -16,3 +16,7 @@
 - Se implementa autenticacion base con Supabase en `/login` y sesion servidor en `/api/auth/session`.
 - Se activa proteccion de rutas `/dashboard/*` via `src/middleware.ts`.
 - Se agregan artefactos SDD de la feature (`rule`, `skill`, `prompts`, `spec`, `test-plan`, `QA_REPORT`, `GATE_FINAL`).
+- Feature `ANCLORA-DSH-001` completada con estado `CLOSED/GO`.
+- Se implementa shell de dashboard con sidebar, topbar y sistema visual de marca.
+- Se integran `Logo-Advisor.png` y tokens de color basados en la paleta oficial.
+- Se agregan artefactos SDD de `dashboard-shell-and-brand-system` (spec/test/qa/gate + prompts/rule/skill).

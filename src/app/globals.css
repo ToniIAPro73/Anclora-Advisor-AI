@@ -1,3 +1,67 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --advisor-primary: #162944;
+  --advisor-dark: #1c2b3c;
+  --advisor-accent: #1dab89;
+  --advisor-light: #dce4f4;
+  --advisor-mint: #a1dbc6;
+  --advisor-canvas: #f3f6fb;
+  --advisor-border: #d2dceb;
+}
+
+@layer base {
+  body {
+    background:
+      radial-gradient(1300px 600px at 10% -20%, rgba(29, 171, 137, 0.13), transparent 70%),
+      radial-gradient(1200px 500px at 100% 0%, rgba(22, 41, 68, 0.2), transparent 70%),
+      var(--advisor-canvas);
+    color: #102033;
+    font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+}
+
+@layer components {
+  .advisor-shell {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(245, 249, 255, 0.92));
+  }
+
+  .advisor-sidebar {
+    background:
+      linear-gradient(180deg, rgba(22, 41, 68, 0.98) 0%, rgba(28, 43, 60, 0.98) 100%),
+      radial-gradient(500px 220px at 100% 0%, rgba(29, 171, 137, 0.22), transparent 75%);
+    color: #e8eef8;
+  }
+
+  .advisor-card {
+    border: 1px solid var(--advisor-border);
+    border-radius: 14px;
+    background: #ffffff;
+    box-shadow:
+      0 10px 25px rgba(20, 40, 65, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .advisor-card-muted {
+    border: 1px solid var(--advisor-border);
+    border-radius: 14px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.75), rgba(241, 247, 255, 0.95));
+  }
+
+  .advisor-heading {
+    font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+    letter-spacing: 0.01em;
+  }
+
+  .advisor-chip {
+    border-radius: 9999px;
+    border: 1px solid rgba(22, 41, 68, 0.14);
+    background: rgba(22, 41, 68, 0.06);
+    color: #274164;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+  }
+}
