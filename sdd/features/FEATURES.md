@@ -7,6 +7,7 @@
 - [fiscal-panel-and-tax-timeline](./fiscal-panel-and-tax-timeline/fiscal-panel-and-tax-timeline-INDEX.md)
 - [rag-ingestion-and-notebooklm-sync](./rag-ingestion-and-notebooklm-sync/rag-ingestion-and-notebooklm-sync-INDEX.md)
 - [labor-risk-monitor-and-history](./labor-risk-monitor-and-history/labor-risk-monitor-and-history-INDEX.md)
+- [invoicing-workspace-and-withholding-rules](./invoicing-workspace-and-withholding-rules/invoicing-workspace-and-withholding-rules-INDEX.md)
 - [frontend-app-delivery-roadmap-v1](./frontend-app-delivery-roadmap-v1.md)
 
 ## Delivery Status
@@ -20,7 +21,7 @@
 | fiscal-panel-and-tax-timeline                | CLOSED   | GO      |
 | rag-ingestion-and-notebooklm-sync            | CLOSED   | GO      |
 | labor-risk-monitor-and-history               | CLOSED   | GO      |
-| invoicing-workspace-and-withholding-rules    | PLANNED  | PENDING |
+| invoicing-workspace-and-withholding-rules    | CLOSED   | GO      |
 | i18n-observability-and-release-hardening     | PLANNED  | PENDING |
 
 ## Notes

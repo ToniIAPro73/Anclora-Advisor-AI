@@ -46,3 +46,7 @@
 - Se implementa `/dashboard/laboral` conectado a `labor_risk_assessments` con RLS por usuario.
 - Se muestran score actual, nivel de riesgo, recomendaciones y historial reciente.
 - Se agregan artefactos SDD de `labor-risk-monitor-and-history` (rule/skill/prompts/spec/test/qa/gate).
+- Feature `ANCLORA-INV-001` completada con estado `CLOSED/GO`.
+- Se implementa `/dashboard/facturacion` con formulario operativo, calculo IVA/IRPF y listado historico.
+- Se agrega API `GET/POST /api/invoices` con validacion de payload y persistencia segura por sesion.
+- Se agregan artefactos SDD de `invoicing-workspace-and-withholding-rules` (rule/skill/prompts/spec/test/qa/gate).
