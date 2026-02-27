@@ -50,3 +50,8 @@
 - Se implementa `/dashboard/facturacion` con formulario operativo, calculo IVA/IRPF y listado historico.
 - Se agrega API `GET/POST /api/invoices` con validacion de payload y persistencia segura por sesion.
 - Se agregan artefactos SDD de `invoicing-workspace-and-withholding-rules` (rule/skill/prompts/spec/test/qa/gate).
+- Feature `ANCLORA-HARD-001` completada con estado `CLOSED/GO`.
+- Se implementa observabilidad base con logger estructurado (`request_id`) en `/api/chat` y `/api/invoices`.
+- Se agrega capa i18n backend `es/en` con test de paridad de claves.
+- Se agrega smoke test automatizado de rutas/pages/handlers criticos.
+- Resultado del roadmap: todas las fases en `CLOSED/GO`.

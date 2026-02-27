@@ -4,6 +4,8 @@ import { z } from "zod";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { validateAccessToken } from "@/lib/auth/token";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
+import { getRequestId, log } from "@/lib/observability/logger";
+import { resolveLocale, t } from "@/lib/i18n/messages";
 
 const invoicePayloadSchema = z.object({
   clientName: z.string().min(2).max(255),
@@ -33,10 +35,18 @@ async function getAuthenticatedContext() {
   return { accessToken, userId: user.id, error: null };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const requestId = getRequestId(request.headers.get("x-request-id"));
+  const locale = resolveLocale(request.headers.get("accept-language"));
   const auth = await getAuthenticatedContext();
   if (!auth.accessToken || !auth.userId) {
-    return NextResponse.json({ success: false, error: auth.error }, { status: 401 });
+    log("warn", "api_invoices_auth_failed", requestId, { reason: auth.error ?? "unauthorized" });
+    const response = NextResponse.json(
+      { success: false, error: t(locale, "api.invoices.missing_session") },
+      { status: 401 }
+    );
+    response.headers.set("x-request-id", requestId);
+    return response;
   }
 
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
@@ -47,21 +57,38 @@ export async function GET() {
     .limit(30);
 
   if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    log("error", "api_invoices_get_failed", requestId, { error: error.message });
+    const response = NextResponse.json({ success: false, error: t(locale, "api.invoices.db_error") }, { status: 500 });
+    response.headers.set("x-request-id", requestId);
+    return response;
   }
 
-  return NextResponse.json({ success: true, invoices: data ?? [] });
+  const response = NextResponse.json({ success: true, invoices: data ?? [] });
+  response.headers.set("x-request-id", requestId);
+  log("info", "api_invoices_get_succeeded", requestId, { count: (data ?? []).length });
+  return response;
 }
 
 export async function POST(request: NextRequest) {
+  const requestId = getRequestId(request.headers.get("x-request-id"));
+  const locale = resolveLocale(request.headers.get("accept-language"));
   const auth = await getAuthenticatedContext();
   if (!auth.accessToken || !auth.userId) {
-    return NextResponse.json({ success: false, error: auth.error }, { status: 401 });
+    log("warn", "api_invoices_auth_failed", requestId, { reason: auth.error ?? "unauthorized" });
+    const response = NextResponse.json(
+      { success: false, error: t(locale, "api.invoices.invalid_session") },
+      { status: 401 }
+    );
+    response.headers.set("x-request-id", requestId);
+    return response;
   }
 
   const payload = invoicePayloadSchema.safeParse(await request.json());
   if (!payload.success) {
-    return NextResponse.json({ success: false, error: "Invalid invoice payload" }, { status: 400 });
+    log("warn", "api_invoices_payload_invalid", requestId, { issues: payload.error.issues.length });
+    const response = NextResponse.json({ success: false, error: t(locale, "api.invoices.invalid_payload") }, { status: 400 });
+    response.headers.set("x-request-id", requestId);
+    return response;
   }
 
   const invoice = payload.data;
@@ -85,9 +112,17 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    log("error", "api_invoices_post_failed", requestId, { error: error.message });
+    const response = NextResponse.json({ success: false, error: t(locale, "api.invoices.db_error") }, { status: 500 });
+    response.headers.set("x-request-id", requestId);
+    return response;
   }
 
-  return NextResponse.json({ success: true, invoice: data });
+  const response = NextResponse.json({ success: true, invoice: data });
+  response.headers.set("x-request-id", requestId);
+  log("info", "api_invoices_post_succeeded", requestId, {
+    invoiceId: data?.id ?? null,
+    status: data?.status ?? null,
+  });
+  return response;
 }
-

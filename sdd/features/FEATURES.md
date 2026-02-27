@@ -8,6 +8,7 @@
 - [rag-ingestion-and-notebooklm-sync](./rag-ingestion-and-notebooklm-sync/rag-ingestion-and-notebooklm-sync-INDEX.md)
 - [labor-risk-monitor-and-history](./labor-risk-monitor-and-history/labor-risk-monitor-and-history-INDEX.md)
 - [invoicing-workspace-and-withholding-rules](./invoicing-workspace-and-withholding-rules/invoicing-workspace-and-withholding-rules-INDEX.md)
+- [i18n-observability-and-release-hardening](./i18n-observability-and-release-hardening/i18n-observability-and-release-hardening-INDEX.md)
 - [frontend-app-delivery-roadmap-v1](./frontend-app-delivery-roadmap-v1.md)
 
 ## Delivery Status
@@ -22,7 +23,7 @@
 | rag-ingestion-and-notebooklm-sync            | CLOSED   | GO      |
 | labor-risk-monitor-and-history               | CLOSED   | GO      |
 | invoicing-workspace-and-withholding-rules    | CLOSED   | GO      |
-| i18n-observability-and-release-hardening     | PLANNED  | PENDING |
+| i18n-observability-and-release-hardening     | CLOSED   | GO      |
 
 ## Notes
 
