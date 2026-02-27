@@ -115,3 +115,4 @@ Mejorar calidad, fiabilidad y gobernanza del asistente antes de optimizaciones d
 ## Feature implementada en este ciclo
 
 - `RAG-EVAL-001`: dataset + runner local de evaluación RAG.
+- `RAG-METRICS-001`: reporte automático JSON + umbrales + decisión GO/NO-GO (`rag:eval:gate`).

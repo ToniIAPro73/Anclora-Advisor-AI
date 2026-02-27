@@ -1,0 +1,22 @@
+{
+  "version": "v1",
+  "global": {
+    "min_hit_at_k": 0.8,
+    "min_mrr_at_k": 0.7,
+    "min_out_domain_fallback_rate": 1.0
+  },
+  "domains": {
+    "fiscal": {
+      "min_hit_at_k": 0.67,
+      "min_mrr_at_k": 0.5
+    },
+    "laboral": {
+      "min_hit_at_k": 0.67,
+      "min_mrr_at_k": 0.5
+    },
+    "mercado": {
+      "min_hit_at_k": 0.67,
+      "min_mrr_at_k": 0.5
+    }
+  }
+}

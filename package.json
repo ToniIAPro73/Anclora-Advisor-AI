@@ -14,6 +14,8 @@
     "rag:infra:apply": "tsx scripts/apply-match-chunks-rpc.ts",
     "rag:infra:verify": "tsx scripts/verify-rag-infra.ts",
     "rag:eval": "tsx scripts/eval-rag.ts",
+    "rag:eval:chat": "tsx scripts/eval-rag.ts --include-chat",
+    "rag:eval:gate": "tsx scripts/eval-rag.ts --include-chat --enforce",
     "test:i18n": "tsx tests/test-i18n-hardening.ts",
     "test:smoke": "tsx tests/test-smoke-hardening.ts"
   },

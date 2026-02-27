@@ -1,0 +1,96 @@
+{
+  "generated_at": "2026-02-27T20:26:50.842Z",
+  "dataset_path": "C:\\Users\\Usuario\\Workspace\\01_Proyectos\\anclora-advisor-ai\\docs\\evals\\rag_eval_dataset_v1.json",
+  "thresholds_path": "C:\\Users\\Usuario\\Workspace\\01_Proyectos\\anclora-advisor-ai\\docs\\evals\\rag_eval_thresholds_v1.json",
+  "output_path": "C:\\Users\\Usuario\\Workspace\\01_Proyectos\\anclora-advisor-ai\\artifacts\\rag_eval_report.json",
+  "params": {
+    "k": 5,
+    "retrieval_threshold": 0.2,
+    "include_chat": true,
+    "enforce": true
+  },
+  "cases": {
+    "total": 8,
+    "in_domain": 7,
+    "out_of_domain": 1
+  },
+  "metrics": {
+    "hit_at_k": 1,
+    "mrr_at_k": 1,
+    "out_domain_fallback_rate": 1,
+    "by_domain": {
+      "fiscal": {
+        "hit_at_k": 1,
+        "mrr_at_k": 1,
+        "n": 3
+      },
+      "laboral": {
+        "hit_at_k": 1,
+        "mrr_at_k": 1,
+        "n": 2
+      },
+      "mercado": {
+        "hit_at_k": 1,
+        "mrr_at_k": 1,
+        "n": 2
+      }
+    }
+  },
+  "checks": [
+    {
+      "name": "global_hit@5",
+      "ok": true,
+      "expected": ">= 0.8",
+      "actual": "1.000"
+    },
+    {
+      "name": "global_mrr@5",
+      "ok": true,
+      "expected": ">= 0.7",
+      "actual": "1.000"
+    },
+    {
+      "name": "fiscal_hit@5",
+      "ok": true,
+      "expected": ">= 0.67",
+      "actual": "1.000"
+    },
+    {
+      "name": "fiscal_mrr@5",
+      "ok": true,
+      "expected": ">= 0.5",
+      "actual": "1.000"
+    },
+    {
+      "name": "laboral_hit@5",
+      "ok": true,
+      "expected": ">= 0.67",
+      "actual": "1.000"
+    },
+    {
+      "name": "laboral_mrr@5",
+      "ok": true,
+      "expected": ">= 0.5",
+      "actual": "1.000"
+    },
+    {
+      "name": "mercado_hit@5",
+      "ok": true,
+      "expected": ">= 0.67",
+      "actual": "1.000"
+    },
+    {
+      "name": "mercado_mrr@5",
+      "ok": true,
+      "expected": ">= 0.5",
+      "actual": "1.000"
+    },
+    {
+      "name": "out_domain_fallback_rate",
+      "ok": true,
+      "expected": ">= 1",
+      "actual": "1.000"
+    }
+  ],
+  "decision": "GO"
+}
