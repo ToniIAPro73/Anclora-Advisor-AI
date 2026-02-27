@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { Orchestrator } from "@/lib/agents/orchestrator";
+import { Orchestrator } from "../../../../lib/agents/orchestrator";
 
 // Instancia global del orchestrator
 const orchestrator = new Orchestrator();

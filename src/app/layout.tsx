@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from "react";
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -6,7 +7,7 @@ export const metadata: Metadata = {
   description: 'Asesor fiscal, laboral y mercado',
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="es">
       <body className="bg-gray-50">

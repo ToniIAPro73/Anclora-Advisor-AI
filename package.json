@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "node ../anclora-nexus/node_modules/eslint/bin/eslint.js . --ext .ts,.tsx",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

@@ -31,8 +31,10 @@
     ]
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
+    "next-env.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "lib/**/*.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [

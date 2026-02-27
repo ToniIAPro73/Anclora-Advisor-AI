@@ -1,7 +1,6 @@
 // src/components/features/MessageList.tsx
 import React from "react";
 import { ChatMessage } from "@/hooks/useChat";
-import { ChevronDown } from "lucide-react";
 
 interface MessageListProps {
   messages: ChatMessage[];
@@ -24,7 +23,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
                   onClick={() => setExpandedMessageId(expandedMessageId === msg.id ? null : msg.id)}
                   className="flex items-center gap-1 text-blue-600 hover:underline text-xs font-medium"
                 >
-                  <ChevronDown size={14} className={"transition-transform " + (expandedMessageId === msg.id ? "rotate-180" : "")} />
+                  <span className={"inline-block transition-transform " + (expandedMessageId === msg.id ? "rotate-180" : "")}>v</span>
                   {expandedMessageId === msg.id ? "Ocultar" : "Ver"} detalles
                 </button>
               </div>
