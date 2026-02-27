@@ -1,12 +1,10 @@
 // lib/agents/orchestrator.ts
 /**
  * ORCHESTRATOR CENTRAL - Anclora Advisor AI
- * Primary LLM: Anthropic Claude 3.5 Haiku
- * Fallback LLM: OpenAI GPT-4o-mini
+ * Primary LLM: Ollama local (qwen2.5:14b)
+ * Fallback LLM: Ollama local (llama3.1:8b)
  */
 
-import Anthropic from '@anthropic-ai/sdk';
-import OpenAI from 'openai';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { retrieveContext, RAGChunk } from '../../src/lib/rag/retrieval';
 import { GROUNDED_CHAT_PROMPT, NO_EVIDENCE_FALLBACK_PROMPT } from './prompts';
@@ -102,17 +100,49 @@ function buildContextText(chunks: RAGChunk[]): string {
 // Orchestrator
 // ----------------------------------------------------------------
 export class Orchestrator {
-  private anthropic: Anthropic;
-  private openai: OpenAI;
   private supabase: SupabaseClient;
+  private ollamaBaseUrl: string;
+  private primaryModel: string;
+  private fallbackModel: string;
 
   constructor() {
-    this.anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    this.openai    = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     this.supabase  = createClient(
       process.env.SUPABASE_URL ?? 'https://placeholder.supabase.co',
       process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'placeholder'
     );
+    this.ollamaBaseUrl = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
+    this.primaryModel = process.env.OLLAMA_MODEL_PRIMARY ?? process.env.OLLAMA_MODEL ?? 'qwen2.5:14b';
+    this.fallbackModel = process.env.OLLAMA_MODEL_FALLBACK ?? 'llama3.1:8b';
+  }
+
+  private async generateWithOllama(model: string, systemPrompt: string, query: string): Promise<string> {
+    const response = await fetch(`${this.ollamaBaseUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        options: {
+          temperature: 0.1,
+        },
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: query },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Ollama ${model} error: ${response.status} ${errorText}`);
+    }
+
+    const data = (await response.json()) as { message?: { content?: string } };
+    const text = data.message?.content?.trim() ?? '';
+    if (!text) {
+      throw new Error(`Ollama ${model} returned empty response`);
+    }
+    return text;
   }
 
   async processQuery(
@@ -152,40 +182,21 @@ export class Orchestrator {
 
     // 4. LLM generation
     let primaryResponse = '';
+    const systemPrompt = hasEvidence
+      ? GROUNDED_CHAT_PROMPT.replace('{context}', contextText).replace('{query}', query)
+      : NO_EVIDENCE_FALLBACK_PROMPT.replace('{query}', query);
+
     try {
-      const systemPrompt = hasEvidence
-        ? GROUNDED_CHAT_PROMPT.replace('{context}', contextText).replace('{query}', query)
-        : NO_EVIDENCE_FALLBACK_PROMPT.replace('{query}', query);
-
-      // Primary: Anthropic Claude 3.5 Haiku
-      const message = await this.anthropic.messages.create({
-        model:      'claude-haiku-4-5',
-        max_tokens: 1024,
-        system:     systemPrompt,
-        messages:   [{ role: 'user', content: query }],
-      });
-
-      primaryResponse = message.content
-        .filter(b => b.type === 'text')
-        .map(b => (b as { type: 'text'; text: string }).text)
-        .join('');
-
-    } catch (anthropicError) {
-      console.error('[Orchestrator] Anthropic error, falling back to OpenAI:', anthropicError);
+      // Primary: Ollama qwen2.5:14b (default)
+      primaryResponse = await this.generateWithOllama(this.primaryModel, systemPrompt, query);
+    } catch (primaryError) {
+      console.error('[Orchestrator] Primary Ollama model failed, using local fallback:', primaryError);
 
       try {
-        const systemPrompt = hasEvidence
-          ? GROUNDED_CHAT_PROMPT.replace('{context}', contextText).replace('{query}', query)
-          : NO_EVIDENCE_FALLBACK_PROMPT.replace('{query}', query);
-
-        const completion = await this.openai.chat.completions.create({
-          model:       'gpt-4o-mini',
-          messages:    [{ role: 'system', content: systemPrompt }, { role: 'user', content: query }],
-          temperature: 0.1,
-        });
-        primaryResponse = completion.choices[0].message.content ?? '';
-      } catch (openaiError) {
-        console.error('[Orchestrator] OpenAI fallback also failed:', openaiError);
+        // Fallback: Ollama llama3.1:8b (default)
+        primaryResponse = await this.generateWithOllama(this.fallbackModel, systemPrompt, query);
+      } catch (fallbackError) {
+        console.error('[Orchestrator] Local Ollama fallback also failed:', fallbackError);
         primaryResponse = hasEvidence
           ? 'He encontrado información relevante en mi base de conocimientos pero no puedo generar una respuesta completa en este momento. Por favor, consulta con un asesor humano.'
           : 'No tengo evidencia suficiente en mi base de datos especializada para responder esta consulta. Te recomiendo consultar con un asesor fiscal, laboral o inmobiliario certificado.';

@@ -24,6 +24,12 @@ Anclora Advisor AI es una aplicación web para consultas de asesoría fiscal, la
 - No exponer secretos en cliente; claves sensibles solo en servidor.
 - Actualizar documentación en `docs/` cuando cambie arquitectura o flujo.
 
+## Gobernanza de layout (obligatoria)
+- En rutas `/dashboard/*` no se permite scroll vertical global del documento (`body/html`).
+- El shell debe ajustarse a viewport (`h-screen`) y usar `overflow-hidden` a nivel de contenedor principal.
+- Si una vista necesita desplazamiento, debe ser interno al panel/slot de contenido (ej. chat timeline, tablas).
+- Cualquier cambio de UI que reintroduzca scroll vertical global en dashboard implica `Decision=NO-GO`.
+
 ## Supabase canónico por repo
 - Este repo (Anclora Advisor AI) solo usa el `project_ref` `lvpplnqbyvscpuljnzqf`.
 - `jtlnmypcrgmzxeuiffup` pertenece a Anclora Nexus (repo distinto) y no se debe usar aquí.

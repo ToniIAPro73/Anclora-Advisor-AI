@@ -14,11 +14,11 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="advisor-shell min-h-screen text-slate-900 md:flex">
+    <div className="advisor-shell h-screen overflow-hidden text-slate-900 md:flex">
       <DashboardNav />
-      <div className="min-w-0 flex-1">
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
         <DashboardTopbar userEmail={user.email ?? "usuario@anclora.ai"} />
-        <main className="p-4 md:p-6">{children}</main>
+        <main className="flex-1 overflow-hidden p-4 md:p-5">{children}</main>
       </div>
     </div>
   );

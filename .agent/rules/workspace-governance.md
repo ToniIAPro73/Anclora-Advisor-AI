@@ -52,6 +52,17 @@ Si hay conflicto, gana el nivel superior.
 - Sin regresion en contrato de `/api/chat`.
 - Sin secretos ni datos sensibles en cliente o logs.
 
+## Politica de layout dashboard (inmutable)
+
+1. Sin scroll vertical global en dashboard:
+   - En rutas `/dashboard/*`, `html/body` no deben generar scroll vertical.
+2. Shell de viewport cerrado:
+   - El layout raiz de dashboard debe usar estrategia de viewport completo (`h-screen`) con `overflow-hidden`.
+3. Scroll solo interno:
+   - Si un modulo requiere desplazamiento, debe resolverse dentro de su panel (`overflow-y-auto` local).
+4. Criterio de gate:
+   - Si se detecta scroll vertical global en dashboard tras un cambio de UI, `Decision=NO-GO`.
+
 ## Politica Supabase (inmutable)
 
 ### Mapa canonico de proyectos (obligatorio)

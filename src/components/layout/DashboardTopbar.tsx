@@ -30,7 +30,7 @@ export function DashboardTopbar({ userEmail }: DashboardTopbarProps) {
   const section = sectionByPath[pathname] ?? sectionByPath["/dashboard/chat"];
 
   return (
-    <header className="sticky top-0 z-10 border-b border-[#d2dceb] bg-white/90 px-6 py-4 backdrop-blur">
+    <header className="z-10 shrink-0 border-b border-[#d2dceb] bg-white/90 px-5 py-3 backdrop-blur md:px-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="advisor-heading text-2xl leading-none text-[#162944]">{section.title}</p>
@@ -46,4 +46,3 @@ export function DashboardTopbar({ userEmail }: DashboardTopbarProps) {
     </header>
   );
 }
-
