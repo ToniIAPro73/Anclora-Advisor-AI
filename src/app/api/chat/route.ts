@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     log("info", "api_chat_request_succeeded", requestId, {
       citations: Array.isArray(result.citations) ? result.citations.length : 0,
       groundingConfidence: result.groundingConfidence,
+      perf: result.performance,
     });
     return response;
   } catch (error) {

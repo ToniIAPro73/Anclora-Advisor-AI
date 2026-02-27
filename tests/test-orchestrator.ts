@@ -18,6 +18,7 @@ async function test() {
   console.log('Response:', result1.primarySpecialistResponse);
   console.log('Citations:', result1.citations);
   console.log('Alerts:', result1.alerts);
+  console.log('Performance:', result1.performance);
 
   console.log('\n--- TEST 2: Consulta fuera de dominio (No alucinación) ---');
   const query2 = '¿Quién ganó el mundial de fútbol en 1930?';
@@ -26,6 +27,7 @@ async function test() {
   console.log('Response:', result2.primarySpecialistResponse);
   console.log('Citations:', result2.citations);
   console.log('Context Warnings:', result2.contexts[0]?.warnings);
+  console.log('Performance:', result2.performance);
 }
 
 test().catch(console.error);

@@ -54,6 +54,18 @@ export interface OrchestratorResponse {
   alerts: Array<{ type: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'; message: string }>;
   citations: CitationRef[];
   groundingConfidence: 'high' | 'medium' | 'low' | 'none';
+  performance: {
+    routing_ms: number;
+    retrieval_ms: number;
+    prompt_build_ms: number;
+    llm_ms: number;
+    llm_primary_ms: number;
+    llm_fallback_ms: number;
+    persistence_ms: number;
+    total_ms: number;
+    llm_model_used: string;
+    used_fallback_model: boolean;
+  };
 }
 
 // ----------------------------------------------------------------
@@ -107,20 +119,27 @@ interface RetrievalAttempt {
   limit: number;
 }
 
+interface RetrievalCascadeResult {
+  chunks: RAGChunk[];
+}
+
 async function retrieveWithCascade(
   query: string,
   primaryCategory: DbCategory,
-  allowGlobalFallback: boolean
-): Promise<RAGChunk[]> {
-  const attempts: RetrievalAttempt[] = [
-    { category: primaryCategory, threshold: 0.35, limit: 5 },
-    { category: primaryCategory, threshold: 0.25, limit: 5 },
-  ];
+  allowGlobalFallback: boolean,
+  noDomainSignal: boolean
+): Promise<RetrievalCascadeResult> {
+  const attempts: RetrievalAttempt[] = noDomainSignal
+    ? [{ category: primaryCategory, threshold: 0.35, limit: 3 }]
+    : [
+        { category: primaryCategory, threshold: 0.35, limit: 3 },
+        { category: primaryCategory, threshold: 0.25, limit: 3 },
+      ];
 
   if (allowGlobalFallback) {
     attempts.push(
-      { threshold: 0.30, limit: 5 },
-      { threshold: 0.20, limit: 5 }
+      { threshold: 0.30, limit: 3 },
+      { threshold: 0.20, limit: 3 }
     );
   }
 
@@ -132,11 +151,11 @@ async function retrieveWithCascade(
     });
 
     if (chunks.length > 0) {
-      return chunks;
+      return { chunks };
     }
   }
 
-  return [];
+  return { chunks: [] };
 }
 
 // ----------------------------------------------------------------
@@ -147,6 +166,10 @@ export class Orchestrator {
   private ollamaBaseUrl: string;
   private primaryModel: string;
   private fallbackModel: string;
+  private fastModel: string;
+  private fastPathEnabled: boolean;
+  private contextMaxChunks: number;
+  private contextChunkMaxChars: number;
 
   constructor() {
     this.supabase  = createClient(
@@ -156,6 +179,27 @@ export class Orchestrator {
     this.ollamaBaseUrl = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
     this.primaryModel = process.env.OLLAMA_MODEL_PRIMARY ?? process.env.OLLAMA_MODEL ?? 'qwen2.5:14b';
     this.fallbackModel = process.env.OLLAMA_MODEL_FALLBACK ?? 'llama3.1:8b';
+    this.fastModel = process.env.OLLAMA_MODEL_FAST ?? this.fallbackModel;
+    this.fastPathEnabled = process.env.ORCHESTRATOR_FASTPATH_ENABLED !== 'false';
+    this.contextMaxChunks = Number.parseInt(process.env.ORCHESTRATOR_CONTEXT_MAX_CHUNKS ?? '3', 10);
+    this.contextChunkMaxChars = Number.parseInt(process.env.ORCHESTRATOR_CONTEXT_CHUNK_MAX_CHARS ?? '1200', 10);
+  }
+
+  private trimContextForPrompt(chunks: RAGChunk[]): RAGChunk[] {
+    const maxChunks = Number.isFinite(this.contextMaxChunks) && this.contextMaxChunks > 0 ? this.contextMaxChunks : 3;
+    const maxChars = Number.isFinite(this.contextChunkMaxChars) && this.contextChunkMaxChars > 0 ? this.contextChunkMaxChars : 1200;
+
+    return chunks.slice(0, maxChunks).map((chunk) => ({
+      ...chunk,
+      content: chunk.content.length > maxChars ? `${chunk.content.slice(0, maxChars)}...` : chunk.content,
+    }));
+  }
+
+  private shouldUseFastModel(hasEvidence: boolean, topScore: number, query: string): boolean {
+    if (!this.fastPathEnabled) return false;
+    if (!hasEvidence) return true;
+    const tokenApprox = query.trim().split(/\s+/).filter(Boolean).length;
+    return topScore <= 1 && tokenApprox <= 10;
   }
 
   private async generateWithOllama(model: string, systemPrompt: string, query: string): Promise<string> {
@@ -193,8 +237,14 @@ export class Orchestrator {
     conversationId: string,
     query: string
   ): Promise<OrchestratorResponse> {
+    const tTotalStart = Date.now();
+    let llmModelUsed = this.primaryModel;
+    let usedFallbackModel = false;
+    let llmPrimaryMs = 0;
+    let llmFallbackMs = 0;
 
     // 1. Routing
+    const tRoutingStart = Date.now();
     const { primary, secondary, reasoning, topScore } = detectSpecialist(query);
     const routing: RoutingResult = {
       primarySpecialist:    primary,
@@ -202,33 +252,55 @@ export class Orchestrator {
       confidence: 0.92,
       reasoning,
     };
+    const routingMs = Date.now() - tRoutingStart;
 
     // 2. Retrieval with cascade (domain strict -> domain relaxed -> global)
+    const tRetrievalStart = Date.now();
     const dbCategory = SPECIALIST_TO_DB[primary];
-    const retrievedChunks = await retrieveWithCascade(query, dbCategory, topScore > 0);
+    const retrieval = await retrieveWithCascade(query, dbCategory, topScore > 0, topScore === 0);
+    const retrievedChunks = retrieval.chunks;
+    const retrievalMs = Date.now() - tRetrievalStart;
 
     const hasEvidence = retrievedChunks.length > 0;
+    const promptChunks = this.trimContextForPrompt(retrievedChunks);
 
     // 3. Build context text for prompt
+    const tPromptBuildStart = Date.now();
     const contextText = hasEvidence
-      ? buildContextText(retrievedChunks)
+      ? buildContextText(promptChunks)
       : '';
+    const promptBuildMs = Date.now() - tPromptBuildStart;
 
     // 4. LLM generation
+    const tLlmStart = Date.now();
     let primaryResponse = '';
     const systemPrompt = hasEvidence
       ? GROUNDED_CHAT_PROMPT.replace('{context}', contextText).replace('{query}', query)
       : NO_EVIDENCE_FALLBACK_PROMPT.replace('{query}', query);
+    const modelToUse = this.shouldUseFastModel(hasEvidence, topScore, query) ? this.fastModel : this.primaryModel;
+    llmModelUsed = modelToUse;
 
     try {
       // Primary: Ollama qwen2.5:14b (default)
-      primaryResponse = await this.generateWithOllama(this.primaryModel, systemPrompt, query);
+      const tPrimaryStart = Date.now();
+      try {
+        primaryResponse = await this.generateWithOllama(modelToUse, systemPrompt, query);
+      } finally {
+        llmPrimaryMs = Date.now() - tPrimaryStart;
+      }
     } catch (primaryError) {
       console.error('[Orchestrator] Primary Ollama model failed, using local fallback:', primaryError);
 
       try {
         // Fallback: Ollama llama3.1:8b (default)
-        primaryResponse = await this.generateWithOllama(this.fallbackModel, systemPrompt, query);
+        const tFallbackStart = Date.now();
+        try {
+          primaryResponse = await this.generateWithOllama(this.fallbackModel, systemPrompt, query);
+        } finally {
+          llmFallbackMs = Date.now() - tFallbackStart;
+        }
+        llmModelUsed = this.fallbackModel;
+        usedFallbackModel = true;
       } catch (fallbackError) {
         console.error('[Orchestrator] Local Ollama fallback also failed:', fallbackError);
         primaryResponse = hasEvidence
@@ -236,6 +308,7 @@ export class Orchestrator {
           : 'No tengo evidencia suficiente en mi base de datos especializada para responder esta consulta. Te recomiendo consultar con un asesor fiscal, laboral o inmobiliario certificado.';
       }
     }
+    const llmMs = Date.now() - tLlmStart;
 
     // 5. Build citations
     const citations: CitationRef[] = retrievedChunks.map((c, i) => ({
@@ -271,7 +344,7 @@ export class Orchestrator {
 
     // 8. Contexts for frontend
     const contexts: SpecialistContext[] = [{
-      chunks: retrievedChunks.map(c => ({
+      chunks: promptChunks.map(c => ({
         id:         c.id,
         content:    c.content,
         source:     c.metadata.title,
@@ -293,10 +366,27 @@ export class Orchestrator {
       alerts,
       citations,
       groundingConfidence: groundingConf,
+      performance: {
+        routing_ms: routingMs,
+        retrieval_ms: retrievalMs,
+        prompt_build_ms: promptBuildMs,
+        llm_ms: llmMs,
+        llm_primary_ms: llmPrimaryMs,
+        llm_fallback_ms: llmFallbackMs,
+        persistence_ms: 0,
+        total_ms: 0,
+        llm_model_used: llmModelUsed,
+        used_fallback_model: usedFallbackModel,
+      },
     };
 
     // 9. Persist conversation
+    const tPersistStart = Date.now();
     await this.saveConversation(userId, conversationId, query, primaryResponse, contexts);
+    const persistenceMs = Date.now() - tPersistStart;
+    const totalMs = Date.now() - tTotalStart;
+    result.performance.persistence_ms = persistenceMs;
+    result.performance.total_ms = totalMs;
 
     return result;
   }
