@@ -96,6 +96,35 @@ function buildContextText(chunks: RAGChunk[]): string {
     .join('\n\n');
 }
 
+interface RetrievalAttempt {
+  category?: DbCategory;
+  threshold: number;
+  limit: number;
+}
+
+async function retrieveWithCascade(query: string, primaryCategory: DbCategory): Promise<RAGChunk[]> {
+  const attempts: RetrievalAttempt[] = [
+    { category: primaryCategory, threshold: 0.35, limit: 5 },
+    { category: primaryCategory, threshold: 0.25, limit: 5 },
+    { threshold: 0.30, limit: 5 },
+    { threshold: 0.20, limit: 5 },
+  ];
+
+  for (const attempt of attempts) {
+    const chunks = await retrieveContext(query, {
+      category: attempt.category,
+      threshold: attempt.threshold,
+      limit: attempt.limit,
+    });
+
+    if (chunks.length > 0) {
+      return chunks;
+    }
+  }
+
+  return [];
+}
+
 // ----------------------------------------------------------------
 // Orchestrator
 // ----------------------------------------------------------------
@@ -160,18 +189,9 @@ export class Orchestrator {
       reasoning,
     };
 
-    // 2. Retrieval (primary domain, then secondary if needed)
+    // 2. Retrieval with cascade (domain strict -> domain relaxed -> global)
     const dbCategory = SPECIALIST_TO_DB[primary];
-    let retrievedChunks = await retrieveContext(query, {
-      category:  dbCategory,
-      limit:     5,
-      threshold: 0.35,
-    });
-
-    // If primary yields no results, try cross-domain (no category filter)
-    if (retrievedChunks.length === 0 && secondary.length > 0) {
-      retrievedChunks = await retrieveContext(query, { limit: 5, threshold: 0.35 });
-    }
+    const retrievedChunks = await retrieveWithCascade(query, dbCategory);
 
     const hasEvidence = retrievedChunks.length > 0;
 
