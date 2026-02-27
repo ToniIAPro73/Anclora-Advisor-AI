@@ -14,3 +14,8 @@ export async function getCurrentUserFromCookies(): Promise<User | null> {
   const { user } = await validateAccessToken(accessToken);
   return user;
 }
+
+export async function getAccessTokenFromCookies(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get(SESSION_COOKIE_NAME)?.value ?? null;
+}

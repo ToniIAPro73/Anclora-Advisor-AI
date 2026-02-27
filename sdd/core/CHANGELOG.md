@@ -24,3 +24,7 @@
 - Se integra workspace de chat real en `/dashboard/chat` con citas desplegables y alertas criticas.
 - Se normaliza parsing del contrato de `/api/chat` en `useChat` para success/error robusto.
 - Se agregan artefactos SDD de `chat-rag-workspace-and-citations` (spec/test/qa/gate + prompts/rule/skill).
+- Feature `ANCLORA-FISC-001` completada con estado `CLOSED/GO`.
+- Se conecta `/dashboard/fiscal` a `fiscal_alerts` en Supabase con cliente scopeado por token de usuario.
+- Se implementan widget de Cuota Cero y timeline de modelos 303/130 con estados de prioridad y estado.
+- Se agregan artefactos SDD de `fiscal-panel-and-tax-timeline` (spec/test/qa/gate + prompts/rule/skill).
