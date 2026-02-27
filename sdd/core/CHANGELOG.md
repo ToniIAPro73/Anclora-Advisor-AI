@@ -42,3 +42,7 @@
   - migracion RAG aplicada en Supabase Advisor (`lvpplnqbyvscpuljnzqf`),
   - verificacion de infraestructura en GO,
   - test de integracion retrieval/chat grounding en PASS (11/11).
+- Feature `ANCLORA-LAB-001` completada con estado `CLOSED/GO`.
+- Se implementa `/dashboard/laboral` conectado a `labor_risk_assessments` con RLS por usuario.
+- Se muestran score actual, nivel de riesgo, recomendaciones y historial reciente.
+- Se agregan artefactos SDD de `labor-risk-monitor-and-history` (rule/skill/prompts/spec/test/qa/gate).
