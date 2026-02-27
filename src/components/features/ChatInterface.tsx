@@ -27,37 +27,37 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ userId, conversati
   };
 
   return (
-    <div className="flex flex-col h-[80vh] bg-gray-100 rounded-xl overflow-hidden shadow-xl">
-      <div className="bg-slate-900 p-4 text-white flex justify-between items-center">
-        <h2 className="text-lg font-bold tracking-wider">Anclora Advisor AI</h2>
-        <span className="text-xs px-2 py-1 bg-amber-500 text-slate-900 rounded font-semibold">Beta</span>
+    <div className="advisor-card flex h-[72vh] flex-col overflow-hidden">
+      <div className="flex items-center justify-between bg-[#162944] p-4 text-white">
+        <h2 className="advisor-heading text-xl">Anclora Advisor AI</h2>
+        <span className="rounded-full bg-[#1DAB89] px-2.5 py-1 text-xs font-semibold text-white">Live</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto bg-[#f7faff] p-4">
         {messages.length === 0 && (
-          <div className="h-full flex items-center justify-center text-gray-400 text-center px-6">
+          <div className="flex h-full items-center justify-center px-6 text-center text-gray-500">
             <p>Escribe tu consulta normativa, fiscal o de mercado inmobiliario para comenzar.</p>
           </div>
         )}
         <MessageList messages={messages} />
-        
+
         {loading && (
           <div className="flex justify-start mt-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-3 shadow-sm">
-              <div className="animate-spin h-5 w-5 border-2 border-amber-400 border-t-transparent rounded-full"></div>
-              <p className="text-sm text-gray-600 font-medium">Analizando directrices y jurisprudencia...</p>
+            <div className="flex items-center gap-3 rounded-lg border border-[#d2dceb] bg-white p-4 shadow-sm">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1DAB89] border-t-transparent"></div>
+              <p className="text-sm font-medium text-[#3a4f67]">Analizando directrices y jurisprudencia...</p>
             </div>
           </div>
         )}
 
         {error && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg text-sm">
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             <strong>Error de conexión:</strong> {error}
           </div>
         )}
       </div>
 
-      <div className="bg-white border-t border-gray-200 p-4">
+      <div className="border-t border-[#d2dceb] bg-white p-4">
         <form onSubmit={handleSendMessage} className="flex gap-3">
           <input
             type="text"
@@ -65,12 +65,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ userId, conversati
             onChange={(e) => setInputQuery(e.target.value)}
             placeholder="Ej. ¿Qué riesgos asumo si abro una consultora IA mientras trabajo por cuenta ajena?"
             disabled={loading}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 disabled:bg-gray-50 disabled:cursor-not-allowed text-sm"
+            className="flex-1 rounded-lg border border-[#c7d4e6] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1DAB89] disabled:cursor-not-allowed disabled:bg-gray-50"
           />
           <button
             type="submit"
             disabled={loading || !inputQuery.trim()}
-            className="px-6 py-3 bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold rounded-lg disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="rounded-lg bg-[#1DAB89] px-6 py-3 font-bold text-white transition-colors hover:bg-[#179a7a] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
           >
             Consultar
           </button>

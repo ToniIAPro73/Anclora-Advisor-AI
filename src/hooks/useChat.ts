@@ -5,20 +5,42 @@
 
 import { useState, useCallback } from "react";
 
+export type AlertLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+export interface ChatAlert {
+  type: AlertLevel;
+  message: string;
+}
+
+export interface ChatRouting {
+  primarySpecialist: string;
+  confidence: number;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  routing?: { primarySpecialist: string; confidence: number; };
+  routing?: ChatRouting;
   citations?: string[];
-  alerts?: Array<{ type: string; message: string }>;
+  alerts?: ChatAlert[];
 }
 
 export interface ChatState {
   messages: ChatMessage[];
   loading: boolean;
   error: string | null;
+}
+
+interface ChatApiResponse {
+  success: boolean;
+  error?: string;
+  messageId?: string;
+  primarySpecialistResponse?: string;
+  routing?: ChatRouting;
+  citations?: string[];
+  alerts?: ChatAlert[];
 }
 
 export function useChat(userId: string, conversationId: string) {
@@ -43,17 +65,17 @@ export function useChat(userId: string, conversationId: string) {
         body: JSON.stringify({ userId, conversationId, query }),
       });
 
-      const data = await response.json();
-      if (!data.success) throw new Error(data.error || "Unknown error");
+      const data = (await response.json()) as ChatApiResponse;
+      if (!response.ok || !data.success) throw new Error(data.error || "Error de chat no controlado.");
 
       const assistantMessage: ChatMessage = {
         id: data.messageId || "msg_assistant_" + Date.now(),
         role: "assistant",
-        content: data.primarySpecialistResponse,
+        content: data.primarySpecialistResponse || "No se pudo construir una respuesta valida.",
         timestamp: new Date(),
-        routing: { primarySpecialist: data.routing.primarySpecialist, confidence: data.routing.confidence },
-        citations: data.citations,
-        alerts: data.alerts,
+        routing: data.routing,
+        citations: data.citations ?? [],
+        alerts: data.alerts ?? [],
       };
 
       setState((prev) => ({ ...prev, messages: [...prev.messages, assistantMessage], loading: false, error: null }));

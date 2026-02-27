@@ -20,3 +20,7 @@
 - Se implementa shell de dashboard con sidebar, topbar y sistema visual de marca.
 - Se integran `Logo-Advisor.png` y tokens de color basados en la paleta oficial.
 - Se agregan artefactos SDD de `dashboard-shell-and-brand-system` (spec/test/qa/gate + prompts/rule/skill).
+- Feature `ANCLORA-CHAT-002` completada con estado `CLOSED/GO`.
+- Se integra workspace de chat real en `/dashboard/chat` con citas desplegables y alertas criticas.
+- Se normaliza parsing del contrato de `/api/chat` en `useChat` para success/error robusto.
+- Se agregan artefactos SDD de `chat-rag-workspace-and-citations` (spec/test/qa/gate + prompts/rule/skill).
