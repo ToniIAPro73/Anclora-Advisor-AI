@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,20 +8,33 @@
   --advisor-primary: #162944;
   --advisor-dark: #1c2b3c;
   --advisor-accent: #1dab89;
+  --advisor-accent-dim: #17987a;
   --advisor-light: #dce4f4;
   --advisor-mint: #a1dbc6;
   --advisor-canvas: #f3f6fb;
   --advisor-border: #d2dceb;
+  --text-primary: #102033;
+  --text-secondary: #4a6282;
+  --text-muted: #7a97b4;
+  --text-on-dark: #e8eef8;
+  --text-on-accent: #ffffff;
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
   body {
     background:
       radial-gradient(1300px 600px at 10% -20%, rgba(29, 171, 137, 0.13), transparent 70%),
       radial-gradient(1200px 500px at 100% 0%, rgba(22, 41, 68, 0.2), transparent 70%),
       var(--advisor-canvas);
-    color: #102033;
+    color: var(--text-primary);
     font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -32,7 +47,7 @@
     background:
       linear-gradient(180deg, rgba(22, 41, 68, 0.98) 0%, rgba(28, 43, 60, 0.98) 100%),
       radial-gradient(500px 220px at 100% 0%, rgba(29, 171, 137, 0.22), transparent 75%);
-    color: #e8eef8;
+    color: var(--text-on-dark);
   }
 
   .advisor-card {
@@ -63,5 +78,122 @@
     font-size: 12px;
     font-weight: 600;
     padding: 4px 10px;
+  }
+
+  .advisor-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .advisor-input {
+    display: block;
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--advisor-border);
+    border-radius: 12px;
+    background: #ffffff;
+    font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .advisor-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .advisor-input:focus {
+    border-color: var(--advisor-accent);
+    box-shadow: 0 0 0 3px rgba(29, 171, 137, 0.14);
+  }
+
+  .advisor-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 22px;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .advisor-btn:focus-visible {
+    outline: 2px solid var(--advisor-accent);
+    outline-offset: 3px;
+  }
+
+  .advisor-btn-primary {
+    background: var(--advisor-accent);
+    color: var(--text-on-accent);
+    box-shadow: 0 4px 14px rgba(29, 171, 137, 0.3);
+  }
+
+  .advisor-btn-primary:hover:not(:disabled) {
+    background: var(--advisor-accent-dim);
+    box-shadow: 0 6px 20px rgba(29, 171, 137, 0.4);
+    transform: translateY(-1px);
+  }
+
+  .advisor-btn-primary:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+
+  .advisor-btn-full {
+    width: 100%;
+  }
+
+  .advisor-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .advisor-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .advisor-alert-error {
+    background: rgba(224, 82, 82, 0.08);
+    border: 1px solid rgba(224, 82, 82, 0.3);
+    color: #b83232;
+  }
+
+  .advisor-alert-success {
+    background: rgba(29, 171, 137, 0.08);
+    border: 1px solid rgba(29, 171, 137, 0.3);
+    color: #0e7a5e;
+  }
+
+  .advisor-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: advisor-spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+}
+
+@keyframes advisor-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
