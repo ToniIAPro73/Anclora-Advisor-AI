@@ -10,7 +10,9 @@
     "type-check": "tsc --noEmit",
     "ingest": "tsx scripts/ingest-rag.ts",
     "backfill": "tsx scripts/backfill-embeddings.ts",
-    "reingest-patch": "tsx scripts/reingest-patch.ts"
+    "reingest-patch": "tsx scripts/reingest-patch.ts",
+    "rag:infra:apply": "tsx scripts/apply-match-chunks-rpc.ts",
+    "rag:infra:verify": "tsx scripts/verify-rag-infra.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.21.0",

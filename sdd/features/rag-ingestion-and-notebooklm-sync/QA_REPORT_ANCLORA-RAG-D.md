@@ -27,7 +27,9 @@
 | `src/lib/rag/retrieval.ts` | Domain alias resolver, threshold 0.35, no-any |
 | `lib/agents/orchestrator.ts` | Anthropic primary LLM, domain fix, enriched citations, `groundingConfidence` |
 | `lib/agents/prompts.ts` | Split: `GROUNDED_CHAT_PROMPT` + `NO_EVIDENCE_FALLBACK_PROMPT` |
-| `supabase/migrations/20260227_match_chunks_rpc.sql` | Versioned `match_chunks` RPC |
+| `supabase/migrations/20260227_rag_infra_hardening.sql` | Idempotent RAG infra hardening (tables, indexes, RLS, RPC, grants, schema reload) |
+| `scripts/verify-rag-infra.ts` | Infra verifier (tables + 384-dim sample + RPC availability) |
+| `scripts/apply-match-chunks-rpc.ts` | Migration applier via `SUPABASE_DB_URL`/`DATABASE_URL` |
 | `tests/test-retrieval-d.ts` | 5-case integration test (T1–T5) |
 
 ---
@@ -37,27 +39,21 @@
 | Check | Status | Detail |
 |---|---|---|
 | `npm run type-check` | ✅ PASS | 0 errors |
+| `npm run lint` | ✅ PASS | 0 errors |
 | `npm run build` | ✅ PASS | 12/12 pages compiled |
-| `npm run lint` | ⚠️ SKIPPED | Lint script requires sibling project path |
-| Integration test T1–T5 | ⏳ BLOCKED | `match_chunks` RPC not yet applied to `lvpplnqbyvscpuljnzqf` |
+| `npm run -s rag:infra:verify` | ✅ PASS | tables/chunks/384-dim sample/RPC available |
+| Integration test T1–T5 | ✅ PASS | 11 passed, 0 failed |
 
 ---
 
 ## Blocked Item
 
-> [!IMPORTANT]
-> The `match_chunks` RPC must be applied manually to project `lvpplnqbyvscpuljnzqf` via the Supabase SQL Editor.
-> 
-> **URL**: https://supabase.com/dashboard/project/lvpplnqbyvscpuljnzqf/sql/new  
-> **File to paste**: `supabase/migrations/20260227_match_chunks_rpc.sql`
-
-After applying the RPC, run:
-```
-npx tsx tests/test-retrieval-d.ts
-```
+Manual step completed by operator:
+- Migration applied in Supabase project `lvpplnqbyvscpuljnzqf`.
+- RPC `public.match_chunks` available in schema cache.
 
 ---
 
 ## Gate Condition
 
-- GO pending: operator applies SQL migration + integration test T1–T5 passes.
+- FULL GO: migration applied + infra verify pass + integration test T1–T5 pass.

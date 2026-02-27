@@ -6,10 +6,10 @@
 
 ---
 
-## Decision: ⏳ CONDITIONAL GO
+## Decision: ✅ FULL GO
 
 > [!IMPORTANT]
-> The gate is **GO pending one manual operator action** (applying the `match_chunks` RPC SQL to Supabase project `lvpplnqbyvscpuljnzqf`). All code changes are correct and pass type-check + build. Once the SQL is applied and the integration test passes, this gate becomes **full GO**.
+> The gate is **FULL GO**. RAG hardening SQL is applied on Supabase project `lvpplnqbyvscpuljnzqf`, verification passes, and integration tests pass.
 
 ---
 
@@ -22,21 +22,24 @@
 - [x] **Anthropic primary LLM** — Claude 3.5 Haiku primary, GPT-4o-mini fallback.
 - [x] **No-hallucination policy** — `NO_EVIDENCE_FALLBACK_PROMPT` active for 0-result queries.
 - [x] **Citations enriched** — `CitationRef` includes `source_url`, `similarity`, `chunk_id`.
-- [x] **Migration versioned** — `supabase/migrations/20260227_match_chunks_rpc.sql`.
+- [x] **Migration hardening versioned** — `supabase/migrations/20260227_rag_infra_hardening.sql`.
 - [x] **type-check**: ✅ PASS
+- [x] **lint**: ✅ PASS
 - [x] **build**: ✅ PASS
-- [ ] **Integration test T1–T5**: ⏳ Awaiting RPC migration
+- [x] **`npm run -s rag:infra:verify`**: ✅ PASS
+- [x] **Integration test T1–T5**: ✅ PASS (11 passed, 0 failed)
 
 ---
 
-## Operator Manual Step Required
+## Operator Manual Step Completed
 
 ```
 1. Open: https://supabase.com/dashboard/project/lvpplnqbyvscpuljnzqf/sql/new
-2. Paste contents of: supabase/migrations/20260227_match_chunks_rpc.sql
+2. Paste contents of: supabase/migrations/20260227_rag_infra_hardening.sql
 3. Click "Run"
-4. Run: npx tsx tests/test-retrieval-d.ts
-5. All 5 tests must pass → Gate becomes FULL GO
+4. Run: npm run -s rag:infra:verify
+5. Run: npx tsx tests/test-retrieval-d.ts
+6. All checks passed → Gate set to FULL GO
 ```
 
 ---

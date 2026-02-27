@@ -68,11 +68,11 @@ async function runTests(): Promise<void> {
     }
   }
 
-  // ── T3: Mercado retrieval ─────────────────────────────────────
-  console.log('\nT3 — Mercado: "¿Cómo tributa la venta de una vivienda?"');
+  // ── T3: Mercado/Marca retrieval ───────────────────────────────
+  console.log('\nT3 — Mercado/Marca: "¿Cómo definir una USP en marca personal inmobiliaria premium?"');
   {
-    const chunks = await retrieveContext('¿Cómo tributa la venta de una vivienda?', {
-      category: 'market', threshold: 0.35, limit: 5,
+    const chunks = await retrieveContext('¿Cómo definir una USP en marca personal inmobiliaria premium?', {
+      category: 'market', threshold: 0.30, limit: 5,
     });
     assert(chunks.length > 0, 'At least 1 chunk returned', `got ${chunks.length}`);
     if (chunks.length > 0) {

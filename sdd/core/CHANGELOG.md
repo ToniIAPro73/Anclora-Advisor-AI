@@ -34,3 +34,11 @@
   - politica de `project_ref` unico,
   - bloqueo `NO-GO` por conflicto de refs,
   - preflight reutilizable en `.antigravity/prompts/features/_supabase-env-preflight.md`.
+- Se agrega hardening de infraestructura RAG en Supabase:
+  - nueva migracion idempotente `supabase/migrations/20260227_rag_infra_hardening.sql`,
+  - script `rag:infra:apply` para aplicar SQL completo por conexion DB,
+  - script `rag:infra:verify` para validar tablas, embeddings y RPC `match_chunks`.
+- Se cierra `ANCLORA-RAG-INGEST-001` en `CLOSED/GO`:
+  - migracion RAG aplicada en Supabase Advisor (`lvpplnqbyvscpuljnzqf`),
+  - verificacion de infraestructura en GO,
+  - test de integracion retrieval/chat grounding en PASS (11/11).

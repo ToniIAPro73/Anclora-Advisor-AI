@@ -17,7 +17,14 @@
 | dashboard-shell-and-brand-system             | CLOSED   | GO      |
 | chat-rag-workspace-and-citations             | CLOSED   | GO      |
 | fiscal-panel-and-tax-timeline                | CLOSED   | GO      |
-| rag-ingestion-and-notebooklm-sync            | PLANNED  | PENDING |
+| rag-ingestion-and-notebooklm-sync            | CLOSED   | GO      |
 | labor-risk-monitor-and-history               | PLANNED  | PENDING |
 | invoicing-workspace-and-withholding-rules    | PLANNED  | PENDING |
 | i18n-observability-and-release-hardening     | PLANNED  | PENDING |
+
+## Notes
+
+- `rag-ingestion-and-notebooklm-sync` dispone de hardening operativo de Supabase en:
+  - `supabase/migrations/20260227_rag_infra_hardening.sql`
+  - `npm run rag:infra:apply`
+  - `npm run rag:infra:verify`

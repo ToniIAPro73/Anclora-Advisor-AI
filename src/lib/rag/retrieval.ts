@@ -63,6 +63,126 @@ export interface RetrievalOptions {
   threshold?: number;
 }
 
+interface RawChunkRow {
+  id: string;
+  document_id: string;
+  content: string;
+  embedding: string | number[] | null;
+  rag_documents:
+    | {
+        title: string | null;
+        category: string | null;
+        source_url: string | null;
+      }
+    | Array<{
+        title: string | null;
+        category: string | null;
+        source_url: string | null;
+      }>
+    | null;
+}
+
+function parseEmbedding(value: string | number[] | null): number[] | null {
+  if (!value) return null;
+  if (Array.isArray(value)) return value;
+
+  const cleaned = value.trim().replace(/^\[/, '').replace(/\]$/, '');
+  if (!cleaned) return null;
+
+  const parsed = cleaned
+    .split(',')
+    .map((n) => Number.parseFloat(n.trim()))
+    .filter((n) => Number.isFinite(n));
+
+  return parsed.length > 0 ? parsed : null;
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length || a.length === 0) return -1;
+
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  const denom = Math.sqrt(normA) * Math.sqrt(normB);
+  if (!Number.isFinite(denom) || denom === 0) return -1;
+  return dot / denom;
+}
+
+function docMetadataFromRow(row: RawChunkRow): RAGChunk['metadata'] {
+  const doc = Array.isArray(row.rag_documents) ? row.rag_documents[0] : row.rag_documents;
+  return {
+    title: doc?.title ?? 'Documento sin titulo',
+    category: doc?.category ?? '',
+    source_url: doc?.source_url ?? '',
+  };
+}
+
+async function fallbackRetrieveWithoutRpc(
+  queryEmbedding: number[],
+  category: string,
+  limit: number,
+  threshold: number
+): Promise<RAGChunk[]> {
+  let query = getSupabase()
+    .from('rag_chunks')
+    .select(
+      `
+      id,
+      document_id,
+      content,
+      embedding,
+      rag_documents!inner (
+        title,
+        category,
+        source_url
+      )
+    `
+    )
+    .not('embedding', 'is', null)
+    .limit(250);
+
+  if (category) {
+    query = query.eq('rag_documents.category', category);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('[RAG] fallback query error:', error);
+    return [];
+  }
+
+  const rows = (data ?? []) as unknown as RawChunkRow[];
+
+  const scored = rows
+    .map((row) => {
+      const emb = parseEmbedding(row.embedding);
+      if (!emb || emb.length !== queryEmbedding.length) return null;
+
+      const similarity = cosineSimilarity(queryEmbedding, emb);
+      if (!Number.isFinite(similarity) || similarity < threshold) return null;
+
+      return {
+        id: row.id,
+        document_id: row.document_id,
+        content: row.content,
+        metadata: docMetadataFromRow(row),
+        similarity,
+      } satisfies RAGChunk;
+    })
+    .filter((item): item is RAGChunk => item !== null)
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, limit);
+
+  return scored;
+}
+
 // ----------------------------------------------------------------
 // Core retrieval function
 // ----------------------------------------------------------------
@@ -94,6 +214,10 @@ export async function retrieveContext(
   });
 
   if (error) {
+    if (error.code === 'PGRST202') {
+      console.warn('[RAG] match_chunks RPC not found, using JS fallback retrieval');
+      return fallbackRetrieveWithoutRpc(embedding, dbCategory, limit, threshold);
+    }
     console.error('[RAG] match_chunks RPC error:', error);
     return [];
   }
