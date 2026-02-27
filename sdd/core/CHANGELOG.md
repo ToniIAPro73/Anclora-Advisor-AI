@@ -28,3 +28,9 @@
 - Se conecta `/dashboard/fiscal` a `fiscal_alerts` en Supabase con cliente scopeado por token de usuario.
 - Se implementan widget de Cuota Cero y timeline de modelos 303/130 con estados de prioridad y estado.
 - Se agregan artefactos SDD de `fiscal-panel-and-tax-timeline` (spec/test/qa/gate + prompts/rule/skill).
+- Se crea infraestructura SDD de `ANCLORA-RAG-INGEST-001` para ejecucion por Antigravity (sin implementacion runtime).
+- Se agregan prompts por agentes para acceso MCP a 3 cuadernos NotebookLM, ingesta, embeddings y QA/Gate.
+- Se endurece gobernanza global de entorno Supabase:
+  - politica de `project_ref` unico,
+  - bloqueo `NO-GO` por conflicto de refs,
+  - preflight reutilizable en `.antigravity/prompts/features/_supabase-env-preflight.md`.

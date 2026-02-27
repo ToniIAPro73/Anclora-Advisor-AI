@@ -44,6 +44,7 @@ Para cada feature, crear exactamente estos artefactos:
 | `dashboard-shell-and-brand-system` | `.agent/rules/feature-dashboard-shell-and-brand-system.md` | `.agent/skills/features/dashboard-shell-and-brand-system/SKILL.md` | `.antigravity/prompts/features/dashboard-shell-and-brand-system/` | `sdd/features/dashboard-shell-and-brand-system/` |
 | `chat-rag-workspace-and-citations` | `.agent/rules/feature-chat-rag-workspace-and-citations.md` | `.agent/skills/features/chat-rag-workspace-and-citations/SKILL.md` | `.antigravity/prompts/features/chat-rag-workspace-and-citations/` | `sdd/features/chat-rag-workspace-and-citations/` |
 | `fiscal-panel-and-tax-timeline` | `.agent/rules/feature-fiscal-panel-and-tax-timeline.md` | `.agent/skills/features/fiscal-panel-and-tax-timeline/SKILL.md` | `.antigravity/prompts/features/fiscal-panel-and-tax-timeline/` | `sdd/features/fiscal-panel-and-tax-timeline/` |
+| `rag-ingestion-and-notebooklm-sync` | `.agent/rules/feature-rag-ingestion-and-notebooklm-sync.md` | `.agent/skills/features/rag-ingestion-and-notebooklm-sync/SKILL.md` | `.antigravity/prompts/features/rag-ingestion-and-notebooklm-sync/` | `sdd/features/rag-ingestion-and-notebooklm-sync/` |
 | `labor-risk-monitor-and-history` | `.agent/rules/feature-labor-risk-monitor-and-history.md` | `.agent/skills/features/labor-risk-monitor-and-history/SKILL.md` | `.antigravity/prompts/features/labor-risk-monitor-and-history/` | `sdd/features/labor-risk-monitor-and-history/` |
 | `invoicing-workspace-and-withholding-rules` | `.agent/rules/feature-invoicing-workspace-and-withholding-rules.md` | `.agent/skills/features/invoicing-workspace-and-withholding-rules/SKILL.md` | `.antigravity/prompts/features/invoicing-workspace-and-withholding-rules/` | `sdd/features/invoicing-workspace-and-withholding-rules/` |
 | `i18n-observability-and-release-hardening` | `.agent/rules/feature-i18n-observability-and-release-hardening.md` | `.agent/skills/features/i18n-observability-and-release-hardening/SKILL.md` | `.antigravity/prompts/features/i18n-observability-and-release-hardening/` | `sdd/features/i18n-observability-and-release-hardening/` |
@@ -140,6 +141,29 @@ Gate de salida:
 - Datos fiscales solo del usuario autenticado (RLS).
 - Fechas y estados renderizados sin errores de timezone.
 
+### Fase D.5 - Ingesta de conocimiento RAG
+
+Feature: `rag-ingestion-and-notebooklm-sync`  
+Feature ID: `ANCLORA-RAG-INGEST-001`
+
+Alcance:
+
+- Ingesta de 3 cuadernos NotebookLM via MCP.
+- Normalizacion, chunking y embeddings (384 dims).
+- Carga en `rag_documents`/`rag_chunks` para grounding del chat.
+
+Skills recomendadas:
+
+- `spec-driven-feature-delivery`
+- `rag-grounding-and-citations`
+- `supabase-data-quality-and-rls`
+
+Gate de salida:
+
+- 3 cuadernos ingeridos y trazables.
+- Retrieval con citas verificables en chat.
+- QA y gate final en GO tras ejecucion real.
+
 ### Fase E - Monitor laboral
 
 Feature: `labor-risk-monitor-and-history`  
@@ -213,9 +237,10 @@ Gate de salida:
 2. `ANCLORA-DSH-001`
 3. `ANCLORA-CHAT-002`
 4. `ANCLORA-FISC-001`
-5. `ANCLORA-LAB-001`
-6. `ANCLORA-INV-001`
-7. `ANCLORA-HARD-001`
+5. `ANCLORA-RAG-INGEST-001`
+6. `ANCLORA-LAB-001`
+7. `ANCLORA-INV-001`
+8. `ANCLORA-HARD-001`
 
 ## Riesgos criticos y mitigacion
 

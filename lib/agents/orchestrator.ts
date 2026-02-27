@@ -1,12 +1,29 @@
 // lib/agents/orchestrator.ts
 /**
  * ORCHESTRATOR CENTRAL - Anclora Advisor AI
- * Stack: Node.js 20 + TypeScript + Vercel AI SDK + LangChain.js
+ * Primary LLM: Anthropic Claude 3.5 Haiku
+ * Fallback LLM: OpenAI GPT-4o-mini
  */
 
-import { createClient } from "@supabase/supabase-js";
+import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { retrieveContext, RAGChunk } from '../../src/lib/rag/retrieval';
+import { GROUNDED_CHAT_PROMPT, NO_EVIDENCE_FALLBACK_PROMPT } from './prompts';
 
-export type SpecialistType = "fiscal" | "labor" | "market";
+// ----------------------------------------------------------------
+// Types
+// ----------------------------------------------------------------
+export type SpecialistType = 'fiscal' | 'labor' | 'market';
+
+/** Internal DB category used for retrieval (must match rag_documents.category) */
+type DbCategory = 'fiscal' | 'laboral' | 'mercado';
+
+const SPECIALIST_TO_DB: Record<SpecialistType, DbCategory> = {
+  fiscal: 'fiscal',
+  labor:  'laboral',
+  market: 'mercado',
+};
 
 export interface RoutingResult {
   primarySpecialist: SpecialistType;
@@ -15,8 +32,16 @@ export interface RoutingResult {
   reasoning: string;
 }
 
+export interface CitationRef {
+  index: number;
+  title: string;
+  source_url: string;
+  similarity: number;
+  chunk_id: string;
+}
+
 export interface SpecialistContext {
-  chunks: Array<{ id: string; content: string; source: string; confidence: number; }>;
+  chunks: Array<{ id: string; content: string; source: string; confidence: number }>;
   totalConfidence: number;
   warnings: string[];
 }
@@ -28,76 +53,226 @@ export interface OrchestratorResponse {
   secondarySpecialistResponses?: Record<string, string>;
   contexts: SpecialistContext[];
   recommendations: string[];
-  alerts: Array<{ type: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"; message: string }>;
-  citations: string[];
+  alerts: Array<{ type: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'; message: string }>;
+  citations: CitationRef[];
+  groundingConfidence: 'high' | 'medium' | 'low' | 'none';
 }
 
+// ----------------------------------------------------------------
+// Keyword routing
+// ----------------------------------------------------------------
+const FISCAL_KEYWORDS  = ['iva', 'irpf', 'reta', 'hacienda', 'fiscal', 'tributar', 'impuesto', 'cuota', 'deducir', 'deducción', 'autónomo', 'factura', 'modelo 303', 'modelo 130', 'rendimiento'];
+const LABOR_KEYWORDS   = ['despido', 'laboral', 'pluriactividad', 'contrato', 'salario', 'convenio', 'trabajador', 'seguridad social', 'baja', 'nómina', 'preavis', 'indemnización'];
+const MARKET_KEYWORDS  = ['mercado', 'mallorca', 'alquiler', 'vivienda', 'inmobiliario', 'venta', 'compra', 'propiedad', 'arrendamiento', 'plusvalía'];
+
+function detectSpecialist(query: string): { primary: SpecialistType; secondary: SpecialistType[]; reasoning: string } {
+  const q = query.toLowerCase();
+  const scores: Record<SpecialistType, number> = { fiscal: 0, labor: 0, market: 0 };
+
+  for (const kw of FISCAL_KEYWORDS)  if (q.includes(kw)) scores.fiscal++;
+  for (const kw of LABOR_KEYWORDS)   if (q.includes(kw)) scores.labor++;
+  for (const kw of MARKET_KEYWORDS)  if (q.includes(kw)) scores.market++;
+
+  const entries = Object.entries(scores) as [SpecialistType, number][];
+  entries.sort((a, b) => b[1] - a[1]);
+
+  const primary    = entries[0][1] > 0 ? entries[0][0] : 'fiscal'; // default
+  const secondary  = entries.slice(1).filter(([, s]) => s > 0).map(([t]) => t);
+  const topScore   = entries[0][1];
+  const reasoning  = topScore > 0
+    ? `Se detectaron ${topScore} término(s) de la categoría '${primary}'.`
+    : "Consulta general: categoría fiscal asignada por defecto.";
+
+  return { primary, secondary, reasoning };
+}
+
+// ----------------------------------------------------------------
+// Context text builder
+// ----------------------------------------------------------------
+function buildContextText(chunks: RAGChunk[]): string {
+  if (chunks.length === 0) return '';
+  return chunks
+    .map((c, i) =>
+      `[${i + 1}] ${c.metadata.title} (confianza: ${Math.round(c.similarity * 100)}%)\n${c.content}`
+    )
+    .join('\n\n');
+}
+
+// ----------------------------------------------------------------
+// Orchestrator
+// ----------------------------------------------------------------
 export class Orchestrator {
-  private supabase;
+  private anthropic: Anthropic;
+  private openai: OpenAI;
+  private supabase: SupabaseClient;
 
   constructor() {
-    this.supabase = createClient(
-      process.env.SUPABASE_URL || "https://placeholder.supabase.co", 
-      process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder"
+    this.anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    this.openai    = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    this.supabase  = createClient(
+      process.env.SUPABASE_URL ?? 'https://placeholder.supabase.co',
+      process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'placeholder'
     );
   }
 
-  async processQuery(userId: string, conversationId: string, query: string): Promise<OrchestratorResponse> {
-    // 1. Clasificación estática/simulada (Reemplazar con llamada real a Vercel AI SDK/LLM)
-    let selectedSpecialist: SpecialistType = "fiscal";
-    let reasoning = "Consulta general clasificada como fiscal por defecto.";
+  async processQuery(
+    userId: string,
+    conversationId: string,
+    query: string
+  ): Promise<OrchestratorResponse> {
 
-    if (query.toLowerCase().includes("despido") || query.toLowerCase().includes("laboral")) {
-      selectedSpecialist = "labor";
-      reasoning = "Se detectaron términos relacionados con riesgo laboral y pluriactividad.";
-    } else if (query.toLowerCase().includes("mercado") || query.toLowerCase().includes("mallorca")) {
-      selectedSpecialist = "market";
-      reasoning = "Se detectaron términos de análisis inmobiliario local.";
-    }
-
+    // 1. Routing
+    const { primary, secondary, reasoning } = detectSpecialist(query);
     const routing: RoutingResult = {
-      primarySpecialist: selectedSpecialist,
-      secondarySpecialists: [],
+      primarySpecialist:    primary,
+      secondarySpecialists: secondary,
       confidence: 0.92,
-      reasoning
+      reasoning,
     };
 
-    // 2. Mock de respuesta del especialista y alertas
-    const response = "Esta es una respuesta validada por el especialista " + selectedSpecialist + ". Basado en la normativa de Baleares, asegúrate de documentar todo correctamente.";
-    const alerts: Array<{ type: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"; message: string }> = [];
+    // 2. Retrieval (primary domain, then secondary if needed)
+    const dbCategory = SPECIALIST_TO_DB[primary];
+    let retrievedChunks = await retrieveContext(query, {
+      category:  dbCategory,
+      limit:     5,
+      threshold: 0.35,
+    });
 
-    if (selectedSpecialist === "labor") {
-      alerts.push({ type: "CRITICAL", message: "Riesgo crítico identificado por posible transgresión de buena fe. Requiere evaluación urgente." });
+    // If primary yields no results, try cross-domain (no category filter)
+    if (retrievedChunks.length === 0 && secondary.length > 0) {
+      retrievedChunks = await retrieveContext(query, { limit: 5, threshold: 0.35 });
     }
+
+    const hasEvidence = retrievedChunks.length > 0;
+
+    // 3. Build context text for prompt
+    const contextText = hasEvidence
+      ? buildContextText(retrievedChunks)
+      : '';
+
+    // 4. LLM generation
+    let primaryResponse = '';
+    try {
+      const systemPrompt = hasEvidence
+        ? GROUNDED_CHAT_PROMPT.replace('{context}', contextText).replace('{query}', query)
+        : NO_EVIDENCE_FALLBACK_PROMPT.replace('{query}', query);
+
+      // Primary: Anthropic Claude 3.5 Haiku
+      const message = await this.anthropic.messages.create({
+        model:      'claude-haiku-4-5',
+        max_tokens: 1024,
+        system:     systemPrompt,
+        messages:   [{ role: 'user', content: query }],
+      });
+
+      primaryResponse = message.content
+        .filter(b => b.type === 'text')
+        .map(b => (b as { type: 'text'; text: string }).text)
+        .join('');
+
+    } catch (anthropicError) {
+      console.error('[Orchestrator] Anthropic error, falling back to OpenAI:', anthropicError);
+
+      try {
+        const systemPrompt = hasEvidence
+          ? GROUNDED_CHAT_PROMPT.replace('{context}', contextText).replace('{query}', query)
+          : NO_EVIDENCE_FALLBACK_PROMPT.replace('{query}', query);
+
+        const completion = await this.openai.chat.completions.create({
+          model:       'gpt-4o-mini',
+          messages:    [{ role: 'system', content: systemPrompt }, { role: 'user', content: query }],
+          temperature: 0.1,
+        });
+        primaryResponse = completion.choices[0].message.content ?? '';
+      } catch (openaiError) {
+        console.error('[Orchestrator] OpenAI fallback also failed:', openaiError);
+        primaryResponse = hasEvidence
+          ? 'He encontrado información relevante en mi base de conocimientos pero no puedo generar una respuesta completa en este momento. Por favor, consulta con un asesor humano.'
+          : 'No tengo evidencia suficiente en mi base de datos especializada para responder esta consulta. Te recomiendo consultar con un asesor fiscal, laboral o inmobiliario certificado.';
+      }
+    }
+
+    // 5. Build citations
+    const citations: CitationRef[] = retrievedChunks.map((c, i) => ({
+      index:      i + 1,
+      title:      c.metadata.title,
+      source_url: c.metadata.source_url ?? '',
+      similarity: Math.round(c.similarity * 100) / 100,
+      chunk_id:   c.id,
+    }));
+
+    // 6. Alerts
+    const alerts: OrchestratorResponse['alerts'] = [];
+    if (primary === 'labor' && primaryResponse.toLowerCase().includes('vulnerable')) {
+      alerts.push({
+        type:    'CRITICAL',
+        message: 'Se detectó una posible vulnerabilidad laboral. Consulta legal urgente recomendada.',
+      });
+    }
+    if (!hasEvidence) {
+      alerts.push({
+        type:    'LOW',
+        message: 'No se encontró evidencia suficiente en la base de conocimientos para esta consulta.',
+      });
+    }
+
+    // 7. Grounding confidence
+    const topSimilarity  = retrievedChunks[0]?.similarity ?? 0;
+    const groundingConf: OrchestratorResponse['groundingConfidence'] =
+      !hasEvidence         ? 'none'
+      : topSimilarity > 0.7 ? 'high'
+      : topSimilarity > 0.5 ? 'medium'
+      : 'low';
+
+    // 8. Contexts for frontend
+    const contexts: SpecialistContext[] = [{
+      chunks: retrievedChunks.map(c => ({
+        id:         c.id,
+        content:    c.content,
+        source:     c.metadata.title,
+        confidence: c.similarity,
+      })),
+      totalConfidence: topSimilarity,
+      warnings: hasEvidence ? [] : ['No se encontró evidencia suficiente en la base de conocimientos.'],
+    }];
 
     const result: OrchestratorResponse = {
-      success: true,
+      success:                  true,
       routing,
-      primarySpecialistResponse: response,
-      contexts: [],
+      primarySpecialistResponse: primaryResponse,
+      contexts,
       recommendations: [
-        "Consulta con profesional especializado para compliance legal",
-        "Mantén documentación de respaldos"
+        'Verifica los detalles en las fuentes citadas.',
+        'Consulta con un asesor humano para casos críticos.',
       ],
       alerts,
-      citations: ["Marco normativo RETA/Pluriactividad 2025-2026"]
+      citations,
+      groundingConfidence: groundingConf,
     };
 
-    // 3. Guardar contexto y registro asíncrono
-    await this.saveConversation(userId, conversationId, query, response, result.contexts);
+    // 9. Persist conversation
+    await this.saveConversation(userId, conversationId, query, primaryResponse, contexts);
+
     return result;
   }
 
-  private async saveConversation(userId: string, conversationId: string, query: string, response: string, contexts: SpecialistContext[]): Promise<void> {
+  private async saveConversation(
+    userId: string,
+    conversationId: string,
+    query: string,
+    response: string,
+    contexts: SpecialistContext[]
+  ): Promise<void> {
     try {
-      await this.supabase.from("messages").insert({
+      await this.supabase.from('messages').insert({
         conversation_id: conversationId,
-        role: "assistant",
-        content: response,
-        context_chunks: contexts.flatMap((ctx) => ctx.chunks.map((chunk) => chunk.id)),
+        role:            'assistant',
+        content:         response,
+        context_chunks:  contexts.flatMap(ctx => ctx.chunks.map(ch => ch.id)),
       });
     } catch (error) {
-      console.error("Save conversation error:", error);
+      // Non-critical: log but do not propagate
+      console.error('[Orchestrator] Save conversation error:', error);
     }
   }
 }

@@ -24,6 +24,33 @@ Anclora Advisor AI es una aplicación web para consultas de asesoría fiscal, la
 - No exponer secretos en cliente; claves sensibles solo en servidor.
 - Actualizar documentación en `docs/` cuando cambie arquitectura o flujo.
 
+## Supabase canónico por repo
+- Este repo (Anclora Advisor AI) solo usa el `project_ref` `lvpplnqbyvscpuljnzqf`.
+- `jtlnmypcrgmzxeuiffup` pertenece a Anclora Nexus (repo distinto) y no se debe usar aquí.
+- Si una validación detecta mezcla de `project_ref`, estado obligatorio: `ENV_MISMATCH` y `Decision=NO-GO`.
+
+## Gobernanza NotebookLM (obligatoria)
+
+Toda fuente añadida por MCP a los cuadernos debe respetar el scope temático:
+
+### `ANCLORA_NOTEBOOK_01_FISCALIDAD_AUTONOMO_ES_BAL`
+- Finalidad: escudo jurídico-financiero.
+- Solo: fiscalidad autónomo España/Baleares (IAE, IVA, IRPF, RETA, deducciones, inspección, escenarios de facturación).
+
+### `ANCLORA_NOTEBOOK_02_TRANSICION_RIESGO_LABORAL`
+- Finalidad: airbag estratégico de transición.
+- Solo: pluriactividad, compatibilidades, conflicto contractual/laboral, timing de salida, riesgo reputacional.
+
+### `ANCLORA_NOTEBOOK_03_MARCA_POSICIONAMIENTO`
+- Finalidad: motor comercial del sistema.
+- Solo: posicionamiento premium, USP, narrativa estratégica, autoridad comercial y conversión.
+
+Reglas de aceptación MCP:
+- Cada fuente debe llevar `notebook_id`, `domain` y `reason_for_fit`.
+- Si una fuente no encaja en el cuaderno destino:
+  - `SOURCE_SCOPE_MISMATCH`
+  - `Decision=NO-GO` para esa tanda de ingesta.
+
 ## Comandos útiles
 - `npm run dev`: desarrollo local.
 - `npm run build`: build de producción.

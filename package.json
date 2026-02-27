@@ -7,12 +7,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "node ../anclora-nexus/node_modules/eslint/bin/eslint.js . --ext .ts,.tsx",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "ingest": "tsx scripts/ingest-rag.ts",
+    "backfill": "tsx scripts/backfill-embeddings.ts",
+    "reingest-patch": "tsx scripts/reingest-patch.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.21.0",
     "@supabase/supabase-js": "^2.38.0",
+    "@xenova/transformers": "^2.17.2",
+    "dotenv": "^16.6.1",
     "next": "^15.0.0",
+    "openai": "^4.104.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5.3.3",
@@ -22,6 +28,10 @@
     "node": ">=20.0.0"
   },
   "devDependencies": {
-    "@types/react": "19.2.14"
+    "@types/pg": "^8.16.0",
+    "@types/react": "19.2.14",
+    "pg": "^8.19.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0"
   }
 }

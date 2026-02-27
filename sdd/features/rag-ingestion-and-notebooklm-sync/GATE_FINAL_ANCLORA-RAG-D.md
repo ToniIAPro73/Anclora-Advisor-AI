@@ -1,0 +1,48 @@
+# Gate Final: Agent D — RAG Retrieval & Chat Grounding
+
+**Feature ID**: `ANCLORA-RAG-INGEST-001` (Agent D phase)
+**Date**: 2026-02-27
+**Agent**: Agent D (Antigravity)
+
+---
+
+## Decision: ⏳ CONDITIONAL GO
+
+> [!IMPORTANT]
+> The gate is **GO pending one manual operator action** (applying the `match_chunks` RPC SQL to Supabase project `lvpplnqbyvscpuljnzqf`). All code changes are correct and pass type-check + build. Once the SQL is applied and the integration test passes, this gate becomes **full GO**.
+
+---
+
+## Mandatory Checklist
+
+- [x] **No secrets in source** — No keys hardcoded. All from `.env.local`.
+- [x] **No ENV_MISMATCH** — All vars in `.env.local` point to `lvpplnqbyvscpuljnzqf`.
+- [x] **Strict typing** — No `any` remaining in `embeddings.ts`, `retrieval.ts`, `orchestrator.ts`.
+- [x] **Domain routing fixed** — `labor→laboral`, `market→mercado` aliases implemented.
+- [x] **Anthropic primary LLM** — Claude 3.5 Haiku primary, GPT-4o-mini fallback.
+- [x] **No-hallucination policy** — `NO_EVIDENCE_FALLBACK_PROMPT` active for 0-result queries.
+- [x] **Citations enriched** — `CitationRef` includes `source_url`, `similarity`, `chunk_id`.
+- [x] **Migration versioned** — `supabase/migrations/20260227_match_chunks_rpc.sql`.
+- [x] **type-check**: ✅ PASS
+- [x] **build**: ✅ PASS
+- [ ] **Integration test T1–T5**: ⏳ Awaiting RPC migration
+
+---
+
+## Operator Manual Step Required
+
+```
+1. Open: https://supabase.com/dashboard/project/lvpplnqbyvscpuljnzqf/sql/new
+2. Paste contents of: supabase/migrations/20260227_match_chunks_rpc.sql
+3. Click "Run"
+4. Run: npx tsx tests/test-retrieval-d.ts
+5. All 5 tests must pass → Gate becomes FULL GO
+```
+
+---
+
+## Handover Notes for Agent E (if applicable)
+
+- Chat API contract (`POST /api/chat`) is unchanged. Response shape now includes `citations: CitationRef[]` and `groundingConfidence`.
+- Frontend `ChatInterface` should render `citations` with source links if present.
+- `groundingConfidence: 'none'` signals the no-evidence path — UI may show a disclaimer.
