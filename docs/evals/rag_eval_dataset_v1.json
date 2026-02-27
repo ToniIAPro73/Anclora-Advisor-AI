@@ -1,0 +1,50 @@
+[
+  {
+    "id": "fiscal_cuota_cero_plazo",
+    "query": "cuando puedo solicitar la cuota 0 de autonomos en baleares",
+    "expected_domain": "fiscal",
+    "type": "in_domain"
+  },
+  {
+    "id": "fiscal_iva_plazo",
+    "query": "cuales son los plazos de presentacion del IVA trimestral",
+    "expected_domain": "fiscal",
+    "type": "in_domain"
+  },
+  {
+    "id": "fiscal_irpf_modelo_130",
+    "query": "cuando se presenta el modelo 130 de irpf de autonomos",
+    "expected_domain": "fiscal",
+    "type": "in_domain"
+  },
+  {
+    "id": "labor_pluriactividad_riesgos",
+    "query": "que riesgos tiene la pluriactividad al ser autonomo y asalariado",
+    "expected_domain": "laboral",
+    "type": "in_domain"
+  },
+  {
+    "id": "labor_compatibilidad_contrato",
+    "query": "puedo ser autonomo si mi contrato laboral tiene clausula de exclusividad",
+    "expected_domain": "laboral",
+    "type": "in_domain"
+  },
+  {
+    "id": "market_fianza_alquiler",
+    "query": "quien paga la pintura y reparaciones al dejar un piso de alquiler",
+    "expected_domain": "mercado",
+    "type": "in_domain"
+  },
+  {
+    "id": "market_precio_mallorca",
+    "query": "como esta el precio por metro cuadrado en el suroeste de mallorca",
+    "expected_domain": "mercado",
+    "type": "in_domain"
+  },
+  {
+    "id": "out_domain_futbol_1930",
+    "query": "quien gano el mundial de futbol en 1930",
+    "expected_domain": "none",
+    "type": "out_of_domain"
+  }
+]
