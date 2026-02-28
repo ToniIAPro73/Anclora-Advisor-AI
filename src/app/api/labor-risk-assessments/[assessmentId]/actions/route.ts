@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { validateAccessToken } from "@/lib/auth/token";
-import { createLaborMitigationActionSchema } from "@/lib/labor/assessments";
+import { createLaborMitigationActionSchema, LABOR_MITIGATION_SELECT_FIELDS } from "@/lib/labor/assessments";
 import { resolveLocale, t } from "@/lib/i18n/messages";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
@@ -61,8 +61,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
       description: payload.data.description ?? null,
       status: payload.data.status,
       due_date: payload.data.dueDate ?? null,
+      owner_name: payload.data.ownerName ?? null,
+      owner_email: payload.data.ownerEmail ?? null,
+      evidence_notes: payload.data.evidenceNotes ?? null,
+      closure_notes: payload.data.closureNotes ?? null,
+      started_at: payload.data.status === "in_progress" ? new Date().toISOString() : null,
+      completed_at: payload.data.status === "completed" ? new Date().toISOString() : null,
+      last_follow_up_at:
+        payload.data.evidenceNotes || payload.data.closureNotes || payload.data.status !== "pending"
+          ? new Date().toISOString()
+          : null,
     })
-    .select("id, assessment_id, title, description, status, due_date, created_at, updated_at")
+    .select(LABOR_MITIGATION_SELECT_FIELDS)
     .single();
 
   if (error) {

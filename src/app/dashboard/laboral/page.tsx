@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
 import { LaborWorkspace } from "@/components/features/LaborWorkspace";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
-import type { LaborMitigationActionRecord, LaborRiskAssessmentRecord } from "@/lib/labor/assessments";
+import {
+  LABOR_MITIGATION_SELECT_FIELDS,
+  type LaborMitigationActionRecord,
+  type LaborRiskAssessmentRecord,
+} from "@/lib/labor/assessments";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
 export default async function DashboardLaboralPage() {
@@ -21,12 +25,12 @@ export default async function DashboardLaboralPage() {
 
   const { data: mitigationData, error: mitigationError } = await supabase
     .from("labor_mitigation_actions")
-    .select("id, assessment_id, title, description, status, due_date, created_at, updated_at")
+    .select(LABOR_MITIGATION_SELECT_FIELDS)
     .order("created_at", { ascending: false })
     .limit(120);
 
   const assessments = (data ?? []) as LaborRiskAssessmentRecord[];
-  const mitigationActions = (mitigationData ?? []) as LaborMitigationActionRecord[];
+  const mitigationActions = (mitigationData ?? []) as unknown as LaborMitigationActionRecord[];
   const combinedError = error?.message ?? mitigationError?.message ?? null;
 
   return (

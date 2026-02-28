@@ -22,9 +22,34 @@ export interface LaborMitigationActionRecord {
   description: string | null;
   status: string;
   due_date: string | null;
+  owner_name: string | null;
+  owner_email: string | null;
+  evidence_notes: string | null;
+  closure_notes: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  last_follow_up_at: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export const LABOR_MITIGATION_SELECT_FIELDS = [
+  "id",
+  "assessment_id",
+  "title",
+  "description",
+  "status",
+  "due_date",
+  "owner_name",
+  "owner_email",
+  "evidence_notes",
+  "closure_notes",
+  "started_at",
+  "completed_at",
+  "last_follow_up_at",
+  "created_at",
+  "updated_at",
+].join(", ");
 
 function normalizeRecommendations(input: string[] | undefined): string[] | null {
   if (!input) {
@@ -60,12 +85,19 @@ export const updateLaborRiskAssessmentSchema = z.object({
 });
 
 const optionalActionDescription = z.string().max(2000).transform((value) => value.trim()).transform((value) => value || null).nullable().optional();
+const optionalActionOwnerName = z.string().max(255).transform((value) => value.trim()).transform((value) => value || null).nullable().optional();
+const optionalActionOwnerEmail = z.string().email().max(255).transform((value) => value.trim().toLowerCase()).transform((value) => value || null).nullable().optional();
 const optionalDueDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional();
+const optionalLongNotes = z.string().max(4000).transform((value) => value.trim()).transform((value) => value || null).nullable().optional();
 
 export const createLaborMitigationActionSchema = z.object({
   title: z.string().min(3).max(255).transform((value) => value.trim()),
   description: optionalActionDescription,
   dueDate: optionalDueDate,
+  ownerName: optionalActionOwnerName,
+  ownerEmail: optionalActionOwnerEmail,
+  evidenceNotes: optionalLongNotes,
+  closureNotes: optionalLongNotes,
   status: z.enum(laborMitigationStatusValues).default("pending"),
 });
 
@@ -73,6 +105,10 @@ export const updateLaborMitigationActionSchema = z.object({
   title: z.string().min(3).max(255).transform((value) => value.trim()).optional(),
   description: optionalActionDescription,
   dueDate: optionalDueDate,
+  ownerName: optionalActionOwnerName,
+  ownerEmail: optionalActionOwnerEmail,
+  evidenceNotes: optionalLongNotes,
+  closureNotes: optionalLongNotes,
   status: z.enum(laborMitigationStatusValues).optional(),
 }).refine((value) => Object.values(value).some((item) => item !== undefined), {
   message: "At least one field must be provided",

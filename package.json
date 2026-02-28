@@ -17,6 +17,7 @@
     "rbac:set-role": "tsx scripts/set-user-role.ts",
     "admin:jobs:apply": "tsx scripts/apply-admin-ingest-jobs.ts",
     "labor:workflow:apply": "tsx scripts/apply-labor-mitigation-workflow.ts",
+    "labor:workflow:v2:apply": "tsx scripts/apply-labor-mitigation-v2.ts",
     "invoice:workflow:apply": "tsx scripts/apply-invoice-series-delivery.ts",
     "fiscal:templates:apply": "tsx scripts/apply-fiscal-templates.ts",
     "ops:apply": "tsx scripts/apply-operations-outbox-jobs.ts",

@@ -28,6 +28,10 @@ type MitigationFormState = {
   title: string;
   description: string;
   dueDate: string;
+  ownerName: string;
+  ownerEmail: string;
+  evidenceNotes: string;
+  closureNotes: string;
   status: LaborMitigationStatus;
 };
 
@@ -42,6 +46,10 @@ const INITIAL_MITIGATION_FORM: MitigationFormState = {
   title: "",
   description: "",
   dueDate: "",
+  ownerName: "",
+  ownerEmail: "",
+  evidenceNotes: "",
+  closureNotes: "",
   status: "pending",
 };
 
@@ -114,6 +122,7 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(initialAssessments[0]?.id ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [mitigationSubmitting, setMitigationSubmitting] = useState(false);
+  const [editingActionId, setEditingActionId] = useState<string | null>(null);
   const [updatingAssessmentId, setUpdatingAssessmentId] = useState<string | null>(null);
   const [updatingActionId, setUpdatingActionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +148,9 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
   const pendingActions = selectedActions.filter((item) => item.status === "pending").length;
   const inProgressActions = selectedActions.filter((item) => item.status === "in_progress").length;
   const completedActions = selectedActions.filter((item) => item.status === "completed").length;
+  const overdueActions = selectedActions.filter(
+    (item) => item.status !== "completed" && item.due_date && new Date(item.due_date) < new Date()
+  ).length;
 
   function resetForm() {
     setForm(INITIAL_FORM);
@@ -147,6 +159,23 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
 
   function resetMitigationForm() {
     setMitigationForm(INITIAL_MITIGATION_FORM);
+    setEditingActionId(null);
+  }
+
+  function startMitigationEditing(action: LaborMitigationActionRecord) {
+    setEditingActionId(action.id);
+    setMitigationForm({
+      title: action.title,
+      description: action.description ?? "",
+      dueDate: action.due_date ?? "",
+      ownerName: action.owner_name ?? "",
+      ownerEmail: action.owner_email ?? "",
+      evidenceNotes: action.evidence_notes ?? "",
+      closureNotes: action.closure_notes ?? "",
+      status: action.status as LaborMitigationStatus,
+    });
+    setError(null);
+    setOkMessage(null);
   }
 
   function startEditing(assessment: LaborRiskAssessmentRecord) {
@@ -250,16 +279,24 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
     setError(null);
     setOkMessage(null);
     try {
-      const response = await fetch(`/api/labor-risk-assessments/${selectedAssessment.id}/actions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: mitigationForm.title.trim(),
-          description: mitigationForm.description.trim() || null,
-          dueDate: mitigationForm.dueDate || null,
-          status: mitigationForm.status,
-        }),
-      });
+      const isEditing = Boolean(editingActionId);
+      const response = await fetch(
+        isEditing ? `/api/labor-mitigation-actions/${editingActionId}` : `/api/labor-risk-assessments/${selectedAssessment.id}/actions`,
+        {
+          method: isEditing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: mitigationForm.title.trim(),
+            description: mitigationForm.description.trim() || null,
+            dueDate: mitigationForm.dueDate || null,
+            ownerName: mitigationForm.ownerName.trim() || null,
+            ownerEmail: mitigationForm.ownerEmail.trim() || null,
+            evidenceNotes: mitigationForm.evidenceNotes.trim() || null,
+            closureNotes: mitigationForm.closureNotes.trim() || null,
+            status: mitigationForm.status,
+          }),
+        }
+      );
       const result = (await response.json()) as {
         success: boolean;
         error?: string;
@@ -267,14 +304,20 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
       };
 
       if (!response.ok || !result.success || !result.action) {
-        throw new Error(result.error ?? "No se pudo crear la mitigacion");
+        throw new Error(result.error ?? "No se pudo guardar la mitigacion");
       }
 
-      setMitigationActions((previous) => [result.action as LaborMitigationActionRecord, ...previous]);
+      const savedAction = result.action as LaborMitigationActionRecord;
+      setMitigationActions((previous) => {
+        if (isEditing) {
+          return previous.map((item) => (item.id === savedAction.id ? savedAction : item));
+        }
+        return [savedAction, ...previous];
+      });
       resetMitigationForm();
-      setOkMessage("Accion de mitigacion creada.");
+      setOkMessage(isEditing ? "Accion de mitigacion actualizada." : "Accion de mitigacion creada.");
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Error al crear mitigacion");
+      setError(submitError instanceof Error ? submitError.message : "Error al guardar mitigacion");
     } finally {
       setMitigationSubmitting(false);
     }
@@ -518,11 +561,30 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
                     <p>Pendientes: <strong className="text-[#162944]">{pendingActions}</strong></p>
                     <p>En curso: <strong className="text-[#162944]">{inProgressActions}</strong></p>
                     <p>Completadas: <strong className="text-[#162944]">{completedActions}</strong></p>
+                    <p>Vencidas: <strong className="text-[#162944]">{overdueActions}</strong></p>
                   </div>
                 </article>
 
                 <article className="advisor-card p-4">
-                  <h4 className="advisor-heading text-xl text-[#162944]">Nueva mitigacion</h4>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="advisor-heading text-xl text-[#162944]">
+                        {editingActionId ? "Seguimiento de mitigacion" : "Nueva mitigacion"}
+                      </h4>
+                      <p className="mt-1 text-sm text-[#3a4f67]">
+                        Asigna responsable, documenta seguimiento y registra el cierre operativo.
+                      </p>
+                    </div>
+                    {editingActionId && (
+                      <button
+                        type="button"
+                        className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
+                        onClick={resetMitigationForm}
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
                   <form className="mt-3 space-y-3" onSubmit={handleCreateMitigation}>
                     <div>
                       <label className="advisor-label" htmlFor="mitigationTitle">Titulo</label>
@@ -531,6 +593,16 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
                     <div>
                       <label className="advisor-label" htmlFor="mitigationDescription">Descripcion</label>
                       <textarea id="mitigationDescription" className="advisor-input min-h-24 resize-y" value={mitigationForm.description} onChange={(event) => setMitigationForm((current) => ({ ...current, description: event.target.value }))} />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="advisor-label" htmlFor="mitigationOwnerName">Responsable</label>
+                        <input id="mitigationOwnerName" className="advisor-input" value={mitigationForm.ownerName} onChange={(event) => setMitigationForm((current) => ({ ...current, ownerName: event.target.value }))} placeholder="Nombre del responsable" />
+                      </div>
+                      <div>
+                        <label className="advisor-label" htmlFor="mitigationOwnerEmail">Email responsable</label>
+                        <input id="mitigationOwnerEmail" type="email" className="advisor-input" value={mitigationForm.ownerEmail} onChange={(event) => setMitigationForm((current) => ({ ...current, ownerEmail: event.target.value }))} placeholder="responsable@empresa.com" />
+                      </div>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
@@ -546,8 +618,16 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
                         </select>
                       </div>
                     </div>
+                    <div>
+                      <label className="advisor-label" htmlFor="mitigationEvidenceNotes">Seguimiento / evidencias</label>
+                      <textarea id="mitigationEvidenceNotes" className="advisor-input min-h-24 resize-y" value={mitigationForm.evidenceNotes} onChange={(event) => setMitigationForm((current) => ({ ...current, evidenceNotes: event.target.value }))} placeholder="Acciones ejecutadas, bloqueos, evidencias o notas de seguimiento." />
+                    </div>
+                    <div>
+                      <label className="advisor-label" htmlFor="mitigationClosureNotes">Notas de cierre</label>
+                      <textarea id="mitigationClosureNotes" className="advisor-input min-h-20 resize-y" value={mitigationForm.closureNotes} onChange={(event) => setMitigationForm((current) => ({ ...current, closureNotes: event.target.value }))} placeholder="Motivo de cierre, validacion final o decision tomada." />
+                    </div>
                     <button type="submit" disabled={mitigationSubmitting} className="advisor-btn advisor-btn-primary advisor-btn-full">
-                      {mitigationSubmitting ? "Guardando..." : "Crear mitigacion"}
+                      {mitigationSubmitting ? "Guardando..." : editingActionId ? "Actualizar mitigacion" : "Crear mitigacion"}
                     </button>
                   </form>
                 </article>
@@ -572,7 +652,33 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
                               </span>
                             </div>
                             <p className="mt-2 text-xs text-[#3a4f67]">Objetivo: {formatDateOnly(action.due_date)}</p>
+                            <p className="mt-1 text-xs text-[#3a4f67]">
+                              Responsable: <strong className="text-[#162944]">{action.owner_name || "Sin asignar"}</strong>
+                              {action.owner_email ? ` (${action.owner_email})` : ""}
+                            </p>
+                            <p className="mt-1 text-xs text-[#3a4f67]">
+                              Inicio: {formatDateOnly(action.started_at)} · Ultimo seguimiento: {formatDateOnly(action.last_follow_up_at)} · Cierre: {formatDateOnly(action.completed_at)}
+                            </p>
+                            {(action.evidence_notes || action.closure_notes) && (
+                              <div className="mt-3 space-y-2 text-sm text-[#3a4f67]">
+                                {action.evidence_notes && (
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Seguimiento</p>
+                                    <p className="mt-1">{action.evidence_notes}</p>
+                                  </div>
+                                )}
+                                {action.closure_notes && (
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Cierre</p>
+                                    <p className="mt-1">{action.closure_notes}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="mt-3 flex flex-wrap gap-2">
+                              <button type="button" disabled={isBusy} className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => startMitigationEditing(action)}>
+                                Gestionar
+                              </button>
                               {action.status !== "in_progress" && (
                                 <button type="button" disabled={isBusy} className="advisor-btn bg-blue-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => handleMitigationStatusChange(action.id, "in_progress")}>
                                   En curso

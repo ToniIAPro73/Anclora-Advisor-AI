@@ -140,10 +140,17 @@ async function main(): Promise<void> {
   const laborAction = createLaborMitigationActionSchema.parse({
     title: "  Revisar pacto de exclusividad  ",
     description: "  Validar clausulas antes de comunicar la transicion. ",
+    ownerName: "  Toni  ",
+    ownerEmail: "TONI@demo.com",
+    evidenceNotes: "  Se revisa el contrato y se abre seguimiento. ",
+    closureNotes: "  Sin cierre por ahora. ",
     dueDate: "2026-03-15",
   });
   assert(laborAction.title === "Revisar pacto de exclusividad", "labor action schema trims title");
   assert(laborAction.status === "pending", "labor action schema defaults to pending status");
+  assert(laborAction.ownerName === "Toni", "labor action schema trims owner name");
+  assert(laborAction.ownerEmail === "toni@demo.com", "labor action schema normalizes owner email");
+  assert(laborAction.evidenceNotes === "Se revisa el contrato y se abre seguimiento.", "labor action schema trims evidence notes");
 
   console.log("Operational integration status: PASS");
 }
