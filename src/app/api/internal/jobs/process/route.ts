@@ -3,7 +3,7 @@ import { processPendingAppJobsForAllUsers } from "@/lib/operations/processors";
 import { getRequestId, log } from "@/lib/observability/logger";
 
 function getCronSecret(): string | null {
-  return process.env.APP_JOBS_CRON_SECRET?.trim() || null;
+  return process.env.APP_JOBS_CRON_SECRET?.trim() || process.env.CRON_SECRET?.trim() || null;
 }
 
 function isAuthorized(request: NextRequest): boolean {
