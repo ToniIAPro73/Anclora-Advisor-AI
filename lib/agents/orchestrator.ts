@@ -670,6 +670,14 @@ export class Orchestrator {
     return result;
   }
 
+  private buildConversationTitle(query: string): string {
+    const cleaned = query.replace(/\s+/g, ' ').trim();
+    if (!cleaned) {
+      return 'Nueva conversacion';
+    }
+    return cleaned.slice(0, 80);
+  }
+
   private async saveConversation(
     userId: string,
     conversationId: string,
@@ -678,15 +686,42 @@ export class Orchestrator {
     contexts: SpecialistContext[]
   ): Promise<void> {
     try {
-      await this.supabase.from('messages').insert({
-        conversation_id: conversationId,
-        role:            'assistant',
-        content:         response,
-        context_chunks:  contexts.flatMap(ctx => ctx.chunks.map(ch => ch.id)),
-      });
+      const title = this.buildConversationTitle(query);
+      const nowIso = new Date().toISOString();
+
+      const { error: conversationError } = await this.supabase
+        .from('conversations')
+        .upsert({
+          id: conversationId,
+          user_id: userId,
+          title,
+          updated_at: nowIso,
+        }, { onConflict: 'id' });
+
+      if (conversationError) {
+        throw conversationError;
+      }
+
+      const userMessageId = `usr_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
+      await this.supabase.from('messages').insert([
+        {
+          id: userMessageId,
+          conversation_id: conversationId,
+          role: 'user',
+          content: query,
+          context_chunks: [],
+        },
+        {
+          conversation_id: conversationId,
+          role: 'assistant',
+          content: response,
+          context_chunks: contexts.flatMap(ctx => ctx.chunks.map(ch => ch.id)),
+        },
+      ]);
     } catch (error) {
       // Non-critical: log but do not propagate
       console.error('[Orchestrator] Save conversation error:', error);
     }
   }
 }
+

@@ -1,4 +1,6 @@
 import * as chatRoute from "../src/app/api/chat/route";
+import * as chatConversationsRoute from "../src/app/api/chat/conversations/route";
+import * as chatConversationDetailRoute from "../src/app/api/chat/conversations/[conversationId]/route";
 import * as adminIngestRoute from "../src/app/api/admin/rag/ingest/route";
 import * as adminDocumentDeleteRoute from "../src/app/api/admin/rag/documents/[documentId]/route";
 import * as adminObservabilityRagRoute from "../src/app/api/admin/observability/rag/route";
@@ -11,6 +13,7 @@ import * as laborAssessmentDetailRoute from "../src/app/api/labor-risk-assessmen
 import * as invoicesRoute from "../src/app/api/invoices/route";
 import * as invoiceDetailRoute from "../src/app/api/invoices/[invoiceId]/route";
 import { AdminKnowledgeWorkspace } from "../src/components/features/AdminKnowledgeWorkspace";
+import { ChatInterface } from "../src/components/features/ChatInterface";
 import { FiscalWorkspace } from "../src/components/features/FiscalWorkspace";
 import { InvoiceWorkspace } from "../src/components/features/InvoiceWorkspace";
 import { LaborWorkspace } from "../src/components/features/LaborWorkspace";
@@ -35,6 +38,9 @@ async function main(): Promise<void> {
 
   assert(typeof chatRoute.POST === "function", "POST /api/chat handler exported");
   assert(typeof chatStreamRoute.POST === "function", "POST /api/chat/stream handler exported");
+  assert(typeof chatConversationsRoute.GET === "function", "GET /api/chat/conversations handler exported");
+  assert(typeof chatConversationsRoute.POST === "function", "POST /api/chat/conversations handler exported");
+  assert(typeof chatConversationDetailRoute.GET === "function", "GET /api/chat/conversations/[conversationId] handler exported");
   assert(typeof adminIngestRoute.POST === "function", "POST /api/admin/rag/ingest handler exported");
   assert(typeof adminDocumentDeleteRoute.DELETE === "function", "DELETE /api/admin/rag/documents/[documentId] handler exported");
   assert(typeof adminObservabilityRagRoute.GET === "function", "GET /api/admin/observability/rag handler exported");
@@ -53,6 +59,7 @@ async function main(): Promise<void> {
   assert(typeof invoiceDetailRoute.DELETE === "function", "DELETE /api/invoices/[invoiceId] handler exported");
 
   assert(typeof AdminKnowledgeWorkspace === "function", "admin knowledge workspace exported");
+  assert(typeof ChatInterface === "function", "chat interface exported");
   assert(typeof FiscalWorkspace === "function", "fiscal workspace exported");
   assert(typeof InvoiceWorkspace === "function", "invoice workspace exported");
   assert(typeof LaborWorkspace === "function", "labor workspace exported");
