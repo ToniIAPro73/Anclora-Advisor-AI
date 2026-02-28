@@ -7,7 +7,8 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { retrieveContext, RAGChunk } from '../../src/lib/rag/retrieval';
-import { GROUNDED_CHAT_PROMPT, NO_EVIDENCE_FALLBACK_PROMPT } from './prompts';
+import { calculateInvoiceTotals, formatInvoiceCalculationResponse, parseInvoiceCalculationQuery } from '../../src/lib/tools/invoice-calculator';
+import { GROUNDED_CHAT_PROMPT, NO_EVIDENCE_FALLBACK_PROMPT, RESPONSE_GUARD_PROMPT } from './prompts';
 
 // ----------------------------------------------------------------
 // Types
@@ -62,13 +63,22 @@ export interface OrchestratorResponse {
     llm_primary_ms: number;
     llm_fallback_ms: number;
     persistence_ms: number;
+    verifier_ms: number;
     total_ms: number;
     llm_model_used: string;
-    llm_path: 'primary' | 'fast_simple' | 'fast_no_evidence' | 'fallback' | 'local_no_evidence';
+    llm_path: 'primary' | 'fast_simple' | 'fast_no_evidence' | 'fallback' | 'local_no_evidence' | 'local_tool';
     used_fallback_model: boolean;
     retrieval_cache_hit: boolean;
     response_cache_hit: boolean;
+    guard_triggered: boolean;
+    tool_used: string | null;
   };
+}
+
+interface GuardResult {
+  supported: boolean;
+  issue: string;
+  revised_answer: string;
 }
 
 // ----------------------------------------------------------------
@@ -172,8 +182,10 @@ export class Orchestrator {
   private fallbackModel: string;
   private fastModel: string;
   private noEvidenceFastModel: string;
+  private guardModel: string;
   private fastPathEnabled: boolean;
   private localNoEvidenceEnabled: boolean;
+  private guardEnabled: boolean;
   private contextMaxChunks: number;
   private contextChunkMaxChars: number;
   private responseCacheTtlMs: number;
@@ -190,8 +202,10 @@ export class Orchestrator {
     this.fallbackModel = process.env.OLLAMA_MODEL_FALLBACK ?? 'llama3.1:8b';
     this.fastModel = process.env.OLLAMA_MODEL_FAST ?? 'llama3.2:latest';
     this.noEvidenceFastModel = process.env.OLLAMA_MODEL_NO_EVIDENCE ?? 'gemma3:1b';
+    this.guardModel = process.env.OLLAMA_MODEL_GUARD ?? this.fastModel;
     this.fastPathEnabled = process.env.ORCHESTRATOR_FASTPATH_ENABLED !== 'false';
     this.localNoEvidenceEnabled = process.env.ORCHESTRATOR_LOCAL_NO_EVIDENCE !== 'false';
+    this.guardEnabled = process.env.ORCHESTRATOR_GUARD_ENABLED !== 'false';
     this.contextMaxChunks = Number.parseInt(process.env.ORCHESTRATOR_CONTEXT_MAX_CHUNKS ?? '3', 10);
     this.contextChunkMaxChars = Number.parseInt(process.env.ORCHESTRATOR_CONTEXT_CHUNK_MAX_CHARS ?? '1200', 10);
     this.responseCacheTtlMs = Number.parseInt(process.env.ORCHESTRATOR_RESPONSE_CACHE_TTL_MS ?? '180000', 10);
@@ -246,8 +260,19 @@ export class Orchestrator {
   ): boolean {
     if (!this.fastPathEnabled) return false;
     if (!hasEvidence) return true;
-    const tokenApprox = query.trim().split(/\s+/).filter(Boolean).length;
+    const normalizedQuery = query.trim().toLowerCase();
+    const tokenApprox = normalizedQuery.split(/\s+/).filter(Boolean).length;
     const topSimilarity = chunks[0]?.similarity ?? 0;
+    const isFaqStyle =
+      /^(que|qué|cuando|cuándo|como|cómo|cual|cuál|puedo|se puede|me corresponde|tengo derecho)/.test(normalizedQuery) ||
+      normalizedQuery.includes('qué es') ||
+      normalizedQuery.includes('que es');
+    const contextChars = chunks.reduce((acc, chunk) => acc + chunk.content.length, 0);
+
+    if (isFaqStyle && tokenApprox <= 18 && chunks.length <= 3 && contextChars <= 2600) {
+      return true;
+    }
+
     return topScore <= 2 && tokenApprox <= 12 && chunks.length <= 3 && topSimilarity < 0.45;
   }
 
@@ -272,6 +297,34 @@ export class Orchestrator {
 
   private buildNoEvidenceResponse(): string {
     return 'No tengo evidencia suficiente en mi base de conocimientos especializada para responder esta consulta. Te recomiendo verificar la información en una fuente fiable o consultarlo con un asesor cualificado.';
+  }
+
+  private parseGuardResult(raw: string): GuardResult | null {
+    const start = raw.indexOf('{');
+    const end = raw.lastIndexOf('}');
+    if (start < 0 || end <= start) return null;
+
+    try {
+      const parsed = JSON.parse(raw.slice(start, end + 1)) as Partial<GuardResult>;
+      if (typeof parsed.supported !== 'boolean') return null;
+      return {
+        supported: parsed.supported,
+        issue: typeof parsed.issue === 'string' ? parsed.issue : 'unknown',
+        revised_answer: typeof parsed.revised_answer === 'string' ? parsed.revised_answer : '',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private async verifyGroundedResponse(contextText: string, query: string, answer: string): Promise<GuardResult | null> {
+    const prompt = RESPONSE_GUARD_PROMPT
+      .replace('{context}', contextText)
+      .replace('{query}', query)
+      .replace('{answer}', answer);
+
+    const raw = await this.generateWithOllama(this.guardModel, prompt, query);
+    return this.parseGuardResult(raw);
   }
 
   private async generateWithOllama(model: string, systemPrompt: string, query: string): Promise<string> {
@@ -315,6 +368,9 @@ export class Orchestrator {
     let llmPath: OrchestratorResponse['performance']['llm_path'] = 'primary';
     let llmPrimaryMs = 0;
     let llmFallbackMs = 0;
+    let verifierMs = 0;
+    let guardTriggered = false;
+    let toolUsed: string | null = null;
     const responseCacheKey = this.getResponseCacheKey(query);
     const cachedResponse = this.getCachedResponse(responseCacheKey);
     if (cachedResponse) {
@@ -326,6 +382,7 @@ export class Orchestrator {
       cachedResponse.performance.llm_primary_ms = 0;
       cachedResponse.performance.llm_fallback_ms = 0;
       cachedResponse.performance.persistence_ms = 0;
+      cachedResponse.performance.verifier_ms = 0;
       cachedResponse.performance.total_ms = totalMs;
       cachedResponse.performance.response_cache_hit = true;
       return cachedResponse;
@@ -333,6 +390,53 @@ export class Orchestrator {
 
     // 1. Routing
     const tRoutingStart = Date.now();
+    const invoiceToolQuery = parseInvoiceCalculationQuery(query);
+    if (invoiceToolQuery.matched) {
+      const calculation = calculateInvoiceTotals(invoiceToolQuery);
+      const totalMs = Date.now() - tTotalStart;
+      const response: OrchestratorResponse = {
+        success: true,
+        routing: {
+          primarySpecialist: 'fiscal',
+          secondarySpecialists: [],
+          confidence: 0.99,
+          reasoning: 'Consulta detectada como calculo determinista de factura.',
+        },
+        primarySpecialistResponse: formatInvoiceCalculationResponse(calculation),
+        contexts: [{
+          chunks: [],
+          totalConfidence: 1,
+          warnings: [],
+        }],
+        recommendations: [
+          'Verifica si el tipo de IVA y la retencion de IRPF aplican a tu caso concreto.',
+        ],
+        alerts: [],
+        citations: [],
+        groundingConfidence: 'none',
+        performance: {
+          routing_ms: Date.now() - tRoutingStart,
+          retrieval_ms: 0,
+          prompt_build_ms: 0,
+          llm_ms: 0,
+          llm_primary_ms: 0,
+          llm_fallback_ms: 0,
+          persistence_ms: 0,
+          verifier_ms: 0,
+          total_ms: totalMs,
+          llm_model_used: 'local:invoice_calculator',
+          llm_path: 'local_tool',
+          used_fallback_model: false,
+          retrieval_cache_hit: false,
+          response_cache_hit: false,
+          guard_triggered: false,
+          tool_used: 'invoice_calculator',
+        },
+      };
+      this.setCachedResponse(responseCacheKey, response);
+      return response;
+    }
+
     const { primary, secondary, reasoning, topScore } = detectSpecialist(query);
     const routing: RoutingResult = {
       primarySpecialist:    primary,
@@ -407,6 +511,28 @@ export class Orchestrator {
     }
     const llmMs = Date.now() - tLlmStart;
 
+    const topSimilarity = retrievedChunks[0]?.similarity ?? 0;
+    const groundingConf: OrchestratorResponse['groundingConfidence'] =
+      !hasEvidence         ? 'none'
+      : topSimilarity > 0.7 ? 'high'
+      : topSimilarity > 0.5 ? 'medium'
+      : 'low';
+
+    if (hasEvidence && this.guardEnabled && groundingConf !== 'high') {
+      const tVerifierStart = Date.now();
+      try {
+        const verification = await this.verifyGroundedResponse(contextText, query, primaryResponse);
+        if (verification && !verification.supported && verification.revised_answer.trim()) {
+          primaryResponse = verification.revised_answer.trim();
+          guardTriggered = true;
+        }
+      } catch (guardError) {
+        console.error('[Orchestrator] Guard verification failed:', guardError);
+      } finally {
+        verifierMs = Date.now() - tVerifierStart;
+      }
+    }
+
     // 5. Build citations
     const citations: CitationRef[] = retrievedChunks.map((c, i) => ({
       index:      i + 1,
@@ -430,15 +556,14 @@ export class Orchestrator {
         message: 'No se encontró evidencia suficiente en la base de conocimientos para esta consulta.',
       });
     }
+    if (guardTriggered) {
+      alerts.push({
+        type: 'MEDIUM',
+        message: 'La respuesta fue ajustada por el verificador de grounding para evitar afirmaciones no soportadas.',
+      });
+    }
 
     // 7. Grounding confidence
-    const topSimilarity  = retrievedChunks[0]?.similarity ?? 0;
-    const groundingConf: OrchestratorResponse['groundingConfidence'] =
-      !hasEvidence         ? 'none'
-      : topSimilarity > 0.7 ? 'high'
-      : topSimilarity > 0.5 ? 'medium'
-      : 'low';
-
     // 8. Contexts for frontend
     const contexts: SpecialistContext[] = [{
       chunks: promptChunks.map(c => ({
@@ -471,12 +596,15 @@ export class Orchestrator {
         llm_primary_ms: llmPrimaryMs,
         llm_fallback_ms: llmFallbackMs,
         persistence_ms: 0,
+        verifier_ms: verifierMs,
         total_ms: 0,
         llm_model_used: llmModelUsed,
         llm_path: llmPath,
         used_fallback_model: usedFallbackModel,
         retrieval_cache_hit: retrieval.cacheHit,
         response_cache_hit: false,
+        guard_triggered: guardTriggered,
+        tool_used: toolUsed,
       },
     };
 

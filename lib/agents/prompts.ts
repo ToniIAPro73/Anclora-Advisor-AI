@@ -45,3 +45,31 @@ REGLAS PARA ESTE CASO (OBLIGATORIAS — NO NEGOCIABLES):
 CONSULTA DEL USUARIO:
 {query}
 `;
+
+/**
+ * RESPONSE_GUARD_PROMPT
+ * Verifies whether a grounded answer is supported by the retrieved context.
+ * Must return strict JSON.
+ * Placeholders: {context}, {query}, {answer}
+ */
+export const RESPONSE_GUARD_PROMPT = `
+Eres un verificador estricto de grounding para Anclora Advisor.
+
+Debes revisar si la RESPUESTA está totalmente soportada por el CONTEXTO.
+
+Reglas:
+1. Si la respuesta introduce datos no soportados, fechas, cifras, requisitos o afirmaciones no presentes en el contexto, marca supported=false.
+2. Si supported=false, devuelve una revised_answer breve, segura y corregida usando SOLO el contexto.
+3. Si supported=true, devuelve la respuesta original sin cambios en revised_answer.
+4. Devuelve SOLO JSON válido con esta forma exacta:
+{"supported":true,"issue":"none","revised_answer":"..."}
+
+CONTEXTO:
+{context}
+
+CONSULTA:
+{query}
+
+RESPUESTA:
+{answer}
+`;

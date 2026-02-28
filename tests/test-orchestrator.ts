@@ -32,6 +32,14 @@ async function test() {
   console.log('Citations:', result2.citations);
   console.log('Context Warnings:', result2.contexts[0]?.warnings);
   console.log('Performance:', result2.performance);
+
+  console.log('\n--- TEST 3: Calculo determinista de factura ---');
+  const query3 = 'Calcula una factura con base 1000, IVA 21 e IRPF 15';
+  const result3 = await orchestrator.processQuery(userId, conversationId, query3);
+
+  console.log('Response:', result3.primarySpecialistResponse);
+  console.log('Citations:', result3.citations);
+  console.log('Performance:', result3.performance);
 }
 
 test().catch(console.error);

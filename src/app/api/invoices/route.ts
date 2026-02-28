@@ -6,6 +6,7 @@ import { validateAccessToken } from "@/lib/auth/token";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { resolveLocale, t } from "@/lib/i18n/messages";
+import { calculateInvoiceTotals } from "@/lib/tools/invoice-calculator";
 
 const invoicePayloadSchema = z.object({
   clientName: z.string().min(2).max(255),
@@ -15,10 +16,6 @@ const invoicePayloadSchema = z.object({
   irpfRetention: z.number().min(0).max(100),
   issueDate: z.string().min(8),
 });
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
 
 async function getAuthenticatedContext() {
   const cookieStore = await cookies();
@@ -92,7 +89,11 @@ export async function POST(request: NextRequest) {
   }
 
   const invoice = payload.data;
-  const totalAmount = round2(invoice.amountBase + (invoice.amountBase * invoice.ivaRate) / 100 - (invoice.amountBase * invoice.irpfRetention) / 100);
+  const calculation = calculateInvoiceTotals({
+    amountBase: invoice.amountBase,
+    ivaRate: invoice.ivaRate,
+    irpfRetention: invoice.irpfRetention,
+  });
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
 
   const { data, error } = await supabase
@@ -101,10 +102,10 @@ export async function POST(request: NextRequest) {
       user_id: auth.userId,
       client_name: invoice.clientName,
       client_nif: invoice.clientNif,
-      amount_base: round2(invoice.amountBase),
-      iva_rate: round2(invoice.ivaRate),
-      irpf_retention: round2(invoice.irpfRetention),
-      total_amount: totalAmount,
+      amount_base: calculation.amountBase,
+      iva_rate: calculation.ivaRate,
+      irpf_retention: calculation.irpfRetention,
+      total_amount: calculation.totalAmount,
       issue_date: invoice.issueDate,
       status: "draft",
     })

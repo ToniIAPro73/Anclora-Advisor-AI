@@ -62,6 +62,8 @@ export interface RetrievalOptions {
   limit?: number;
   /** Minimum cosine similarity (default: 0.35 — tuned for 18-chunk corpus) */
   threshold?: number;
+  /** Enable application-level hybrid fusion (default: true) */
+  hybrid?: boolean;
 }
 
 export interface RetrievalResult {
@@ -72,6 +74,14 @@ export interface RetrievalResult {
 const RETRIEVAL_CACHE_TTL_MS = Number.parseInt(process.env.RETRIEVAL_CACHE_TTL_MS ?? '300000', 10);
 const RETRIEVAL_CACHE_MAX_ENTRIES = Number.parseInt(process.env.RETRIEVAL_CACHE_MAX_ENTRIES ?? '256', 10);
 const retrievalCache = new TtlCache<RAGChunk[]>(RETRIEVAL_CACHE_TTL_MS, RETRIEVAL_CACHE_MAX_ENTRIES);
+const HYBRID_ENABLED = process.env.RAG_HYBRID_ENABLED !== 'false';
+const HYBRID_VECTOR_CANDIDATES = Number.parseInt(process.env.RAG_HYBRID_VECTOR_CANDIDATES ?? '12', 10);
+const HYBRID_KEYWORD_CANDIDATES = Number.parseInt(process.env.RAG_HYBRID_KEYWORD_CANDIDATES ?? '12', 10);
+const HYBRID_RRF_K = Number.parseInt(process.env.RAG_HYBRID_RRF_K ?? '60', 10);
+const TOKEN_STOPWORDS = new Set([
+  'de', 'la', 'el', 'los', 'las', 'y', 'o', 'u', 'en', 'un', 'una', 'que', 'como', 'del', 'al',
+  'para', 'por', 'con', 'sin', 'a', 'es', 'se', 'lo', 'las', 'los', 'su', 'sus', 'mi', 'mis',
+]);
 
 interface RawChunkRow {
   id: string;
@@ -132,6 +142,116 @@ function docMetadataFromRow(row: RawChunkRow): RAGChunk['metadata'] {
     category: doc?.category ?? '',
     source_url: doc?.source_url ?? '',
   };
+}
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3 && !TOKEN_STOPWORDS.has(token));
+}
+
+function lexicalScore(queryTokens: string[], row: RawChunkRow): number {
+  if (queryTokens.length === 0) return 0;
+  const metadata = docMetadataFromRow(row);
+  const haystack = `${metadata.title} ${row.content}`.toLowerCase();
+  let hits = 0;
+  for (const token of queryTokens) {
+    if (haystack.includes(token)) hits += 1;
+  }
+  return hits / queryTokens.length;
+}
+
+function fuseHybridResults(
+  vectorChunks: RAGChunk[],
+  keywordChunks: RAGChunk[],
+  limit: number
+): RAGChunk[] {
+  const fused = new Map<string, { chunk: RAGChunk; score: number }>();
+
+  vectorChunks.forEach((chunk, index) => {
+    const score = 1 / (HYBRID_RRF_K + index + 1);
+    const existing = fused.get(chunk.id);
+    if (existing) {
+      existing.score += score;
+      existing.chunk.similarity = Math.max(existing.chunk.similarity, chunk.similarity);
+      return;
+    }
+    fused.set(chunk.id, { chunk: { ...chunk }, score });
+  });
+
+  keywordChunks.forEach((chunk, index) => {
+    const score = 1 / (HYBRID_RRF_K + index + 1);
+    const existing = fused.get(chunk.id);
+    if (existing) {
+      existing.score += score;
+      existing.chunk.similarity = Math.max(existing.chunk.similarity, chunk.similarity);
+      return;
+    }
+    fused.set(chunk.id, { chunk: { ...chunk }, score });
+  });
+
+  return Array.from(fused.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((item) => item.chunk);
+}
+
+async function fetchKeywordCandidates(
+  queryText: string,
+  category: string,
+  limit: number
+): Promise<RAGChunk[]> {
+  const queryTokens = tokenize(queryText);
+  if (queryTokens.length === 0) return [];
+
+  let query = getSupabase()
+    .from('rag_chunks')
+    .select(
+      `
+      id,
+      document_id,
+      content,
+      embedding,
+      rag_documents!inner (
+        title,
+        category,
+        source_url
+      )
+    `
+    )
+    .limit(250);
+
+  if (category) {
+    query = query.eq('rag_documents.category', category);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('[RAG] keyword candidate query error:', error);
+    return [];
+  }
+
+  const rows = (data ?? []) as unknown as RawChunkRow[];
+  return rows
+    .map((row) => {
+      const score = lexicalScore(queryTokens, row);
+      if (score <= 0) return null;
+      return {
+        id: row.id,
+        document_id: row.document_id,
+        content: row.content,
+        metadata: docMetadataFromRow(row),
+        similarity: score,
+      } satisfies RAGChunk;
+    })
+    .filter((item): item is RAGChunk => item !== null)
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, limit);
 }
 
 async function fallbackRetrieveWithoutRpc(
@@ -205,13 +325,14 @@ export async function retrieveContext(
   query: string,
   options: RetrievalOptions = {}
 ): Promise<RetrievalResult> {
-  const { category, limit = 5, threshold = 0.35 } = options;
+  const { category, limit = 5, threshold = 0.35, hybrid = HYBRID_ENABLED } = options;
   const dbCategory = resolveCategory(category);
   const cacheKey = JSON.stringify({
     query: query.trim().toLowerCase(),
     category: dbCategory,
     limit,
     threshold,
+    hybrid,
   });
 
   const cached = retrievalCache.get(cacheKey);
@@ -227,17 +348,18 @@ export async function retrieveContext(
     return { chunks: [], cacheHit: false };
   }
 
+  const vectorMatchCount = hybrid ? Math.max(limit, HYBRID_VECTOR_CANDIDATES) : limit;
   const { data, error } = await getSupabase().rpc('match_chunks', {
     query_embedding: embedding,
     match_threshold:  threshold,
-    match_count:      limit,
+    match_count:      vectorMatchCount,
     filter_category:  dbCategory,
   });
 
   if (error) {
     if (error.code === 'PGRST202') {
       console.warn('[RAG] match_chunks RPC not found, using JS fallback retrieval');
-      const fallbackChunks = await fallbackRetrieveWithoutRpc(embedding, dbCategory, limit, threshold);
+      const fallbackChunks = await fallbackRetrieveWithoutRpc(embedding, dbCategory, vectorMatchCount, threshold);
       retrievalCache.set(cacheKey, fallbackChunks);
       return { chunks: fallbackChunks, cacheHit: false };
     }
@@ -245,7 +367,15 @@ export async function retrieveContext(
     return { chunks: [], cacheHit: false };
   }
 
-  const chunks = (data ?? []) as RAGChunk[];
+  const vectorChunks = (data ?? []) as RAGChunk[];
+  const chunks = hybrid
+    ? fuseHybridResults(
+        vectorChunks,
+        await fetchKeywordCandidates(query, dbCategory, HYBRID_KEYWORD_CANDIDATES),
+        limit
+      )
+    : vectorChunks.slice(0, limit);
+
   retrievalCache.set(cacheKey, chunks);
   return { chunks, cacheHit: false };
 }
