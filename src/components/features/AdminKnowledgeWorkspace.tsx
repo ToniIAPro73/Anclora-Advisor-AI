@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export interface AdminDocumentRecord {
   id: string;
@@ -74,6 +74,38 @@ interface ObservabilityResponse {
       tool_used: string | null;
     } | null;
   }>;
+  hardware?: {
+    runtimeGate?: {
+      decision: string;
+      recommended_profile: string | null;
+      reason: string;
+      profiles?: Array<{
+        profile: string;
+        avg_chat_latency_ms: number | null;
+        avg_embedding_latency_ms: number | null;
+      }>;
+    } | null;
+    baseline?: {
+      decision: string;
+      checks: Array<{
+        role: string;
+        model: string;
+        decision: string;
+        quantization_level?: string;
+        reason: string;
+      }>;
+    } | null;
+    benchmark?: {
+      comparison_mode: string;
+      profiles: Array<{
+        profile: string;
+        avg_chat_latency_ms: number | null;
+        avg_embedding_latency_ms: number | null;
+        configured_chat_models: string[];
+        configured_embed_model: string;
+      }>;
+    } | null;
+  };
   error?: string;
 }
 
@@ -148,12 +180,17 @@ export function AdminKnowledgeWorkspace({
   const [jobs, setJobs] = useState<NonNullable<StatusResponse["recentJobs"]>>([]);
   const [traceSummary, setTraceSummary] = useState<ObservabilityResponse["summary"]>();
   const [traces, setTraces] = useState<NonNullable<ObservabilityResponse["traces"]>>([]);
+  const [hardware, setHardware] = useState<ObservabilityResponse["hardware"]>();
 
   const notebookPreset = useMemo(() => NOTEBOOK_PRESETS[domain], [domain]);
   const selectedDocument = useMemo(
     () => documents.find((document) => document.id === selectedDocumentId) ?? documents[0] ?? null,
     [documents, selectedDocumentId]
   );
+
+  useEffect(() => {
+    void refreshStatus();
+  }, []);
 
   async function refreshStatus(): Promise<void> {
     setRefreshing(true);
@@ -179,6 +216,7 @@ export function AdminKnowledgeWorkspace({
       setJobs(statusResult.recentJobs ?? []);
       setTraceSummary(observabilityResult.summary);
       setTraces(observabilityResult.traces ?? []);
+      setHardware(observabilityResult.hardware);
       setSelectedDocumentId((current) => current ?? statusResult.recentDocuments?.[0]?.id ?? null);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Error al refrescar estado");
@@ -400,6 +438,58 @@ export function AdminKnowledgeWorkspace({
                 )}
               </div>
             ))}
+          </div>
+        </article>
+
+        <article className="advisor-card shrink-0 p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="advisor-heading text-2xl text-[#162944]">Runtime hardware</h2>
+              <p className="mt-1 text-sm text-[#3a4f67]">
+                Estado del benchmark local, decision de runtime y baseline de modelos Ollama.
+              </p>
+            </div>
+            <span className="advisor-chip">{hardware?.benchmark?.comparison_mode ?? "sin datos"}</span>
+          </div>
+
+          <div className="mt-5 grid gap-3 xl:grid-cols-3">
+            <div className="advisor-card-muted p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Runtime gate</p>
+              <p className="mt-1 text-lg font-semibold text-[#162944]">{hardware?.runtimeGate?.decision ?? "sin datos"}</p>
+              <p className="mt-2 text-sm text-[#3a4f67]">
+                {hardware?.runtimeGate?.recommended_profile ?? "sin perfil recomendado"}
+              </p>
+              <p className="mt-2 text-xs text-[#3a4f67]">{hardware?.runtimeGate?.reason ?? "Ejecuta los benchmarks para poblar esta vista."}</p>
+            </div>
+
+            <div className="advisor-card-muted p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Baseline models</p>
+              <p className="mt-1 text-lg font-semibold text-[#162944]">{hardware?.baseline?.decision ?? "sin datos"}</p>
+              <div className="mt-3 space-y-2 text-xs text-[#3a4f67]">
+                {(hardware?.baseline?.checks ?? []).slice(0, 4).map((check) => (
+                  <p key={`${check.role}-${check.model}`}>
+                    {check.role}: <strong>{check.model}</strong>
+                    {check.quantization_level ? <> ({check.quantization_level})</> : null}
+                  </p>
+                ))}
+                {(hardware?.baseline?.checks ?? []).length === 0 && <p>Sin validacion ejecutada.</p>}
+              </div>
+            </div>
+
+            <div className="advisor-card-muted p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Benchmark summary</p>
+              <div className="mt-3 space-y-2 text-xs text-[#3a4f67]">
+                {(hardware?.benchmark?.profiles ?? []).slice(0, 3).map((profile) => (
+                  <div key={profile.profile}>
+                    <p className="font-semibold text-[#162944]">{profile.profile}</p>
+                    <p>chat avg: {profile.avg_chat_latency_ms !== null ? `${Math.round(profile.avg_chat_latency_ms)} ms` : "n/a"}</p>
+                    <p>embed avg: {profile.avg_embedding_latency_ms !== null ? `${Math.round(profile.avg_embedding_latency_ms)} ms` : "n/a"}</p>
+                    <p className="truncate">models: {profile.configured_chat_models.join(", ")}</p>
+                  </div>
+                ))}
+                {(hardware?.benchmark?.profiles ?? []).length === 0 && <p>Sin benchmark ejecutado.</p>}
+              </div>
+            </div>
           </div>
         </article>
 
