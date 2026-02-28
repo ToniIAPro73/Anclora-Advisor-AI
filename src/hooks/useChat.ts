@@ -17,14 +17,37 @@ export interface ChatRouting {
   confidence: number;
 }
 
+export interface ChatCitation {
+  index: number;
+  title: string;
+  source_url: string;
+  similarity: number;
+  chunk_id: string;
+}
+
+export interface ChatContextChunk {
+  id: string;
+  content: string;
+  source: string;
+  confidence: number;
+}
+
+export interface ChatContext {
+  chunks: ChatContextChunk[];
+  totalConfidence: number;
+  warnings: string[];
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
   routing?: ChatRouting;
-  citations?: string[];
+  citations?: ChatCitation[];
+  contexts?: ChatContext[];
   alerts?: ChatAlert[];
+  groundingConfidence?: "high" | "medium" | "low" | "none";
 }
 
 export interface ChatState {
@@ -39,8 +62,10 @@ interface ChatApiResponse {
   messageId?: string;
   primarySpecialistResponse?: string;
   routing?: ChatRouting;
-  citations?: string[];
+  citations?: ChatCitation[];
+  contexts?: ChatContext[];
   alerts?: ChatAlert[];
+  groundingConfidence?: "high" | "medium" | "low" | "none";
 }
 
 export function useChat(userId: string, conversationId: string) {
@@ -75,7 +100,9 @@ export function useChat(userId: string, conversationId: string) {
         timestamp: new Date(),
         routing: data.routing,
         citations: data.citations ?? [],
+        contexts: data.contexts ?? [],
         alerts: data.alerts ?? [],
+        groundingConfidence: data.groundingConfidence,
       };
 
       setState((prev) => ({ ...prev, messages: [...prev.messages, assistantMessage], loading: false, error: null }));
