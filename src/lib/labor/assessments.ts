@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 export const laborRiskLevelValues = ["low", "medium", "high", "critical"] as const;
+export const laborMitigationStatusValues = ["pending", "in_progress", "completed", "blocked"] as const;
 
 export type LaborRiskLevel = (typeof laborRiskLevelValues)[number];
+export type LaborMitigationStatus = (typeof laborMitigationStatusValues)[number];
 
 export interface LaborRiskAssessmentRecord {
   id: string;
@@ -11,6 +13,17 @@ export interface LaborRiskAssessmentRecord {
   risk_level: string | null;
   recommendations: string[] | null;
   created_at: string;
+}
+
+export interface LaborMitigationActionRecord {
+  id: string;
+  assessment_id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 function normalizeRecommendations(input: string[] | undefined): string[] | null {
@@ -43,6 +56,25 @@ export const updateLaborRiskAssessmentSchema = z.object({
   scenarioDescription: value.scenarioDescription?.trim(),
   recommendations: value.recommendations ? normalizeRecommendations(value.recommendations) : undefined,
 })).refine((value) => Object.values(value).some((item) => item !== undefined), {
+  message: "At least one field must be provided",
+});
+
+const optionalActionDescription = z.string().max(2000).transform((value) => value.trim()).transform((value) => value || null).nullable().optional();
+const optionalDueDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional();
+
+export const createLaborMitigationActionSchema = z.object({
+  title: z.string().min(3).max(255).transform((value) => value.trim()),
+  description: optionalActionDescription,
+  dueDate: optionalDueDate,
+  status: z.enum(laborMitigationStatusValues).default("pending"),
+});
+
+export const updateLaborMitigationActionSchema = z.object({
+  title: z.string().min(3).max(255).transform((value) => value.trim()).optional(),
+  description: optionalActionDescription,
+  dueDate: optionalDueDate,
+  status: z.enum(laborMitigationStatusValues).optional(),
+}).refine((value) => Object.values(value).some((item) => item !== undefined), {
   message: "At least one field must be provided",
 });
 

@@ -3,19 +3,23 @@
 ## Alcance
 - Workspace laboral operativo dentro de `/dashboard/laboral`.
 - CRUD basico de `labor_risk_assessments` con RLS por usuario.
-- Gestion de escenario, `risk_score`, `risk_level` y recomendaciones editables.
+- Workflow de mitigacion con acciones persistidas por evaluacion.
 
 ## Endpoints
 - `GET /api/labor-risk-assessments`
 - `POST /api/labor-risk-assessments`
 - `PATCH /api/labor-risk-assessments/[assessmentId]`
 - `DELETE /api/labor-risk-assessments/[assessmentId]`
+- `POST /api/labor-risk-assessments/[assessmentId]/actions`
+- `PATCH /api/labor-mitigation-actions/[actionId]`
+- `DELETE /api/labor-mitigation-actions/[actionId]`
 
 ## UI
 - Formulario unificado para crear y editar evaluaciones.
 - Preview inmediato de score y nivel de riesgo.
-- Historial con recomendaciones y acciones directas.
+- Seleccion de evaluacion activa.
+- Seguimiento de mitigaciones con estados `pending`, `in_progress`, `completed`, `blocked`.
 
-## Limite actual
-- La tabla actual no tiene `status`, `owner`, `mitigation_due_date` ni trazabilidad de seguimiento.
-- Si quieres workflow completo de mitigacion y cierre, hace falta ampliar esquema con migracion.
+## Infraestructura
+- Nueva tabla `labor_mitigation_actions`.
+- Script de aplicacion: `npm run labor:workflow:apply`.

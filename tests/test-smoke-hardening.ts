@@ -10,6 +10,8 @@ import * as fiscalAlertsRoute from "../src/app/api/fiscal-alerts/route";
 import * as fiscalAlertDetailRoute from "../src/app/api/fiscal-alerts/[alertId]/route";
 import * as laborAssessmentsRoute from "../src/app/api/labor-risk-assessments/route";
 import * as laborAssessmentDetailRoute from "../src/app/api/labor-risk-assessments/[assessmentId]/route";
+import * as laborAssessmentActionsRoute from "../src/app/api/labor-risk-assessments/[assessmentId]/actions/route";
+import * as laborMitigationActionDetailRoute from "../src/app/api/labor-mitigation-actions/[actionId]/route";
 import * as invoicesRoute from "../src/app/api/invoices/route";
 import * as invoiceDetailRoute from "../src/app/api/invoices/[invoiceId]/route";
 import { AdminKnowledgeWorkspace } from "../src/components/features/AdminKnowledgeWorkspace";
@@ -53,6 +55,9 @@ async function main(): Promise<void> {
   assert(typeof laborAssessmentsRoute.POST === "function", "POST /api/labor-risk-assessments handler exported");
   assert(typeof laborAssessmentDetailRoute.PATCH === "function", "PATCH /api/labor-risk-assessments/[assessmentId] handler exported");
   assert(typeof laborAssessmentDetailRoute.DELETE === "function", "DELETE /api/labor-risk-assessments/[assessmentId] handler exported");
+  assert(typeof laborAssessmentActionsRoute.POST === "function", "POST /api/labor-risk-assessments/[assessmentId]/actions handler exported");
+  assert(typeof laborMitigationActionDetailRoute.PATCH === "function", "PATCH /api/labor-mitigation-actions/[actionId] handler exported");
+  assert(typeof laborMitigationActionDetailRoute.DELETE === "function", "DELETE /api/labor-mitigation-actions/[actionId] handler exported");
   assert(typeof invoicesRoute.GET === "function", "GET /api/invoices handler exported");
   assert(typeof invoicesRoute.POST === "function", "POST /api/invoices handler exported");
   assert(typeof invoiceDetailRoute.PATCH === "function", "PATCH /api/invoices/[invoiceId] handler exported");
