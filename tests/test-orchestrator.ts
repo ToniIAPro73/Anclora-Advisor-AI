@@ -40,6 +40,27 @@ async function test() {
   console.log('Response:', result3.primarySpecialistResponse);
   console.log('Citations:', result3.citations);
   console.log('Performance:', result3.performance);
+
+  console.log('\n--- TEST 4: Calculo determinista de IVA ---');
+  const query4 = 'Calcula el IVA de una base 1000 con IVA 21';
+  const result4 = await orchestrator.processQuery(userId, conversationId, query4);
+
+  console.log('Response:', result4.primarySpecialistResponse);
+  console.log('Performance:', result4.performance);
+
+  console.log('\n--- TEST 5: Deduccion de suministros ---');
+  const query5 = 'Si mi vivienda tiene 100 m2 y afecto 20 m2, cuanto puedo deducir de suministros sobre 150 euros';
+  const result5 = await orchestrator.processQuery(userId, conversationId, query5);
+
+  console.log('Response:', result5.primarySpecialistResponse);
+  console.log('Performance:', result5.performance);
+
+  console.log('\n--- TEST 6: Prorrata de IVA ---');
+  const query6 = 'Calcula la prorrata del 60 sobre un IVA soportado de 210 euros';
+  const result6 = await orchestrator.processQuery(userId, conversationId, query6);
+
+  console.log('Response:', result6.primarySpecialistResponse);
+  console.log('Performance:', result6.performance);
 }
 
 test().catch(console.error);

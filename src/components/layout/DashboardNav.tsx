@@ -4,19 +4,27 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import type { AppRole } from "@/lib/auth/roles";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-const links = [
+const baseLinks = [
   { href: "/dashboard/chat", label: "Chat", subtitle: "Asesoria RAG" },
   { href: "/dashboard/fiscal", label: "Fiscal", subtitle: "Impuestos y plazos" },
   { href: "/dashboard/laboral", label: "Laboral", subtitle: "Riesgos y acciones" },
   { href: "/dashboard/facturacion", label: "Facturacion", subtitle: "Facturas y retencion" },
 ];
 
-export function DashboardNav() {
+const adminLink = { href: "/dashboard/admin", label: "Admin", subtitle: "Ingesta y control RAG" };
+
+interface DashboardNavProps {
+  role: AppRole;
+}
+
+export function DashboardNav({ role }: DashboardNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const links = role === "admin" ? [...baseLinks, adminLink] : baseLinks;
 
   const handleLogout = async () => {
     const supabase = getSupabaseBrowserClient();

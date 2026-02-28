@@ -7,7 +7,7 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { retrieveContext, RAGChunk } from '../../src/lib/rag/retrieval';
-import { calculateInvoiceTotals, formatInvoiceCalculationResponse, parseInvoiceCalculationQuery } from '../../src/lib/tools/invoice-calculator';
+import { runDeterministicFiscalTool } from '../../src/lib/tools/deterministic-fiscal-tools';
 import { GROUNDED_CHAT_PROMPT, NO_EVIDENCE_FALLBACK_PROMPT, RESPONSE_GUARD_PROMPT } from './prompts';
 
 // ----------------------------------------------------------------
@@ -390,9 +390,8 @@ export class Orchestrator {
 
     // 1. Routing
     const tRoutingStart = Date.now();
-    const invoiceToolQuery = parseInvoiceCalculationQuery(query);
-    if (invoiceToolQuery.matched) {
-      const calculation = calculateInvoiceTotals(invoiceToolQuery);
+    const deterministicTool = runDeterministicFiscalTool(query);
+    if (deterministicTool) {
       const totalMs = Date.now() - tTotalStart;
       const response: OrchestratorResponse = {
         success: true,
@@ -400,17 +399,15 @@ export class Orchestrator {
           primarySpecialist: 'fiscal',
           secondarySpecialists: [],
           confidence: 0.99,
-          reasoning: 'Consulta detectada como calculo determinista de factura.',
+          reasoning: `Consulta detectada como calculo determinista (${deterministicTool.tool}).`,
         },
-        primarySpecialistResponse: formatInvoiceCalculationResponse(calculation),
+        primarySpecialistResponse: deterministicTool.response,
         contexts: [{
           chunks: [],
           totalConfidence: 1,
           warnings: [],
         }],
-        recommendations: [
-          'Verifica si el tipo de IVA y la retencion de IRPF aplican a tu caso concreto.',
-        ],
+        recommendations: deterministicTool.recommendations,
         alerts: [],
         citations: [],
         groundingConfidence: 'none',
@@ -424,13 +421,13 @@ export class Orchestrator {
           persistence_ms: 0,
           verifier_ms: 0,
           total_ms: totalMs,
-          llm_model_used: 'local:invoice_calculator',
+          llm_model_used: `local:${deterministicTool.tool}`,
           llm_path: 'local_tool',
           used_fallback_model: false,
           retrieval_cache_hit: false,
           response_cache_hit: false,
           guard_triggered: false,
-          tool_used: 'invoice_calculator',
+          tool_used: deterministicTool.tool,
         },
       };
       this.setCachedResponse(responseCacheKey, response);

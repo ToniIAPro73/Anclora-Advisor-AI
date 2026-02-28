@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUserFromCookies } from "@/lib/auth/session";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { syncAppUserRecord } from "@/lib/auth/app-user";
 import { validateAccessToken } from "@/lib/auth/token";
 
 const saveSessionSchema = z.object({
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ success: false, error: "Invalid access token." }, { status: 401 });
   }
+  await syncAppUserRecord(user);
 
   const response = NextResponse.json({ success: true });
   response.cookies.set(SESSION_COOKIE_NAME, parsed.data.accessToken, {

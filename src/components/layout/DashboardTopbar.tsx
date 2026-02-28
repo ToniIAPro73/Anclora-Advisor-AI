@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import type { AppRole } from "@/lib/auth/roles";
 
 const sectionByPath: Record<string, { title: string; subtitle: string }> = {
   "/dashboard/chat": {
@@ -19,13 +20,18 @@ const sectionByPath: Record<string, { title: string; subtitle: string }> = {
     title: "Facturacion Inteligente",
     subtitle: "Generacion de facturas con retenciones y reglas aplicables.",
   },
+  "/dashboard/admin": {
+    title: "Admin RAG",
+    subtitle: "Gobernanza de roles, ingesta y estado operativo del conocimiento.",
+  },
 };
 
 interface DashboardTopbarProps {
   userEmail: string;
+  role: AppRole;
 }
 
-export function DashboardTopbar({ userEmail }: DashboardTopbarProps) {
+export function DashboardTopbar({ userEmail, role }: DashboardTopbarProps) {
   const pathname = usePathname();
   const section = sectionByPath[pathname] ?? sectionByPath["/dashboard/chat"];
 
@@ -37,7 +43,7 @@ export function DashboardTopbar({ userEmail }: DashboardTopbarProps) {
           <p className="mt-1 text-sm text-[#3a4f67]">{section.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="advisor-chip">Sesion activa</span>
+          <span className="advisor-chip">Rol: {role}</span>
           <span className="rounded-full border border-[#d2dceb] bg-[#f2f7ff] px-3 py-1 text-xs font-semibold text-[#1c2b3c]">
             {userEmail}
           </span>
