@@ -29,7 +29,11 @@ type SendInvoiceResponse = {
   success: boolean;
   error?: string;
   invoice?: InvoiceRecord;
-  mailtoUrl?: string;
+  delivery?: {
+    messageId: string;
+    attachmentFilename: string;
+    mode: "smtp";
+  };
 };
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -266,13 +270,12 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
       });
       const result = (await response.json()) as SendInvoiceResponse;
 
-      if (!response.ok || !result.success || !result.invoice || !result.mailtoUrl) {
+      if (!response.ok || !result.success || !result.invoice || !result.delivery) {
         throw new Error(result.error ?? "No se pudo preparar el envio");
       }
 
       upsertInvoice(result.invoice);
-      window.open(result.mailtoUrl, "_blank", "noopener,noreferrer");
-      setOkMessage("Envio asistido preparado.");
+      setOkMessage(`Factura enviada por SMTP. Message-ID: ${result.delivery.messageId}`);
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Error al preparar el envio");
     } finally {

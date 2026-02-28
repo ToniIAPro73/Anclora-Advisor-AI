@@ -4,8 +4,10 @@ import { z } from "zod";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { validateAccessToken } from "@/lib/auth/token";
 import type { InvoiceRecord } from "@/lib/invoices/contracts";
-import { buildInvoiceMailtoUrl, buildInvoiceReference, INVOICE_SELECT_FIELDS } from "@/lib/invoices/service";
+import { deliverInvoiceByEmail } from "@/lib/invoices/delivery";
+import { INVOICE_SELECT_FIELDS } from "@/lib/invoices/service";
 import { resolveLocale, t } from "@/lib/i18n/messages";
+import { createSmtpEmailSender, isSmtpConfigured } from "@/lib/notifications/smtp";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
@@ -60,15 +62,60 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const { invoiceId } = await context.params;
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
-  const updatePayload = {
-    recipient_email: payload.data.recipientEmail,
-    sent_at: new Date().toISOString(),
-    status: "issued",
-  };
+  const { data: currentData, error: currentError } = await supabase
+    .from("invoices")
+    .select(INVOICE_SELECT_FIELDS)
+    .eq("id", invoiceId)
+    .single();
+
+  if (currentError || !currentData) {
+    log("error", "api_invoice_send_load_failed", requestId, { invoiceId, error: currentError?.message ?? "not_found" });
+    const response = NextResponse.json(
+      { success: false, error: t(locale, "api.invoices.db_error") },
+      { status: 500 }
+    );
+    response.headers.set("x-request-id", requestId);
+    return response;
+  }
+
+  if (!isSmtpConfigured()) {
+    const response = NextResponse.json(
+      { success: false, error: "SMTP_NOT_CONFIGURED" },
+      { status: 503 }
+    );
+    response.headers.set("x-request-id", requestId);
+    return response;
+  }
+
+  const currentInvoice = currentData as unknown as InvoiceRecord;
+
+  let delivery;
+  try {
+    delivery = await deliverInvoiceByEmail({
+      invoice: currentInvoice,
+      recipientEmail: payload.data.recipientEmail,
+      emailSender: createSmtpEmailSender(),
+    });
+  } catch (deliveryError) {
+    log("error", "api_invoice_send_delivery_failed", requestId, {
+      invoiceId,
+      error: deliveryError instanceof Error ? deliveryError.message : "unknown",
+    });
+    const response = NextResponse.json(
+      { success: false, error: "SMTP_DELIVERY_FAILED" },
+      { status: 502 }
+    );
+    response.headers.set("x-request-id", requestId);
+    return response;
+  }
 
   const { data, error } = await supabase
     .from("invoices")
-    .update(updatePayload)
+    .update({
+      recipient_email: payload.data.recipientEmail,
+      sent_at: new Date().toISOString(),
+      status: currentInvoice.status === "draft" ? "issued" : currentInvoice.status,
+    })
     .eq("id", invoiceId)
     .select(INVOICE_SELECT_FIELDS)
     .single();
@@ -84,14 +131,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   const invoiceRecord = data as unknown as InvoiceRecord;
-  const mailtoUrl = buildInvoiceMailtoUrl({
-    recipientEmail: payload.data.recipientEmail,
-    invoiceReference: buildInvoiceReference(invoiceRecord.series, invoiceRecord.invoice_number),
-    clientName: invoiceRecord.client_name,
-    totalAmount: Number(invoiceRecord.total_amount),
+  const response = NextResponse.json({
+    success: true,
+    invoice: invoiceRecord,
+    delivery: {
+      messageId: delivery.messageId,
+      attachmentFilename: delivery.attachmentFilename,
+      mode: "smtp",
+    },
   });
-
-  const response = NextResponse.json({ success: true, invoice: invoiceRecord, mailtoUrl });
   response.headers.set("x-request-id", requestId);
   log("info", "api_invoice_send_succeeded", requestId, { invoiceId, recipientEmail: payload.data.recipientEmail });
   return response;

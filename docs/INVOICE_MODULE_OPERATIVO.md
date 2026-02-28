@@ -6,7 +6,7 @@
 - Gestion de estados `draft`, `issued` y `paid`.
 - Numeracion por serie.
 - Vista imprimible lista para PDF.
-- Envio asistido por `mailto`.
+- Envio real por SMTP con PDF adjunto.
 
 ## Endpoints
 - `GET /api/invoices`
@@ -21,14 +21,23 @@
 - Recalculo automatico de base, IVA, IRPF y total.
 - Serie y email destinatario editables.
 - Resumen de volumen y estados.
-- Lista filtrable con acciones de emitir, marcar pagada, volver a borrador, eliminar, abrir vista PDF y preparar envio.
+- Lista filtrable con acciones de emitir, marcar pagada, volver a borrador, eliminar, abrir vista PDF y enviar por SMTP.
 
 ## Flujo
 - Al crear una factura se asigna `series` y `invoice_number`.
 - Si no se informa serie, se usa el ano de `issue_date`.
 - `Vista PDF` abre un HTML imprimible para guardar como PDF desde navegador.
-- `Enviar` actualiza `recipient_email`, marca `sent_at`, fuerza estado `issued` y abre el cliente de correo con `mailto`.
+- `Enviar` genera un PDF real, lo adjunta por SMTP, actualiza `recipient_email`, marca `sent_at` y pasa `draft -> issued` tras envio exitoso.
+
+## Variables de entorno
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM_EMAIL`
+- `SMTP_FROM_NAME`
 
 ## Nota operativa
-- El envio actual es asistido, no SMTP server-side.
-- Si se quiere envio real desde backend, el siguiente paso es integrar proveedor transaccional y adjunto PDF binario.
+- Si SMTP no esta configurado, `POST /api/invoices/[invoiceId]/send` responde `503` con `SMTP_NOT_CONFIGURED`.
+- Si el transporte falla, responde `502` con `SMTP_DELIVERY_FAILED`.
