@@ -93,9 +93,9 @@ Mejorar calidad, fiabilidad y gobernanza del asistente antes de optimizaciones d
 
 ### Features
 
-1. `PERF-HW-001`: Benchmark comparativo real (CUDA vs OpenVINO/NPU).
-2. `PERF-HW-002`: Ajuste de cuantización y pinning de cargas.
-3. `PERF-HW-003`: Aceleración selectiva para embeddings/rerank.
+1. `PERF-HW-001`: Benchmark comparativo real por perfiles/runtime (`perf:benchmark:hardware`).
+2. `PERF-HW-002`: Política automática para mantener/cambiar runtime principal (`perf:benchmark:runtime-gate`).
+3. `PERF-HW-003`: Validación de baseline de cuantización y modelos en Ollama (`perf:validate:baseline`).
 
 ### Definition of Done
 
@@ -116,3 +116,6 @@ Mejorar calidad, fiabilidad y gobernanza del asistente antes de optimizaciones d
 
 - `RAG-EVAL-001`: dataset + runner local de evaluación RAG.
 - `RAG-METRICS-001`: reporte automático JSON + umbrales + decisión GO/NO-GO (`rag:eval:gate`).
+- `PERF-HW-001`: benchmark hardware/runtime con reporte JSON (`perf:benchmark:hardware`).
+- `PERF-HW-002`: gate automático para conservar Ollama como runtime principal salvo mejora demostrable.
+- `PERF-HW-003`: validación automática del baseline de cuantización/modelos en Ollama.

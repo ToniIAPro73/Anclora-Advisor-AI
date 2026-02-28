@@ -22,6 +22,9 @@
     "rag:eval:chat": "tsx scripts/eval-rag.ts --include-chat",
     "rag:eval:gate": "tsx scripts/eval-rag.ts --include-chat --enforce",
     "perf:benchmark:models": "tsx scripts/benchmark-models.ts",
+    "perf:benchmark:runtime-gate": "tsx scripts/evaluate-hardware-runtime.ts",
+    "perf:validate:baseline": "tsx scripts/validate-ollama-baseline.ts",
+    "perf:benchmark:hardware": "tsx scripts/benchmark-hardware.ts",
     "test:i18n": "tsx tests/test-i18n-hardening.ts",
     "test:smoke": "tsx tests/test-smoke-hardening.ts"
   },
