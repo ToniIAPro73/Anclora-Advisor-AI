@@ -1,22 +1,17 @@
+/* eslint-disable no-unused-vars */
 import { escapeIlikeValue, type AdminStatusFilters } from "./admin-status-filters";
 
-type QueryResult = {
-  data?: unknown[];
-  count?: number | null;
-  error?: { message: string } | null;
-};
-
 type AwaitableQueryLike = PromiseLike<any> & {
-  select: (columns: string, options?: { count?: "exact"; head?: boolean }) => AwaitableQueryLike;
-  order: (column: string, options?: { ascending?: boolean }) => AwaitableQueryLike;
-  range: (from: number, to: number) => AwaitableQueryLike;
-  ilike: (column: string, pattern: string) => AwaitableQueryLike;
-  or: (clause: string) => AwaitableQueryLike;
+  select: (...args: [string, ({ count?: "exact"; head?: boolean } | undefined)?]) => AwaitableQueryLike;
+  order: (...args: [string, ({ ascending?: boolean } | undefined)?]) => AwaitableQueryLike;
+  range: (...args: [number, number]) => AwaitableQueryLike;
+  ilike: (...args: [string, string]) => AwaitableQueryLike;
+  or: (...args: [string]) => AwaitableQueryLike;
 };
 
 type SupabaseLike = {
-  from: (table: string) => {
-    select: (columns: string, options?: { count?: "exact"; head?: boolean }) => AwaitableQueryLike;
+  from: (...args: [string]) => {
+    select: (...args: [string, ({ count?: "exact"; head?: boolean } | undefined)?]) => AwaitableQueryLike;
   };
 };
 
@@ -38,7 +33,7 @@ export async function getAdminStatusData({
 }: {
   supabase: SupabaseLike;
   filters: AdminStatusFilters;
-  listRecentJobs: (limit: number) => Promise<unknown[]>;
+  listRecentJobs: (...args: [number]) => Promise<unknown[]>;
 }): Promise<AdminStatusDataResult> {
   const { domain, topic, query, limit, offset } = filters;
 
@@ -107,3 +102,4 @@ export async function getAdminStatusData({
     recentJobs,
   };
 }
+

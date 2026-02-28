@@ -17,7 +17,7 @@ function isStructuralHeading(line: string): boolean {
   return (
     /^(titulo|título|capitulo|capítulo|seccion|sección|anexo|disposicion|disposición)\b/i.test(value) ||
     /^art(?:iculo|ículo)?\.?\s*\d+/i.test(value) ||
-    /^\d+(\.\d+)*[\)\.-]?\s+[A-ZÁÉÍÓÚÜÑ]/.test(value) ||
+    /^\d+(\.\d+)*[).-]?\s+[A-ZÁÉÍÓÚÜÑ]/.test(value) ||
     (/^[A-ZÁÉÍÓÚÜÑ0-9 ,:;()/-]{8,}$/.test(value) && value.length <= 120)
   );
 }
@@ -109,3 +109,4 @@ export function chunkStructuredText(text: string, options: ChunkingOptions = {})
 
   return chunks.filter((chunk) => chunk.length > 50);
 }
+

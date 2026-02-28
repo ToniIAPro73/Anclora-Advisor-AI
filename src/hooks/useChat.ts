@@ -127,7 +127,8 @@ export function useChat(userId: string, conversationId: string, initialMessages:
       const decoder = new TextDecoder();
       let buffer = "";
 
-      const updateAssistantMessage = (updater: (current: ChatMessage) => ChatMessage) => {
+      // eslint-disable-next-line no-unused-vars
+      const updateAssistantMessage = (updater: (...args: [ChatMessage]) => ChatMessage) => {
         setState((prev) => ({
           ...prev,
           messages: prev.messages.map((message) =>
@@ -211,3 +212,6 @@ export function useChat(userId: string, conversationId: string, initialMessages:
     replaceMessages,
   };
 }
+
+
+

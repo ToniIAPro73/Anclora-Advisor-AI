@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 "use client";
 
 import type {
@@ -51,8 +52,8 @@ export function AdminHeaderPanel({
   refreshing: boolean;
   autoRefreshEnabled: boolean;
   autoRefreshIntervalSec: 15 | 30 | 60;
-  onAutoRefreshEnabledChange: (enabled: boolean) => void;
-  onAutoRefreshIntervalChange: (value: 15 | 30 | 60) => void;
+  onAutoRefreshEnabledChange: (...args: [boolean]) => void;
+  onAutoRefreshIntervalChange: (...args: [15 | 30 | 60]) => void;
   onRefresh: () => void;
 }) {
   return (
@@ -281,13 +282,13 @@ export function AdminInventoryPanel({
   page: number;
   pageSize: 25 | 50 | 100;
   selectedDocument: AdminDocumentRecord | null;
-  onDomainFilterChange: (value: "all" | "fiscal" | "laboral" | "mercado") => void;
-  onTopicFilterChange: (value: string) => void;
-  onSearchChange: (value: string) => void;
-  onPageChange: (page: number) => void;
-  onPageSizeChange: (value: 25 | 50 | 100) => void;
-  onSelectDocument: (documentId: string) => void;
-  onDeleteDocument: (documentId: string) => void;
+  onDomainFilterChange: (...args: ["all" | "fiscal" | "laboral" | "mercado"]) => void;
+  onTopicFilterChange: (...args: [string]) => void;
+  onSearchChange: (...args: [string]) => void;
+  onPageChange: (...args: [number]) => void;
+  onPageSizeChange: (...args: [25 | 50 | 100]) => void;
+  onSelectDocument: (...args: [string]) => void;
+  onDeleteDocument: (...args: [string]) => void;
 }) {
   const currentStart = totalDocuments === 0 ? 0 : page * pageSize + 1;
   const currentEnd = totalDocuments === 0 ? 0 : page * pageSize + documents.length;
@@ -467,13 +468,13 @@ export function AdminIngestSidebar({
   message: string | null;
   error: string | null;
   jobs: AdminIngestJobRecord[];
-  onDomainChange: (domain: "fiscal" | "laboral" | "mercado") => void;
-  onTitleChange: (value: string) => void;
-  onUrlChange: (value: string) => void;
-  onReasonForFitChange: (value: string) => void;
-  onContentChange: (value: string) => void;
-  onDryRun: (event: React.FormEvent<HTMLFormElement>) => void;
-  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onDomainChange: (...args: ["fiscal" | "laboral" | "mercado"]) => void;
+  onTitleChange: (...args: [string]) => void;
+  onUrlChange: (...args: [string]) => void;
+  onReasonForFitChange: (...args: [string]) => void;
+  onContentChange: (...args: [string]) => void;
+  onDryRun: (...args: [React.FormEvent<HTMLFormElement>]) => void;
+  onSubmit: (...args: [React.FormEvent<HTMLFormElement>]) => void;
 }) {
   return (
     <aside className="advisor-card flex min-h-0 flex-col overflow-hidden">
@@ -616,3 +617,6 @@ export function AdminIngestSidebar({
     </aside>
   );
 }
+
+
+

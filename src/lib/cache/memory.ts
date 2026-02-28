@@ -6,7 +6,13 @@ export interface CacheEntry<T> {
 export class TtlCache<T> {
   private store = new Map<string, CacheEntry<T>>();
 
-  constructor(private ttlMs: number, private maxEntries: number) {}
+  private readonly ttlMs: number;
+  private readonly maxEntries: number;
+
+  constructor(ttlMs: number, maxEntries: number) {
+    this.ttlMs = ttlMs;
+    this.maxEntries = maxEntries;
+  }
 
   get(key: string): T | null {
     const entry = this.store.get(key);
@@ -29,3 +35,4 @@ export class TtlCache<T> {
     });
   }
 }
+

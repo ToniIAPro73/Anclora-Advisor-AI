@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { getAdminStatusData } from "../../src/lib/rag/admin-status-service";
 import type { AdminStatusFilters } from "../../src/lib/rag/admin-status-filters";
 
@@ -43,8 +44,8 @@ class FakeResultBuilder implements PromiseLike<{ data?: unknown[]; count?: numbe
   }
 
   then<TResult1 = { data?: unknown[]; count?: number | null; error?: { message: string } | null }, TResult2 = never>(
-    onfulfilled?: ((value: { data?: unknown[]; count?: number | null; error?: { message: string } | null }) => TResult1 | PromiseLike<TResult1>) | null,
-    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+    onfulfilled?: ((...args: [{ data?: unknown[]; count?: number | null; error?: { message: string } | null }]) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((...args: [unknown]) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<TResult1 | TResult2> {
     const hasFilters = this.localOperations.some((item) => item.startsWith("ilike:") || item.startsWith("or:"));
     const isHeadCount = this.localOperations.some((item) => item.includes(":exact:head"));
@@ -109,3 +110,6 @@ main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
+
+
+
