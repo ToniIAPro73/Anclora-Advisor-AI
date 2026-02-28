@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
+import { InvoiceWorkspace } from "@/components/features/InvoiceWorkspace";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
+import type { InvoiceRecord } from "@/lib/invoices/contracts";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
-import { InvoiceWorkspace, type InvoiceRecord } from "@/components/features/InvoiceWorkspace";
 
 export default async function DashboardFacturacionPage() {
   const user = await getCurrentUserFromCookies();
@@ -15,7 +16,7 @@ export default async function DashboardFacturacionPage() {
     .from("invoices")
     .select("id, client_name, client_nif, amount_base, iva_rate, irpf_retention, total_amount, issue_date, status, created_at")
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(60);
 
   const invoices = (data ?? []) as InvoiceRecord[];
 
@@ -24,7 +25,7 @@ export default async function DashboardFacturacionPage() {
       <article className="advisor-card shrink-0 p-4">
         <h1 className="advisor-heading text-3xl text-[#162944]">Facturacion</h1>
         <p className="mt-2 text-sm text-[#3a4f67]">
-          Workspace operativo para generar facturas con IVA/IRPF, persistencia en Supabase y trazabilidad por estado.
+          Workspace operativo para alta, edicion, cambio de estado y borrado de facturas con IVA/IRPF.
         </p>
       </article>
       <InvoiceWorkspace initialInvoices={invoices} />

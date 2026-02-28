@@ -1,21 +1,12 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { validateAccessToken } from "@/lib/auth/token";
-import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
-import { getRequestId, log } from "@/lib/observability/logger";
+import { createInvoiceSchema } from "@/lib/invoices/contracts";
 import { resolveLocale, t } from "@/lib/i18n/messages";
+import { getRequestId, log } from "@/lib/observability/logger";
+import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 import { calculateInvoiceTotals } from "@/lib/tools/invoice-calculator";
-
-const invoicePayloadSchema = z.object({
-  clientName: z.string().min(2).max(255),
-  clientNif: z.string().min(5).max(50),
-  amountBase: z.number().positive(),
-  ivaRate: z.number().min(0).max(100),
-  irpfRetention: z.number().min(0).max(100),
-  issueDate: z.string().min(8),
-});
 
 async function getAuthenticatedContext() {
   const cookieStore = await cookies();
@@ -51,7 +42,7 @@ export async function GET(request: NextRequest) {
     .from("invoices")
     .select("id, client_name, client_nif, amount_base, iva_rate, irpf_retention, total_amount, issue_date, status, created_at")
     .order("created_at", { ascending: false })
-    .limit(30);
+    .limit(60);
 
   if (error) {
     log("error", "api_invoices_get_failed", requestId, { error: error.message });
@@ -80,7 +71,7 @@ export async function POST(request: NextRequest) {
     return response;
   }
 
-  const payload = invoicePayloadSchema.safeParse(await request.json());
+  const payload = createInvoiceSchema.safeParse(await request.json());
   if (!payload.success) {
     log("warn", "api_invoices_payload_invalid", requestId, { issues: payload.error.issues.length });
     const response = NextResponse.json({ success: false, error: t(locale, "api.invoices.invalid_payload") }, { status: 400 });

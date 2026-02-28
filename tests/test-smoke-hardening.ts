@@ -9,8 +9,10 @@ import * as fiscalAlertDetailRoute from "../src/app/api/fiscal-alerts/[alertId]/
 import * as laborAssessmentsRoute from "../src/app/api/labor-risk-assessments/route";
 import * as laborAssessmentDetailRoute from "../src/app/api/labor-risk-assessments/[assessmentId]/route";
 import * as invoicesRoute from "../src/app/api/invoices/route";
+import * as invoiceDetailRoute from "../src/app/api/invoices/[invoiceId]/route";
 import { AdminKnowledgeWorkspace } from "../src/components/features/AdminKnowledgeWorkspace";
 import { FiscalWorkspace } from "../src/components/features/FiscalWorkspace";
+import { InvoiceWorkspace } from "../src/components/features/InvoiceWorkspace";
 import { LaborWorkspace } from "../src/components/features/LaborWorkspace";
 import { buildProactiveFiscalAlerts } from "../src/lib/alerts/proactive-alerts";
 import dashboardLayout from "../src/app/dashboard/layout";
@@ -47,9 +49,12 @@ async function main(): Promise<void> {
   assert(typeof laborAssessmentDetailRoute.DELETE === "function", "DELETE /api/labor-risk-assessments/[assessmentId] handler exported");
   assert(typeof invoicesRoute.GET === "function", "GET /api/invoices handler exported");
   assert(typeof invoicesRoute.POST === "function", "POST /api/invoices handler exported");
+  assert(typeof invoiceDetailRoute.PATCH === "function", "PATCH /api/invoices/[invoiceId] handler exported");
+  assert(typeof invoiceDetailRoute.DELETE === "function", "DELETE /api/invoices/[invoiceId] handler exported");
 
   assert(typeof AdminKnowledgeWorkspace === "function", "admin knowledge workspace exported");
   assert(typeof FiscalWorkspace === "function", "fiscal workspace exported");
+  assert(typeof InvoiceWorkspace === "function", "invoice workspace exported");
   assert(typeof LaborWorkspace === "function", "labor workspace exported");
   assert(typeof buildProactiveFiscalAlerts === "function", "proactive fiscal alerts helper exported");
   assert(typeof dashboardLayout === "function", "dashboard layout component exported");
