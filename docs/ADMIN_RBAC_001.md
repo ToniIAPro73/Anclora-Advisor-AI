@@ -19,3 +19,6 @@
 - Default de `users.role` pasa a `user`.
 - Constraint de valores permitidos.
 - Policy `users_self_read_policy` para leer el propio rol desde middleware via REST.
+
+## Operacion
+- Script de promocion de rol: `npm run -s rbac:set-role -- --role admin --email usuario@dominio.com`
