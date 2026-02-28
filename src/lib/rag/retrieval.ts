@@ -51,6 +51,7 @@ export interface RAGChunk {
     title: string;
     category: string;
     source_url: string;
+    doc_metadata?: Record<string, unknown>;
   };
   similarity: number;
 }
@@ -93,13 +94,21 @@ interface RawChunkRow {
         title: string | null;
         category: string | null;
         source_url: string | null;
+        doc_metadata?: Record<string, unknown> | null;
       }
     | Array<{
         title: string | null;
         category: string | null;
         source_url: string | null;
+        doc_metadata?: Record<string, unknown> | null;
       }>
     | null;
+}
+
+interface MetadataFilter {
+  topic?: string;
+  jurisdiction?: string;
+  source_type?: string;
 }
 
 function parseEmbedding(value: string | number[] | null): number[] | null {
@@ -141,7 +150,43 @@ function docMetadataFromRow(row: RawChunkRow): RAGChunk['metadata'] {
     title: doc?.title ?? 'Documento sin titulo',
     category: doc?.category ?? '',
     source_url: doc?.source_url ?? '',
+    doc_metadata: (doc?.doc_metadata as Record<string, unknown> | null | undefined) ?? undefined,
   };
+}
+
+function inferMetadataFilter(query: string, category: string): MetadataFilter {
+  const haystack = query.toLowerCase();
+  const filter: MetadataFilter = {};
+
+  if (haystack.includes('cuota cero')) filter.topic = 'cuota_cero';
+  else if (haystack.includes('modelo 303') || /\biva\b/.test(haystack)) filter.topic = 'iva';
+  else if (haystack.includes('modelo 130') || /\birpf\b/.test(haystack)) filter.topic = 'irpf';
+  else if (haystack.includes('reta')) filter.topic = 'reta';
+  else if (haystack.includes('pluriactividad')) filter.topic = 'pluriactividad';
+  else if (haystack.includes('despido')) filter.topic = 'despido';
+  else if (haystack.includes('alquiler') || haystack.includes('fianza') || haystack.includes('arrend')) filter.topic = 'arrendamiento';
+
+  if (haystack.includes('baleares') || haystack.includes('balears') || haystack.includes('mallorca')) {
+    filter.jurisdiction = 'es-bal';
+  } else if (category) {
+    filter.jurisdiction = 'es';
+  }
+
+  if (haystack.includes('boe') || haystack.includes('aeat') || haystack.includes('caib')) {
+    filter.source_type = 'web_page';
+  }
+
+  return filter;
+}
+
+function matchesMetadataFilter(chunk: RAGChunk, filter: MetadataFilter): boolean {
+  const meta = chunk.metadata.doc_metadata ?? {};
+
+  if (filter.topic && meta.topic !== filter.topic) return false;
+  if (filter.jurisdiction && meta.jurisdiction !== filter.jurisdiction) return false;
+  if (filter.source_type && meta.source_type !== filter.source_type) return false;
+
+  return true;
 }
 
 function tokenize(text: string): string[] {
@@ -209,10 +254,24 @@ async function fetchKeywordCandidates(
   const queryTokens = tokenize(queryText);
   if (queryTokens.length === 0) return [];
 
-  let query = getSupabase()
-    .from('rag_chunks')
-    .select(
-      `
+  async function runSelect(includeDocMetadata: boolean): Promise<RawChunkRow[]> {
+    let query = getSupabase()
+      .from('rag_chunks')
+      .select(
+        includeDocMetadata
+          ? `
+      id,
+      document_id,
+      content,
+      embedding,
+      rag_documents!inner (
+        title,
+        category,
+        source_url,
+        doc_metadata
+      )
+    `
+          : `
       id,
       document_id,
       content,
@@ -223,20 +282,27 @@ async function fetchKeywordCandidates(
         source_url
       )
     `
-    )
-    .limit(250);
+      )
+      .limit(250);
 
-  if (category) {
-    query = query.eq('rag_documents.category', category);
+    if (category) {
+      query = query.eq('rag_documents.category', category);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      if (includeDocMetadata && error.code === '42703') {
+        console.warn('[RAG] doc_metadata column not available yet, using lexical fallback without metadata column');
+        return runSelect(false);
+      }
+      console.error('[RAG] keyword candidate query error:', error);
+      return [];
+    }
+
+    return (data ?? []) as unknown as RawChunkRow[];
   }
 
-  const { data, error } = await query;
-  if (error) {
-    console.error('[RAG] keyword candidate query error:', error);
-    return [];
-  }
-
-  const rows = (data ?? []) as unknown as RawChunkRow[];
+  const rows = await runSelect(true);
   return rows
     .map((row) => {
       const score = lexicalScore(queryTokens, row);
@@ -327,12 +393,14 @@ export async function retrieveContext(
 ): Promise<RetrievalResult> {
   const { category, limit = 5, threshold = 0.35, hybrid = HYBRID_ENABLED } = options;
   const dbCategory = resolveCategory(category);
+  const metadataFilter = inferMetadataFilter(query, dbCategory);
   const cacheKey = JSON.stringify({
     query: query.trim().toLowerCase(),
     category: dbCategory,
     limit,
     threshold,
     hybrid,
+    metadataFilter,
   });
 
   const cached = retrievalCache.get(cacheKey);
@@ -368,13 +436,16 @@ export async function retrieveContext(
   }
 
   const vectorChunks = (data ?? []) as RAGChunk[];
-  const chunks = hybrid
+  const fusedChunks = hybrid
     ? fuseHybridResults(
         vectorChunks,
         await fetchKeywordCandidates(query, dbCategory, HYBRID_KEYWORD_CANDIDATES),
         limit
       )
     : vectorChunks.slice(0, limit);
+
+  const filteredChunks = fusedChunks.filter((chunk) => matchesMetadataFilter(chunk, metadataFilter));
+  const chunks = filteredChunks.length > 0 ? filteredChunks.slice(0, limit) : fusedChunks.slice(0, limit);
 
   retrievalCache.set(cacheKey, chunks);
   return { chunks, cacheHit: false };

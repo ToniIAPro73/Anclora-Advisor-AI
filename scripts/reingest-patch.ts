@@ -73,6 +73,30 @@ interface PatchNotebook {
   sources: PatchSource[];
 }
 
+function inferTopic(title: string, domain: string): string | null {
+  const haystack = `${title} ${domain}`.toLowerCase();
+  if (haystack.includes('cuota cero')) return 'cuota_cero';
+  if (haystack.includes('iva') || haystack.includes('modelo 303')) return 'iva';
+  if (haystack.includes('irpf') || haystack.includes('modelo 130')) return 'irpf';
+  if (haystack.includes('reta')) return 'reta';
+  if (haystack.includes('pluriactividad')) return 'pluriactividad';
+  if (haystack.includes('despido')) return 'despido';
+  if (haystack.includes('fianza') || haystack.includes('alquiler') || haystack.includes('arrend')) return 'arrendamiento';
+  if (haystack.includes('marca') || haystack.includes('posicionamiento')) return 'posicionamiento';
+  return null;
+}
+
+function inferJurisdiction(title: string, url: string | null, domain: string): string {
+  const haystack = `${title} ${url ?? ''}`.toLowerCase();
+  if (haystack.includes('baleares') || haystack.includes('balears') || haystack.includes('mallorca') || haystack.includes('caib.es')) {
+    return 'es-bal';
+  }
+  if (['fiscal', 'laboral', 'mercado'].includes(domain)) {
+    return 'es';
+  }
+  return 'unknown';
+}
+
 // ─── Text Utilities ───────────────────────────────────────────────────────────
 function normalizeText(text: string): string {
   return text.replace(/\r\n/g, '\n').replace(/\s+/g, ' ').trim();
@@ -202,6 +226,13 @@ async function run() {
             title: src.title,
             category: nb.domain,
             source_url: sUrl,
+            doc_metadata: {
+              notebook_id: nb.notebook_id,
+              notebook_title: nb.notebook_title,
+              source_type: src.source_type,
+              jurisdiction: inferJurisdiction(src.title, sUrl, nb.domain),
+              topic: inferTopic(src.title, nb.domain),
+            },
           })
           .select()
           .single();
