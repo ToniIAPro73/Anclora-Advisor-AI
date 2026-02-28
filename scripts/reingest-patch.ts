@@ -18,6 +18,7 @@ import * as path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import { pipeline } from '@xenova/transformers';
 import * as dotenv from 'dotenv';
+import { chunkStructuredText, normalizeText } from '../src/lib/rag/chunking';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
@@ -95,41 +96,6 @@ function inferJurisdiction(title: string, url: string | null, domain: string): s
     return 'es';
   }
   return 'unknown';
-}
-
-// ─── Text Utilities ───────────────────────────────────────────────────────────
-function normalizeText(text: string): string {
-  return text.replace(/\r\n/g, '\n').replace(/\s+/g, ' ').trim();
-}
-
-function chunkText(
-  text: string,
-  maxLength: number = 1200,
-  overlap: number = 200
-): string[] {
-  const chunks: string[] = [];
-  let startIndex = 0;
-
-  while (startIndex < text.length) {
-    let endIndex = startIndex + maxLength;
-    if (endIndex < text.length) {
-      const lastNewline = text.lastIndexOf('\n', endIndex);
-      if (lastNewline > startIndex + maxLength / 2) {
-        endIndex = lastNewline;
-      } else {
-        const lastSpace = text.lastIndexOf(' ', endIndex);
-        if (lastSpace > startIndex + maxLength / 2) {
-          endIndex = lastSpace;
-        }
-      }
-    }
-    chunks.push(text.slice(startIndex, endIndex).trim());
-    startIndex = endIndex - overlap;
-    if (startIndex < 0) startIndex = 0;
-    if (endIndex >= text.length) break;
-  }
-
-  return chunks.filter((c) => c.length > 50);
 }
 
 // ─── Validation Helpers ───────────────────────────────────────────────────────
@@ -232,6 +198,7 @@ async function run() {
               source_type: src.source_type,
               jurisdiction: inferJurisdiction(src.title, sUrl, nb.domain),
               topic: inferTopic(src.title, nb.domain),
+              chunking_strategy: 'structured_v1',
             },
           })
           .select()
@@ -270,7 +237,7 @@ async function run() {
 
       // 3c. Re-chunk and insert
       const normalized = normalizeText(src.content);
-      const chunks = chunkText(normalized);
+      const chunks = chunkStructuredText(normalized);
       console.log(`      ✨ Generated ${chunks.length} new chunk(s)`);
 
       const { error: chunkErr } = await supabase.from('rag_chunks').insert(

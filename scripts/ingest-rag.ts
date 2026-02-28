@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
+import { chunkStructuredText, normalizeText } from '../src/lib/rag/chunking';
 
 // Load environment variables from .env.local
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
@@ -52,39 +53,6 @@ function inferJurisdiction(title: string, url: string | null, domain: string): s
   return 'unknown';
 }
 
-function normalizeText(text: string): string {
-  return text
-    .replace(/\r\n/g, '\n')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function chunkText(text: string, maxLength: number = 1200, overlap: number = 200): string[] {
-  const chunks: string[] = [];
-  let startIndex = 0;
-
-  while (startIndex < text.length) {
-    let endIndex = startIndex + maxLength;
-    if (endIndex < text.length) {
-      const lastNewline = text.lastIndexOf('\n', endIndex);
-      if (lastNewline > startIndex + maxLength / 2) {
-        endIndex = lastNewline;
-      } else {
-        const lastSpace = text.lastIndexOf(' ', endIndex);
-        if (lastSpace > startIndex + maxLength / 2) {
-          endIndex = lastSpace;
-        }
-      }
-    }
-    chunks.push(text.slice(startIndex, endIndex).trim());
-    startIndex = endIndex - overlap;
-    if (startIndex < 0) startIndex = 0;
-    if (endIndex >= text.length) break;
-  }
-
-  return chunks.filter(c => c.length > 50);
-}
-
 async function run() {
   const bundlePath = path.join(process.cwd(), 'scripts', 'notebook_bundle_v1.json');
   if (!fs.existsSync(bundlePath)) {
@@ -129,6 +97,7 @@ async function run() {
               source_type: sUrl ? 'web_page' : 'generated_text',
               jurisdiction: inferJurisdiction(source.title, sUrl, notebook.domain),
               topic: inferTopic(source.title, notebook.domain),
+              chunking_strategy: 'structured_v1',
             },
           })
           .select()
@@ -145,7 +114,7 @@ async function run() {
       totalDocs++;
 
       const normalizedContent = normalizeText(source.content);
-      const chunks = chunkText(normalizedContent);
+      const chunks = chunkStructuredText(normalizedContent);
       console.log(`      ✨ Created ${chunks.length} chunks`);
 
       // Avoid duplicates: check if chunks already exist for this doc

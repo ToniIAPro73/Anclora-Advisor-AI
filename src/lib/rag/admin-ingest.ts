@@ -1,4 +1,5 @@
 import { createServiceSupabaseClient } from "@/lib/supabase/server-admin";
+import { chunkStructuredText, normalizeText } from "@/lib/rag/chunking";
 import { generateEmbedding } from "@/lib/rag/embeddings";
 import type { IngestSourcePayload, NotebookDomain } from "@/lib/rag/governance";
 
@@ -14,38 +15,6 @@ export interface AdminIngestResult {
   documentsProcessed: number;
   chunksInserted: number;
   replacedDocuments: number;
-}
-
-function normalizeText(text: string): string {
-  return text.replace(/\r\n/g, "\n").replace(/\s+/g, " ").trim();
-}
-
-function chunkText(text: string, maxLength = 1200, overlap = 200): string[] {
-  const chunks: string[] = [];
-  let startIndex = 0;
-
-  while (startIndex < text.length) {
-    let endIndex = startIndex + maxLength;
-    if (endIndex < text.length) {
-      const lastNewline = text.lastIndexOf("\n", endIndex);
-      if (lastNewline > startIndex + maxLength / 2) {
-        endIndex = lastNewline;
-      } else {
-        const lastSpace = text.lastIndexOf(" ", endIndex);
-        if (lastSpace > startIndex + maxLength / 2) {
-          endIndex = lastSpace;
-        }
-      }
-    }
-
-    chunks.push(text.slice(startIndex, endIndex).trim());
-    startIndex = Math.max(0, endIndex - overlap);
-    if (endIndex >= text.length) {
-      break;
-    }
-  }
-
-  return chunks.filter((chunk) => chunk.length > 50);
 }
 
 function inferTopic(title: string, domain: string): string | null {
@@ -88,7 +57,7 @@ export async function ingestAdminSources(payload: AdminIngestRequest): Promise<A
   for (const source of payload.sources) {
     const sourceUrl = source.url ?? "";
     const normalizedContent = normalizeText(source.content);
-    const chunks = chunkText(normalizedContent);
+    const chunks = chunkStructuredText(normalizedContent);
 
     const { data: existingDocument, error: findError } = await supabase
       .from("rag_documents")
@@ -108,6 +77,7 @@ export async function ingestAdminSources(payload: AdminIngestRequest): Promise<A
       jurisdiction: inferJurisdiction(source.title, source.url, payload.domain),
       topic: inferTopic(source.title, payload.domain),
       reason_for_fit: source.reason_for_fit,
+      chunking_strategy: "structured_v1",
     };
 
     let documentId = existingDocument?.id ?? null;
