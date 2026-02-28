@@ -43,6 +43,7 @@ async function main(): Promise<void> {
   assert(typeof chatConversationsRoute.GET === "function", "GET /api/chat/conversations handler exported");
   assert(typeof chatConversationsRoute.POST === "function", "POST /api/chat/conversations handler exported");
   assert(typeof chatConversationDetailRoute.GET === "function", "GET /api/chat/conversations/[conversationId] handler exported");
+  assert(typeof chatConversationDetailRoute.PATCH === "function", "PATCH /api/chat/conversations/[conversationId] handler exported");
   assert(typeof adminIngestRoute.POST === "function", "POST /api/admin/rag/ingest handler exported");
   assert(typeof adminDocumentDeleteRoute.DELETE === "function", "DELETE /api/admin/rag/documents/[documentId] handler exported");
   assert(typeof adminObservabilityRagRoute.GET === "function", "GET /api/admin/observability/rag handler exported");
@@ -85,3 +86,4 @@ main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
+

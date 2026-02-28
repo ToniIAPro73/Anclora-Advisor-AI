@@ -54,11 +54,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [conversationLoading, setConversationLoading] = useState(false);
   const [conversationError, setConversationError] = useState<string | null>(null);
   const [inputQuery, setInputQuery] = useState("");
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
 
   const mappedInitialMessages = useMemo(
     () => initialMessages.map(mapPersistedMessage).filter((message): message is ChatMessage => message !== null),
     [initialMessages]
   );
+
+  const activeConversation = conversations.find((item) => item.id === activeConversationId) ?? null;
 
   const { messages, loading, error, sendMessageStreaming, replaceMessages } = useChat(
     userId,
@@ -97,6 +101,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
     setConversationLoading(true);
     setConversationError(null);
+    setRenaming(false);
     try {
       const response = await fetch(`/api/chat/conversations/${conversationId}`);
       const result = (await response.json()) as {
@@ -125,6 +130,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   async function handleNewConversation() {
     setConversationLoading(true);
     setConversationError(null);
+    setRenaming(false);
     try {
       const response = await fetch("/api/chat/conversations", {
         method: "POST",
@@ -144,9 +150,45 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setConversations((prev) => [result.conversation as ChatConversationRecord, ...prev]);
       setActiveConversationId(result.conversation.id);
       replaceMessages([]);
+      setRenameValue(formatConversationLabel(result.conversation));
       syncConversationInUrl(result.conversation.id);
     } catch (createError) {
       setConversationError(createError instanceof Error ? createError.message : "Error al crear la conversacion");
+    } finally {
+      setConversationLoading(false);
+    }
+  }
+
+  async function handleRenameConversation(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!activeConversation || !renameValue.trim()) {
+      return;
+    }
+
+    setConversationLoading(true);
+    setConversationError(null);
+    try {
+      const response = await fetch(`/api/chat/conversations/${activeConversation.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: renameValue.trim() }),
+      });
+      const result = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        conversation?: ChatConversationRecord;
+      };
+
+      if (!response.ok || !result.success || !result.conversation) {
+        throw new Error(result.error ?? "No se pudo renombrar la conversacion");
+      }
+
+      setConversations((prev) =>
+        prev.map((item) => (item.id === result.conversation?.id ? (result.conversation as ChatConversationRecord) : item))
+      );
+      setRenaming(false);
+    } catch (renameError) {
+      setConversationError(renameError instanceof Error ? renameError.message : "Error al renombrar la conversacion");
     } finally {
       setConversationLoading(false);
     }
@@ -183,6 +225,44 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               Nueva
             </button>
           </div>
+          {activeConversation && (
+            <div className="mt-3 rounded-xl border border-[#d2dceb] bg-[#f7faff] p-3">
+              {renaming ? (
+                <form className="space-y-2" onSubmit={handleRenameConversation}>
+                  <input
+                    className="advisor-input"
+                    value={renameValue}
+                    onChange={(event) => setRenameValue(event.target.value)}
+                    maxLength={500}
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button type="submit" className="advisor-btn advisor-btn-primary px-3 py-2 text-xs">Guardar</button>
+                    <button type="button" className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-xs font-semibold text-[#162944]" onClick={() => { setRenaming(false); setRenameValue(formatConversationLabel(activeConversation)); }}>
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Conversacion activa</p>
+                    <p className="mt-1 text-sm font-semibold text-[#162944]">{formatConversationLabel(activeConversation)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-xs font-semibold text-[#162944]"
+                    onClick={() => {
+                      setRenameValue(formatConversationLabel(activeConversation));
+                      setRenaming(true);
+                    }}
+                  >
+                    Renombrar
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {conversationError && (
             <div className="advisor-alert advisor-alert-error mt-3">{conversationError}</div>
           )}

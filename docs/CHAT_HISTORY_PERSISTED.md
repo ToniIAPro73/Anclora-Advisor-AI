@@ -9,6 +9,7 @@
 - `GET /api/chat/conversations`
 - `POST /api/chat/conversations`
 - `GET /api/chat/conversations/[conversationId]`
+- `PATCH /api/chat/conversations/[conversationId]`
 
 ## Cambios de runtime
 - El orquestador ya guarda mensaje de usuario y de asistente.
@@ -18,3 +19,4 @@
 ## Limite actual
 - No hay renombrado manual de conversaciones.
 - El titulo se deriva automaticamente de la consulta inicial.
+

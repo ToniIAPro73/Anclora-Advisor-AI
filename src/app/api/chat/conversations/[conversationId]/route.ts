@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { validateAccessToken } from "@/lib/auth/token";
 import { resolveLocale, t } from "@/lib/i18n/messages";
@@ -9,6 +10,10 @@ import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 type RouteContext = {
   params: Promise<{ conversationId: string }>;
 };
+
+const updateConversationSchema = z.object({
+  title: z.string().min(1).max(500).transform((value) => value.trim()),
+});
 
 async function getAuthenticatedContext() {
   const cookieStore = await cookies();
@@ -76,6 +81,54 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const response = NextResponse.json({ success: true, conversation, messages: messages ?? [] });
+  response.headers.set("x-request-id", requestId);
+  return response;
+}
+
+export async function PATCH(request: NextRequest, context: RouteContext) {
+  const requestId = getRequestId(request.headers.get("x-request-id"));
+  const locale = resolveLocale(request.headers.get("accept-language"));
+  const auth = await getAuthenticatedContext();
+
+  if (!auth.accessToken) {
+    const response = NextResponse.json(
+      { success: false, error: t(locale, "api.chat.invalid_session") },
+      { status: 401 }
+    );
+    response.headers.set("x-request-id", requestId);
+    return response;
+  }
+
+  const payload = updateConversationSchema.safeParse(await request.json());
+  if (!payload.success) {
+    const response = NextResponse.json(
+      { success: false, error: t(locale, "api.chat.invalid_payload") },
+      { status: 400 }
+    );
+    response.headers.set("x-request-id", requestId);
+    return response;
+  }
+
+  const { conversationId } = await context.params;
+  const supabase = createUserScopedSupabaseClient(auth.accessToken);
+  const { data, error } = await supabase
+    .from("conversations")
+    .update({ title: payload.data.title })
+    .eq("id", conversationId)
+    .select("id, title, created_at, updated_at")
+    .single();
+
+  if (error || !data) {
+    log("error", "api_chat_conversation_patch_failed", requestId, { conversationId, error: error?.message ?? "unknown" });
+    const response = NextResponse.json(
+      { success: false, error: t(locale, "api.chat.db_error") },
+      { status: 500 }
+    );
+    response.headers.set("x-request-id", requestId);
+    return response;
+  }
+
+  const response = NextResponse.json({ success: true, conversation: data });
   response.headers.set("x-request-id", requestId);
   return response;
 }
