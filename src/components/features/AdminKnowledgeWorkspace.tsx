@@ -56,11 +56,13 @@ export function AdminKnowledgeWorkspace({
           topicFilter={state.inventoryTopicFilter}
           search={state.inventorySearch}
           page={state.inventoryPage}
+          pageSize={state.inventoryPageSize}
           selectedDocument={state.selectedDocument}
           onDomainFilterChange={actions.setInventoryDomainFilter}
           onTopicFilterChange={actions.setInventoryTopicFilter}
           onSearchChange={actions.setInventorySearch}
           onPageChange={actions.setInventoryPage}
+          onPageSizeChange={actions.setInventoryPageSize}
           onSelectDocument={actions.setSelectedDocumentId}
           onDeleteDocument={(documentId) => void actions.deleteDocument(documentId)}
         />

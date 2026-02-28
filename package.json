@@ -26,6 +26,7 @@
     "perf:validate:baseline": "tsx scripts/validate-ollama-baseline.ts",
     "perf:benchmark:hardware": "tsx scripts/benchmark-hardware.ts",
     "test:admin-status": "tsx tests/unit/test-admin-status-filters.ts",
+    "test:admin-status:service": "tsx tests/unit/test-admin-status-service.ts",
     "test:i18n": "tsx tests/test-i18n-hardening.ts",
     "test:smoke": "tsx tests/test-smoke-hardening.ts"
   },

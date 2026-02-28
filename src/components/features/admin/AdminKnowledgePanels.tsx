@@ -263,11 +263,13 @@ export function AdminInventoryPanel({
   topicFilter,
   search,
   page,
+  pageSize,
   selectedDocument,
   onDomainFilterChange,
   onTopicFilterChange,
   onSearchChange,
   onPageChange,
+  onPageSizeChange,
   onSelectDocument,
   onDeleteDocument,
 }: {
@@ -277,15 +279,16 @@ export function AdminInventoryPanel({
   topicFilter: string;
   search: string;
   page: number;
+  pageSize: 25 | 50 | 100;
   selectedDocument: AdminDocumentRecord | null;
   onDomainFilterChange: (value: "all" | "fiscal" | "laboral" | "mercado") => void;
   onTopicFilterChange: (value: string) => void;
   onSearchChange: (value: string) => void;
   onPageChange: (page: number) => void;
+  onPageSizeChange: (value: 25 | 50 | 100) => void;
   onSelectDocument: (documentId: string) => void;
   onDeleteDocument: (documentId: string) => void;
 }) {
-  const pageSize = 50;
   const currentStart = totalDocuments === 0 ? 0 : page * pageSize + 1;
   const currentEnd = totalDocuments === 0 ? 0 : page * pageSize + documents.length;
   const canGoPrev = page > 0;
@@ -328,6 +331,15 @@ export function AdminInventoryPanel({
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Buscar por titulo, notebook o reason_for_fit"
             />
+            <select
+              className="advisor-input"
+              value={pageSize}
+              onChange={(event) => onPageSizeChange(Number(event.target.value) as 25 | 50 | 100)}
+            >
+              <option value={25}>25 por pagina</option>
+              <option value={50}>50 por pagina</option>
+              <option value={100}>100 por pagina</option>
+            </select>
             <div className="flex items-center justify-between gap-2">
               <button
                 type="button"

@@ -62,6 +62,7 @@ export function useAdminKnowledgeWorkspace({
   const [inventoryTopicFilter, setInventoryTopicFilter] = useState("");
   const [inventorySearch, setInventorySearch] = useState("");
   const [inventoryPage, setInventoryPage] = useState(0);
+  const [inventoryPageSize, setInventoryPageSize] = useState<25 | 50 | 100>(50);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
   const [autoRefreshIntervalSec, setAutoRefreshIntervalSec] = useState<15 | 30 | 60>(30);
   const [jobs, setJobs] = useState<NonNullable<StatusResponse["recentJobs"]>>([]);
@@ -104,8 +105,8 @@ export function useAdminKnowledgeWorkspace({
 
     try {
       const statusUrl = new URL("/api/admin/rag/status", window.location.origin);
-      statusUrl.searchParams.set("limit", "50");
-      statusUrl.searchParams.set("offset", String(inventoryPage * 50));
+      statusUrl.searchParams.set("limit", String(inventoryPageSize));
+      statusUrl.searchParams.set("offset", String(inventoryPage * inventoryPageSize));
       statusUrl.searchParams.set("domain", inventoryDomainFilter);
       if (inventoryTopicFilter.trim().length > 0) {
         statusUrl.searchParams.set("topic", inventoryTopicFilter.trim());
@@ -141,7 +142,7 @@ export function useAdminKnowledgeWorkspace({
     } finally {
       setRefreshing(false);
     }
-  }, [inventoryDomainFilter, inventoryPage, inventorySearch, inventoryTopicFilter]);
+  }, [inventoryDomainFilter, inventoryPage, inventoryPageSize, inventorySearch, inventoryTopicFilter]);
 
   useEffect(() => {
     void refreshStatus();
@@ -149,7 +150,7 @@ export function useAdminKnowledgeWorkspace({
 
   useEffect(() => {
     setInventoryPage(0);
-  }, [inventoryDomainFilter, inventorySearch, inventoryTopicFilter]);
+  }, [inventoryDomainFilter, inventoryPageSize, inventorySearch, inventoryTopicFilter]);
 
   useEffect(() => {
     if (!autoRefreshEnabled) return;
@@ -266,6 +267,7 @@ export function useAdminKnowledgeWorkspace({
       inventoryTopicFilter,
       inventorySearch,
       inventoryPage,
+      inventoryPageSize,
       autoRefreshEnabled,
       autoRefreshIntervalSec,
       filteredDocuments,
@@ -288,6 +290,7 @@ export function useAdminKnowledgeWorkspace({
       setInventoryTopicFilter,
       setInventorySearch,
       setInventoryPage,
+      setInventoryPageSize,
       setAutoRefreshEnabled,
       setAutoRefreshIntervalSec,
       refreshStatus,
