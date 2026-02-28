@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       .from("rag_documents")
       .select("id, title, category, created_at, doc_metadata")
       .order("created_at", { ascending: false })
-      .limit(5),
+      .limit(50),
     listRecentAdminIngestJobs(8),
   ]);
 

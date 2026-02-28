@@ -230,12 +230,26 @@ export function AdminHardwarePanel({
 
 export function AdminInventoryPanel({
   documents,
+  totalDocuments,
+  domainFilter,
+  topicFilter,
+  search,
   selectedDocument,
+  onDomainFilterChange,
+  onTopicFilterChange,
+  onSearchChange,
   onSelectDocument,
   onDeleteDocument,
 }: {
   documents: AdminDocumentRecord[];
+  totalDocuments: number;
+  domainFilter: "all" | "fiscal" | "laboral" | "mercado";
+  topicFilter: string;
+  search: string;
   selectedDocument: AdminDocumentRecord | null;
+  onDomainFilterChange: (value: "all" | "fiscal" | "laboral" | "mercado") => void;
+  onTopicFilterChange: (value: string) => void;
+  onSearchChange: (value: string) => void;
   onSelectDocument: (documentId: string) => void;
   onDeleteDocument: (documentId: string) => void;
 }) {
@@ -246,13 +260,37 @@ export function AdminInventoryPanel({
           <h2 className="advisor-heading text-2xl text-[#162944]">Inventario indexado</h2>
           <p className="mt-1 text-sm text-[#3a4f67]">Ultimos documentos disponibles para retrieval y verificacion.</p>
         </div>
-        <span className="advisor-chip">Metadata visible</span>
+        <span className="advisor-chip">{documents.length}/{totalDocuments} visible(s)</span>
       </div>
 
       <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="min-h-0 overflow-y-auto pr-1">
+          <div className="mb-3 grid gap-3">
+            <select
+              className="advisor-input"
+              value={domainFilter}
+              onChange={(event) => onDomainFilterChange(event.target.value as "all" | "fiscal" | "laboral" | "mercado")}
+            >
+              <option value="all">Todos los dominios</option>
+              <option value="fiscal">Fiscal</option>
+              <option value="laboral">Laboral</option>
+              <option value="mercado">Mercado</option>
+            </select>
+            <input
+              className="advisor-input"
+              value={topicFilter}
+              onChange={(event) => onTopicFilterChange(event.target.value)}
+              placeholder="Filtrar por topic"
+            />
+            <input
+              className="advisor-input"
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="Buscar por titulo, notebook o reason_for_fit"
+            />
+          </div>
           {documents.length === 0 ? (
-            <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">No hay documentos disponibles.</div>
+            <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">No hay documentos que coincidan con los filtros actuales.</div>
           ) : (
             <div className="space-y-3">
               {documents.map((document) => {

@@ -46,8 +46,15 @@ export function AdminKnowledgeWorkspace({
           benchmark={state.hardware?.benchmark}
         />
         <AdminInventoryPanel
-          documents={state.documents}
+          documents={state.filteredDocuments}
+          totalDocuments={state.documents.length}
+          domainFilter={state.inventoryDomainFilter}
+          topicFilter={state.inventoryTopicFilter}
+          search={state.inventorySearch}
           selectedDocument={state.selectedDocument}
+          onDomainFilterChange={actions.setInventoryDomainFilter}
+          onTopicFilterChange={actions.setInventoryTopicFilter}
+          onSearchChange={actions.setInventorySearch}
           onSelectDocument={actions.setSelectedDocumentId}
           onDeleteDocument={(documentId) => void actions.deleteDocument(documentId)}
         />

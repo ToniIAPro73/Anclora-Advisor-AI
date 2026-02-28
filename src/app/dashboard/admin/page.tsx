@@ -21,7 +21,7 @@ export default async function DashboardAdminPage() {
         .from("rag_documents")
         .select("id, title, category, created_at, doc_metadata")
         .order("created_at", { ascending: false })
-        .limit(12),
+        .limit(50),
     ]);
 
   return (

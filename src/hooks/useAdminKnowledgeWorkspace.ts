@@ -27,6 +27,14 @@ export const NOTEBOOK_PRESETS: Record<string, NotebookPreset> = {
   },
 };
 
+function inferDocumentDomain(document: AdminDocumentRecord): "fiscal" | "laboral" | "mercado" | "unknown" {
+  const notebookTitle = document.doc_metadata?.notebook_title?.toLowerCase() ?? "";
+  if (notebookTitle.includes("fiscal")) return "fiscal";
+  if (notebookTitle.includes("riesgo_laboral") || notebookTitle.includes("laboral")) return "laboral";
+  if (notebookTitle.includes("marca_posicionamiento") || notebookTitle.includes("mercado")) return "mercado";
+  return "unknown";
+}
+
 export function useAdminKnowledgeWorkspace({
   initialDocuments,
   initialDocumentCount,
@@ -49,15 +57,41 @@ export function useAdminKnowledgeWorkspace({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(initialDocuments[0]?.id ?? null);
+  const [inventoryDomainFilter, setInventoryDomainFilter] = useState<"all" | "fiscal" | "laboral" | "mercado">("all");
+  const [inventoryTopicFilter, setInventoryTopicFilter] = useState("");
+  const [inventorySearch, setInventorySearch] = useState("");
   const [jobs, setJobs] = useState<NonNullable<StatusResponse["recentJobs"]>>([]);
   const [traceSummary, setTraceSummary] = useState<ObservabilityResponse["summary"]>();
   const [traces, setTraces] = useState<NonNullable<ObservabilityResponse["traces"]>>([]);
   const [hardware, setHardware] = useState<ObservabilityResponse["hardware"]>();
 
   const notebookPreset = useMemo(() => NOTEBOOK_PRESETS[domain], [domain]);
+  const filteredDocuments = useMemo(() => {
+    const topicQuery = inventoryTopicFilter.trim().toLowerCase();
+    const searchQuery = inventorySearch.trim().toLowerCase();
+
+    return documents.filter((document) => {
+      const domainMatch =
+        inventoryDomainFilter === "all" ? true : inferDocumentDomain(document) === inventoryDomainFilter;
+      const topicValue = document.doc_metadata?.topic?.toLowerCase() ?? "";
+      const notebookValue = document.doc_metadata?.notebook_title?.toLowerCase() ?? "";
+      const titleValue = document.title.toLowerCase();
+      const reasonValue = document.doc_metadata?.reason_for_fit?.toLowerCase() ?? "";
+      const topicMatch = topicQuery.length === 0 ? true : topicValue.includes(topicQuery);
+      const searchMatch =
+        searchQuery.length === 0
+          ? true
+          : titleValue.includes(searchQuery) ||
+            notebookValue.includes(searchQuery) ||
+            topicValue.includes(searchQuery) ||
+            reasonValue.includes(searchQuery);
+
+      return domainMatch && topicMatch && searchMatch;
+    });
+  }, [documents, inventoryDomainFilter, inventorySearch, inventoryTopicFilter]);
   const selectedDocument = useMemo(
-    () => documents.find((document) => document.id === selectedDocumentId) ?? documents[0] ?? null,
-    [documents, selectedDocumentId]
+    () => filteredDocuments.find((document) => document.id === selectedDocumentId) ?? filteredDocuments[0] ?? null,
+    [filteredDocuments, selectedDocumentId]
   );
 
   const refreshStatus = useCallback(async (): Promise<void> => {
@@ -197,6 +231,10 @@ export function useAdminKnowledgeWorkspace({
       refreshing,
       message,
       error,
+      inventoryDomainFilter,
+      inventoryTopicFilter,
+      inventorySearch,
+      filteredDocuments,
       selectedDocumentId,
       selectedDocument,
       jobs,
@@ -212,6 +250,9 @@ export function useAdminKnowledgeWorkspace({
       setReasonForFit,
       setContent,
       setSelectedDocumentId,
+      setInventoryDomainFilter,
+      setInventoryTopicFilter,
+      setInventorySearch,
       refreshStatus,
       submitIngest,
       deleteDocument,
