@@ -18,6 +18,8 @@
     "admin:jobs:apply": "tsx scripts/apply-admin-ingest-jobs.ts",
     "labor:workflow:apply": "tsx scripts/apply-labor-mitigation-workflow.ts",
     "invoice:workflow:apply": "tsx scripts/apply-invoice-series-delivery.ts",
+    "ops:apply": "tsx scripts/apply-operations-outbox-jobs.ts",
+    "ops:process": "tsx scripts/process-app-jobs.ts",
     "rag:metadata:apply": "tsx scripts/apply-rag-document-metadata.ts",
     "rag:metadata:backfill": "tsx scripts/backfill-rag-metadata.ts",
     "rag:eval": "tsx scripts/eval-rag.ts",

@@ -4,10 +4,10 @@ import { z } from "zod";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { validateAccessToken } from "@/lib/auth/token";
 import type { InvoiceRecord } from "@/lib/invoices/contracts";
-import { deliverInvoiceByEmail } from "@/lib/invoices/delivery";
-import { INVOICE_SELECT_FIELDS } from "@/lib/invoices/service";
+import { buildInvoiceReference, INVOICE_SELECT_FIELDS } from "@/lib/invoices/service";
 import { resolveLocale, t } from "@/lib/i18n/messages";
-import { createSmtpEmailSender, isSmtpConfigured } from "@/lib/notifications/smtp";
+import { createAppJob, createEmailOutboxEntry, updateAppJobPayload } from "@/lib/operations/jobs";
+import { isSmtpConfigured } from "@/lib/notifications/smtp";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
@@ -19,15 +19,15 @@ async function getAuthenticatedContext() {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!accessToken) {
-    return { accessToken: null, error: "Missing session token" };
+    return { accessToken: null, userId: null, error: "Missing session token" };
   }
 
   const { user, error } = await validateAccessToken(accessToken);
   if (!user || error) {
-    return { accessToken: null, error: error ?? "Invalid session token" };
+    return { accessToken: null, userId: null, error: error ?? "Invalid session token" };
   }
 
-  return { accessToken, error: null };
+  return { accessToken, userId: user.id, error: null };
 }
 
 type RouteContext = {
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const locale = resolveLocale(request.headers.get("accept-language"));
   const auth = await getAuthenticatedContext();
 
-  if (!auth.accessToken) {
+  if (!auth.accessToken || !auth.userId) {
     log("warn", "api_invoice_send_auth_failed", requestId, { reason: auth.error ?? "unauthorized" });
     const response = NextResponse.json(
       { success: false, error: t(locale, "api.invoices.invalid_session") },
@@ -88,59 +88,61 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   const currentInvoice = currentData as unknown as InvoiceRecord;
+  const subject = `Factura ${buildInvoiceReference(currentInvoice.series, currentInvoice.invoice_number)} - ${currentInvoice.client_name}`;
 
-  let delivery;
   try {
-    delivery = await deliverInvoiceByEmail({
-      invoice: currentInvoice,
-      recipientEmail: payload.data.recipientEmail,
-      emailSender: createSmtpEmailSender(),
+    const job = await createAppJob({
+      userId: auth.userId,
+      jobKind: "invoice_email_delivery",
+      payload: {
+        invoiceId,
+        recipientEmail: payload.data.recipientEmail,
+      },
+      maxAttempts: 3,
     });
-  } catch (deliveryError) {
-    log("error", "api_invoice_send_delivery_failed", requestId, {
+
+    const outbox = await createEmailOutboxEntry({
+      userId: auth.userId,
+      appJobId: job.id,
       invoiceId,
-      error: deliveryError instanceof Error ? deliveryError.message : "unknown",
+      recipientEmail: payload.data.recipientEmail,
+      subject,
+    });
+
+    await updateAppJobPayload(job.id, {
+      invoiceId,
+      recipientEmail: payload.data.recipientEmail,
+      outboxId: outbox.id,
+    });
+
+    const response = NextResponse.json({
+      success: true,
+      invoice: currentInvoice,
+      delivery: {
+        jobId: job.id,
+        outboxId: outbox.id,
+        status: "queued",
+        mode: "queue",
+      },
+    });
+    response.headers.set("x-request-id", requestId);
+    log("info", "api_invoice_send_enqueued", requestId, {
+      invoiceId,
+      recipientEmail: payload.data.recipientEmail,
+      jobId: job.id,
+      outboxId: outbox.id,
+    });
+    return response;
+  } catch (queueError) {
+    log("error", "api_invoice_send_enqueue_failed", requestId, {
+      invoiceId,
+      error: queueError instanceof Error ? queueError.message : "unknown",
     });
     const response = NextResponse.json(
-      { success: false, error: "SMTP_DELIVERY_FAILED" },
-      { status: 502 }
-    );
-    response.headers.set("x-request-id", requestId);
-    return response;
-  }
-
-  const { data, error } = await supabase
-    .from("invoices")
-    .update({
-      recipient_email: payload.data.recipientEmail,
-      sent_at: new Date().toISOString(),
-      status: currentInvoice.status === "draft" ? "issued" : currentInvoice.status,
-    })
-    .eq("id", invoiceId)
-    .select(INVOICE_SELECT_FIELDS)
-    .single();
-
-  if (error || !data) {
-    log("error", "api_invoice_send_failed", requestId, { invoiceId, error: error?.message ?? "not_found" });
-    const response = NextResponse.json(
-      { success: false, error: t(locale, "api.invoices.db_error") },
+      { success: false, error: "QUEUE_ENQUEUE_FAILED" },
       { status: 500 }
     );
     response.headers.set("x-request-id", requestId);
     return response;
   }
-
-  const invoiceRecord = data as unknown as InvoiceRecord;
-  const response = NextResponse.json({
-    success: true,
-    invoice: invoiceRecord,
-    delivery: {
-      messageId: delivery.messageId,
-      attachmentFilename: delivery.attachmentFilename,
-      mode: "smtp",
-    },
-  });
-  response.headers.set("x-request-id", requestId);
-  log("info", "api_invoice_send_succeeded", requestId, { invoiceId, recipientEmail: payload.data.recipientEmail });
-  return response;
 }

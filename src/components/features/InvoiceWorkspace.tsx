@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   invoiceStatusValues,
   type InvoiceRecord,
@@ -30,10 +30,27 @@ type SendInvoiceResponse = {
   error?: string;
   invoice?: InvoiceRecord;
   delivery?: {
-    messageId: string;
-    attachmentFilename: string;
-    mode: "smtp";
+    jobId: string;
+    outboxId: string;
+    status: "queued";
+    mode: "queue";
   };
+};
+
+type OperationJobRecord = {
+  id: string;
+  job_kind: string;
+  status: string;
+  created_at: string;
+  error_message: string | null;
+};
+
+type EmailOutboxRecord = {
+  id: string;
+  status: string;
+  recipient_email: string;
+  sent_at: string | null;
+  created_at: string;
 };
 
 const TODAY = new Date().toISOString().slice(0, 10);
@@ -100,8 +117,11 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
   const [filterStatus, setFilterStatus] = useState<InvoiceFilterStatus>("all");
   const [submitting, setSubmitting] = useState(false);
   const [updatingInvoiceId, setUpdatingInvoiceId] = useState<string | null>(null);
+  const [processingQueue, setProcessingQueue] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [okMessage, setOkMessage] = useState<string | null>(null);
+  const [operationJobs, setOperationJobs] = useState<OperationJobRecord[]>([]);
+  const [emailOutbox, setEmailOutbox] = useState<EmailOutboxRecord[]>([]);
 
   const previewTotal = useMemo(() => {
     const base = toNumber(form.amountBase);
@@ -124,6 +144,33 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
     () => invoices.reduce((sum, invoice) => sum + Number(invoice.total_amount), 0),
     [invoices]
   );
+
+  const queuedDeliveries = useMemo(() => emailOutbox.filter((item) => item.status === "queued").length, [emailOutbox]);
+
+  async function refreshOperations() {
+    try {
+      const response = await fetch("/api/operations/jobs", { cache: "no-store" });
+      const result = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        jobs?: OperationJobRecord[];
+        emailOutbox?: EmailOutboxRecord[];
+      };
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error ?? "No se pudo cargar la cola operativa");
+      }
+
+      setOperationJobs(result.jobs ?? []);
+      setEmailOutbox(result.emailOutbox ?? []);
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : "Error al cargar la cola operativa");
+    }
+  }
+
+  useEffect(() => {
+    void refreshOperations();
+  }, []);
 
   function resetForm() {
     setForm(INITIAL_FORM);
@@ -275,11 +322,48 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
       }
 
       upsertInvoice(result.invoice);
-      setOkMessage(`Factura enviada por SMTP. Message-ID: ${result.delivery.messageId}`);
+      await refreshOperations();
+      setOkMessage(`Factura encolada para envio. Job ${result.delivery.jobId}.`);
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Error al preparar el envio");
     } finally {
       setUpdatingInvoiceId(null);
+    }
+  }
+
+  async function handleProcessQueue() {
+    setProcessingQueue(true);
+    setError(null);
+    setOkMessage(null);
+
+    try {
+      const response = await fetch("/api/operations/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 10 }),
+      });
+      const result = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        result?: {
+          claimed: number;
+          completed: number;
+          failed: number;
+        };
+      };
+
+      if (!response.ok || !result.success || !result.result) {
+        throw new Error(result.error ?? "No se pudo procesar la cola");
+      }
+
+      await Promise.all([refreshOperations()]);
+      setOkMessage(
+        `Cola procesada: ${result.result.claimed} job(s), ${result.result.completed} completado(s), ${result.result.failed} fallido(s).`
+      );
+    } catch (processError) {
+      setError(processError instanceof Error ? processError.message : "Error al procesar la cola");
+    } finally {
+      setProcessingQueue(false);
     }
   }
 
@@ -442,6 +526,38 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
               <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Volumen total</p>
               <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(totalVolume)}</p>
               <p className="mt-1 text-sm text-[#3a4f67]">Suma de importes totales del historial visible.</p>
+            </div>
+          </div>
+          <div className="mt-4 rounded-2xl border border-[#d2dceb] bg-white p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Cola operativa</p>
+                <p className="mt-1 text-sm text-[#162944]">{queuedDeliveries} envio(s) pendiente(s)</p>
+              </div>
+              <button
+                type="button"
+                disabled={processingQueue}
+                className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
+                onClick={() => void handleProcessQueue()}
+              >
+                {processingQueue ? "Procesando..." : "Procesar cola"}
+              </button>
+            </div>
+            <div className="mt-3 space-y-2">
+              {operationJobs.slice(0, 3).map((job) => (
+                <div key={job.id} className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-2 text-xs text-[#3a4f67]">
+                  <p>
+                    <strong>{job.job_kind}</strong> · {job.status}
+                  </p>
+                  <p className="mt-1">{formatDate(job.created_at)}</p>
+                  {job.error_message && <p className="mt-1 text-red-700">{job.error_message}</p>}
+                </div>
+              ))}
+              {operationJobs.length === 0 && (
+                <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-2 text-xs text-[#3a4f67]">
+                  Sin jobs operativos registrados.
+                </div>
+              )}
             </div>
           </div>
         </article>
