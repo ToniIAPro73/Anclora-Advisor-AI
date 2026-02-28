@@ -12,6 +12,9 @@ const ES: MessageDict = {
   "api.fiscal_alerts.invalid_session": "Token de sesión inválido",
   "api.fiscal_alerts.invalid_payload": "Payload de alerta fiscal inválido",
   "api.fiscal_alerts.db_error": "Error de base de datos al procesar alertas fiscales",
+  "api.labor_assessments.invalid_session": "Token de sesión inválido",
+  "api.labor_assessments.invalid_payload": "Payload de evaluacion laboral inválido",
+  "api.labor_assessments.db_error": "Error de base de datos al procesar evaluaciones laborales",
 };
 
 const EN: MessageDict = {
@@ -24,6 +27,9 @@ const EN: MessageDict = {
   "api.fiscal_alerts.invalid_session": "Invalid session token",
   "api.fiscal_alerts.invalid_payload": "Invalid fiscal alert payload",
   "api.fiscal_alerts.db_error": "Database error while processing fiscal alerts",
+  "api.labor_assessments.invalid_session": "Invalid session token",
+  "api.labor_assessments.invalid_payload": "Invalid labor assessment payload",
+  "api.labor_assessments.db_error": "Database error while processing labor assessments",
 };
 
 export const I18N_MESSAGES: Record<LocaleCode, MessageDict> = {
