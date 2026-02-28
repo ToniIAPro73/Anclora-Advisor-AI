@@ -51,14 +51,16 @@ export function AdminKnowledgeWorkspace({
         />
         <AdminInventoryPanel
           documents={state.filteredDocuments}
-          totalDocuments={state.documents.length}
+          totalDocuments={state.filteredDocumentCount}
           domainFilter={state.inventoryDomainFilter}
           topicFilter={state.inventoryTopicFilter}
           search={state.inventorySearch}
+          page={state.inventoryPage}
           selectedDocument={state.selectedDocument}
           onDomainFilterChange={actions.setInventoryDomainFilter}
           onTopicFilterChange={actions.setInventoryTopicFilter}
           onSearchChange={actions.setInventorySearch}
+          onPageChange={actions.setInventoryPage}
           onSelectDocument={actions.setSelectedDocumentId}
           onDeleteDocument={(documentId) => void actions.deleteDocument(documentId)}
         />

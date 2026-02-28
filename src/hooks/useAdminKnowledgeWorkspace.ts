@@ -46,6 +46,7 @@ export function useAdminKnowledgeWorkspace({
 }) {
   const [documents, setDocuments] = useState<AdminDocumentRecord[]>(initialDocuments);
   const [documentCount, setDocumentCount] = useState(initialDocumentCount);
+  const [filteredDocumentCount, setFilteredDocumentCount] = useState(initialDocuments.length);
   const [chunkCount, setChunkCount] = useState(initialChunkCount);
   const [domain, setDomain] = useState<"fiscal" | "laboral" | "mercado">("fiscal");
   const [title, setTitle] = useState("");
@@ -60,6 +61,7 @@ export function useAdminKnowledgeWorkspace({
   const [inventoryDomainFilter, setInventoryDomainFilter] = useState<"all" | "fiscal" | "laboral" | "mercado">("all");
   const [inventoryTopicFilter, setInventoryTopicFilter] = useState("");
   const [inventorySearch, setInventorySearch] = useState("");
+  const [inventoryPage, setInventoryPage] = useState(0);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
   const [autoRefreshIntervalSec, setAutoRefreshIntervalSec] = useState<15 | 30 | 60>(30);
   const [jobs, setJobs] = useState<NonNullable<StatusResponse["recentJobs"]>>([]);
@@ -103,6 +105,7 @@ export function useAdminKnowledgeWorkspace({
     try {
       const statusUrl = new URL("/api/admin/rag/status", window.location.origin);
       statusUrl.searchParams.set("limit", "50");
+      statusUrl.searchParams.set("offset", String(inventoryPage * 50));
       statusUrl.searchParams.set("domain", inventoryDomainFilter);
       if (inventoryTopicFilter.trim().length > 0) {
         statusUrl.searchParams.set("topic", inventoryTopicFilter.trim());
@@ -126,6 +129,7 @@ export function useAdminKnowledgeWorkspace({
 
       setDocuments(statusResult.recentDocuments ?? []);
       setDocumentCount(statusResult.counts.documents ?? 0);
+      setFilteredDocumentCount(statusResult.counts.filteredDocuments ?? statusResult.recentDocuments?.length ?? 0);
       setChunkCount(statusResult.counts.chunks ?? 0);
       setJobs(statusResult.recentJobs ?? []);
       setTraceSummary(observabilityResult.summary);
@@ -137,11 +141,15 @@ export function useAdminKnowledgeWorkspace({
     } finally {
       setRefreshing(false);
     }
-  }, [inventoryDomainFilter, inventorySearch, inventoryTopicFilter]);
+  }, [inventoryDomainFilter, inventoryPage, inventorySearch, inventoryTopicFilter]);
 
   useEffect(() => {
     void refreshStatus();
   }, [refreshStatus]);
+
+  useEffect(() => {
+    setInventoryPage(0);
+  }, [inventoryDomainFilter, inventorySearch, inventoryTopicFilter]);
 
   useEffect(() => {
     if (!autoRefreshEnabled) return;
@@ -243,6 +251,7 @@ export function useAdminKnowledgeWorkspace({
     state: {
       documents,
       documentCount,
+      filteredDocumentCount,
       chunkCount,
       domain,
       title,
@@ -256,6 +265,7 @@ export function useAdminKnowledgeWorkspace({
       inventoryDomainFilter,
       inventoryTopicFilter,
       inventorySearch,
+      inventoryPage,
       autoRefreshEnabled,
       autoRefreshIntervalSec,
       filteredDocuments,
@@ -277,6 +287,7 @@ export function useAdminKnowledgeWorkspace({
       setInventoryDomainFilter,
       setInventoryTopicFilter,
       setInventorySearch,
+      setInventoryPage,
       setAutoRefreshEnabled,
       setAutoRefreshIntervalSec,
       refreshStatus,

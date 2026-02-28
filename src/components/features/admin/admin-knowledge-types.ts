@@ -32,12 +32,14 @@ export interface StatusResponse {
   counts: {
     documents: number;
     chunks: number;
+    filteredDocuments?: number;
   };
   filters?: {
     domain: string;
     topic: string;
     query: string;
     limit: number;
+    offset: number;
   };
   recentDocuments: AdminDocumentRecord[];
   recentJobs?: AdminIngestJobRecord[];

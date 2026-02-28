@@ -262,10 +262,12 @@ export function AdminInventoryPanel({
   domainFilter,
   topicFilter,
   search,
+  page,
   selectedDocument,
   onDomainFilterChange,
   onTopicFilterChange,
   onSearchChange,
+  onPageChange,
   onSelectDocument,
   onDeleteDocument,
 }: {
@@ -274,13 +276,21 @@ export function AdminInventoryPanel({
   domainFilter: "all" | "fiscal" | "laboral" | "mercado";
   topicFilter: string;
   search: string;
+  page: number;
   selectedDocument: AdminDocumentRecord | null;
   onDomainFilterChange: (value: "all" | "fiscal" | "laboral" | "mercado") => void;
   onTopicFilterChange: (value: string) => void;
   onSearchChange: (value: string) => void;
+  onPageChange: (page: number) => void;
   onSelectDocument: (documentId: string) => void;
   onDeleteDocument: (documentId: string) => void;
 }) {
+  const pageSize = 50;
+  const currentStart = totalDocuments === 0 ? 0 : page * pageSize + 1;
+  const currentEnd = totalDocuments === 0 ? 0 : page * pageSize + documents.length;
+  const canGoPrev = page > 0;
+  const canGoNext = documents.length === pageSize && currentEnd < totalDocuments;
+
   return (
     <article className="advisor-card min-h-0 flex-1 overflow-hidden">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#d2dceb] px-5 py-4">
@@ -288,7 +298,9 @@ export function AdminInventoryPanel({
           <h2 className="advisor-heading text-2xl text-[#162944]">Inventario indexado</h2>
           <p className="mt-1 text-sm text-[#3a4f67]">Ultimos documentos disponibles para retrieval y verificacion.</p>
         </div>
-        <span className="advisor-chip">{documents.length}/{totalDocuments} visible(s)</span>
+        <span className="advisor-chip">
+          {currentStart}-{currentEnd} / {totalDocuments}
+        </span>
       </div>
 
       <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[1.05fr_0.95fr]">
@@ -316,6 +328,25 @@ export function AdminInventoryPanel({
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Buscar por titulo, notebook o reason_for_fit"
             />
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                className="rounded-xl border border-[#d2dceb] bg-white px-3 py-2 text-xs font-semibold text-[#162944] disabled:opacity-50"
+                disabled={!canGoPrev}
+                onClick={() => onPageChange(page - 1)}
+              >
+                Anterior
+              </button>
+              <span className="text-xs font-semibold text-[#3a4f67]">Pagina {page + 1}</span>
+              <button
+                type="button"
+                className="rounded-xl border border-[#d2dceb] bg-white px-3 py-2 text-xs font-semibold text-[#162944] disabled:opacity-50"
+                disabled={!canGoNext}
+                onClick={() => onPageChange(page + 1)}
+              >
+                Siguiente
+              </button>
+            </div>
           </div>
           {documents.length === 0 ? (
             <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">No hay documentos que coincidan con los filtros actuales.</div>
