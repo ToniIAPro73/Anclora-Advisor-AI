@@ -118,6 +118,12 @@ export interface ObservabilityResponse {
     baseline?: HardwareBaselineSummary | null;
     benchmark?: HardwareBenchmarkSummary | null;
   };
+  cron?: {
+    configured: boolean;
+    secret_source: "APP_JOBS_CRON_SECRET" | "CRON_SECRET" | "missing";
+    schedule: string | null;
+    path: string | null;
+  };
   error?: string;
 }
 

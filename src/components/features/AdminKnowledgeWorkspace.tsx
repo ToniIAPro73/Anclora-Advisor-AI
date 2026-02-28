@@ -52,6 +52,7 @@ export function AdminKnowledgeWorkspace({
           runtimeGate={state.hardware?.runtimeGate}
           baseline={state.hardware?.baseline}
           benchmark={state.hardware?.benchmark}
+          cron={state.cron}
         />
         <AuditTimeline title="Auditoria admin RAG" logs={state.auditLogs} />
         <AdminInventoryPanel

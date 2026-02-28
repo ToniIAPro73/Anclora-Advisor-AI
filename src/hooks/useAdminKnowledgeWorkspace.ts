@@ -73,6 +73,7 @@ export function useAdminKnowledgeWorkspace({
   const [traceSummary, setTraceSummary] = useState<ObservabilityResponse["summary"]>();
   const [traces, setTraces] = useState<NonNullable<ObservabilityResponse["traces"]>>([]);
   const [hardware, setHardware] = useState<ObservabilityResponse["hardware"]>();
+  const [cron, setCron] = useState<ObservabilityResponse["cron"]>();
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
 
   const notebookPreset = useMemo(() => NOTEBOOK_PRESETS[domain], [domain]);
@@ -146,6 +147,7 @@ export function useAdminKnowledgeWorkspace({
       setTraceSummary(observabilityResult.summary);
       setTraces(observabilityResult.traces ?? []);
       setHardware(observabilityResult.hardware);
+      setCron(observabilityResult.cron);
       setAuditLogs(auditResult.logs ?? []);
       setSelectedDocumentId((current) => current ?? statusResult.recentDocuments?.[0]?.id ?? null);
     } catch (refreshError) {
@@ -288,6 +290,7 @@ export function useAdminKnowledgeWorkspace({
       traceSummary,
       traces,
       hardware,
+      cron,
       auditLogs,
       notebookPreset,
     },

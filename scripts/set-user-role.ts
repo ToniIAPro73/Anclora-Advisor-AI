@@ -91,7 +91,24 @@ async function main(): Promise<void> {
       result = bootstrapResult;
     }
 
-    console.log(JSON.stringify(result.rows[0], null, 2));
+    const row = result.rows[0];
+    await client.query(
+      `
+      INSERT INTO public.app_audit_logs (user_id, domain, entity_type, entity_id, action, summary, metadata)
+      VALUES ($1, 'admin_rag', 'app_user_role', $1, 'role_changed', $2, $3::jsonb)
+      `,
+      [
+        row.id,
+        `Rol actualizado a ${row.role} para ${row.email}`,
+        JSON.stringify({
+          role: row.role,
+          email: row.email,
+          changed_via: "rbac:set-role",
+        }),
+      ]
+    );
+
+    console.log(JSON.stringify(row, null, 2));
   } finally {
     await client.end();
   }

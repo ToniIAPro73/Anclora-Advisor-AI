@@ -39,6 +39,13 @@ type HardwareBenchmarkReport = {
   }>;
 };
 
+type CronStatus = {
+  configured: boolean;
+  secret_source: "APP_JOBS_CRON_SECRET" | "CRON_SECRET" | "missing";
+  schedule: string | null;
+  path: string | null;
+};
+
 async function readJsonFile<T>(filePath: string): Promise<T | null> {
   try {
     const raw = await fs.readFile(filePath, "utf8");
@@ -63,6 +70,9 @@ export async function GET(request: NextRequest) {
   }
 
   const artifactsDir = path.join(process.cwd(), "artifacts");
+  const vercelConfig = await readJsonFile<{ crons?: Array<{ path: string; schedule: string }> }>(
+    path.join(process.cwd(), "vercel.json")
+  );
   const [hardwareGate, ollamaBaseline, hardwareBenchmark] = await Promise.all([
     readJsonFile<HardwareRuntimeGate>(path.join(artifactsDir, "hardware_runtime_gate.json")),
     readJsonFile<OllamaBaselineReport>(path.join(artifactsDir, "ollama_baseline_report.json")),
@@ -78,6 +88,16 @@ export async function GET(request: NextRequest) {
       baseline: ollamaBaseline,
       benchmark: hardwareBenchmark,
     },
+    cron: {
+      configured: Boolean(process.env.APP_JOBS_CRON_SECRET || process.env.CRON_SECRET),
+      secret_source: process.env.APP_JOBS_CRON_SECRET
+        ? "APP_JOBS_CRON_SECRET"
+        : process.env.CRON_SECRET
+          ? "CRON_SECRET"
+          : "missing",
+      schedule: vercelConfig?.crons?.[0]?.schedule ?? null,
+      path: vercelConfig?.crons?.[0]?.path ?? null,
+    } satisfies CronStatus,
   });
   response.headers.set("x-request-id", requestId);
   return response;

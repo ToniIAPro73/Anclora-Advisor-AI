@@ -199,10 +199,12 @@ export function AdminHardwarePanel({
   runtimeGate,
   baseline,
   benchmark,
+  cron,
 }: {
   runtimeGate?: HardwareRuntimeGateSummary | null;
   baseline?: HardwareBaselineSummary | null;
   benchmark?: HardwareBenchmarkSummary | null;
+  cron?: ObservabilityResponse["cron"];
 }) {
   return (
     <article className="advisor-card shrink-0 p-6">
@@ -216,7 +218,7 @@ export function AdminHardwarePanel({
         <span className="advisor-chip">{benchmark?.comparison_mode ?? "sin datos"}</span>
       </div>
 
-      <div className="mt-5 grid gap-3 xl:grid-cols-3">
+      <div className="mt-5 grid gap-3 xl:grid-cols-4">
         <div className="advisor-card-muted p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Runtime gate</p>
           <p className="mt-1 text-lg font-semibold text-[#162944]">{runtimeGate?.decision ?? "sin datos"}</p>
@@ -251,6 +253,16 @@ export function AdminHardwarePanel({
             ))}
             {(benchmark?.profiles ?? []).length === 0 && <p>Sin benchmark ejecutado.</p>}
           </div>
+        </div>
+
+        <div className="advisor-card-muted p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Cron queue</p>
+          <p className="mt-1 text-lg font-semibold text-[#162944]">
+            {cron?.configured ? "configurado" : "sin secreto"}
+          </p>
+          <p className="mt-2 text-sm text-[#3a4f67]">secret: {cron?.secret_source ?? "missing"}</p>
+          <p className="mt-1 text-xs text-[#3a4f67]">schedule: {cron?.schedule ?? "sin vercel.json"}</p>
+          <p className="mt-1 text-xs text-[#3a4f67]">path: {cron?.path ?? "sin path"}</p>
         </div>
       </div>
     </article>
