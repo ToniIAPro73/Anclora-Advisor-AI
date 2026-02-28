@@ -1,7 +1,9 @@
 import * as chatRoute from "../src/app/api/chat/route";
 import * as adminIngestRoute from "../src/app/api/admin/rag/ingest/route";
+import * as adminDocumentDeleteRoute from "../src/app/api/admin/rag/documents/[documentId]/route";
 import * as adminStatusRoute from "../src/app/api/admin/rag/status/route";
 import * as invoicesRoute from "../src/app/api/invoices/route";
+import { AdminKnowledgeWorkspace } from "../src/components/features/AdminKnowledgeWorkspace";
 import dashboardLayout from "../src/app/dashboard/layout";
 import dashboardAdminPage from "../src/app/dashboard/admin/page";
 import dashboardChatPage from "../src/app/dashboard/chat/page";
@@ -22,10 +24,12 @@ async function main(): Promise<void> {
 
   assert(typeof chatRoute.POST === "function", "POST /api/chat handler exported");
   assert(typeof adminIngestRoute.POST === "function", "POST /api/admin/rag/ingest handler exported");
+  assert(typeof adminDocumentDeleteRoute.DELETE === "function", "DELETE /api/admin/rag/documents/[documentId] handler exported");
   assert(typeof adminStatusRoute.GET === "function", "GET /api/admin/rag/status handler exported");
   assert(typeof invoicesRoute.GET === "function", "GET /api/invoices handler exported");
   assert(typeof invoicesRoute.POST === "function", "POST /api/invoices handler exported");
 
+  assert(typeof AdminKnowledgeWorkspace === "function", "admin knowledge workspace exported");
   assert(typeof dashboardLayout === "function", "dashboard layout component exported");
   assert(typeof dashboardAdminPage === "function", "dashboard admin page exported");
   assert(typeof dashboardChatPage === "function", "dashboard chat page exported");
