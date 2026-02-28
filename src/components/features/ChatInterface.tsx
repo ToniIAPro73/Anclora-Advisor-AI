@@ -11,7 +11,7 @@ interface ChatInterfaceProps {
 }
 
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({ userId, conversationId }) => {
-  const { messages, loading, error, sendMessage } = useChat(userId, conversationId);
+  const { messages, loading, error, sendMessageStreaming } = useChat(userId, conversationId);
   const [inputQuery, setInputQuery] = useState("");
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -19,7 +19,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ userId, conversati
     if (!inputQuery.trim() || loading) return;
 
     try {
-      await sendMessage(inputQuery);
+      await sendMessageStreaming(inputQuery);
       setInputQuery("");
     } catch (error) {
       console.error("Send message error:", error);
@@ -45,7 +45,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ userId, conversati
           <div className="flex justify-start mt-4">
             <div className="flex items-center gap-3 rounded-lg border border-[#d2dceb] bg-white p-4 shadow-sm">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1DAB89] border-t-transparent"></div>
-              <p className="text-sm font-medium text-[#3a4f67]">Analizando directrices y jurisprudencia...</p>
+              <p className="text-sm font-medium text-[#3a4f67]">Generando respuesta en streaming...</p>
             </div>
           </div>
         )}

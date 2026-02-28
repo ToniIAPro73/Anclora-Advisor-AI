@@ -68,8 +68,127 @@ interface ChatApiResponse {
   groundingConfidence?: "high" | "medium" | "low" | "none";
 }
 
+interface ChatStreamCompleteEvent extends ChatApiResponse {
+  performance?: Record<string, unknown>;
+}
+
 export function useChat(userId: string, conversationId: string) {
   const [state, setState] = useState<ChatState>({ messages: [], loading: false, error: null });
+
+  const sendMessageStreaming = useCallback(async (query: string) => {
+    if (!query.trim()) return;
+
+    const baseId = Date.now();
+    const userMessage: ChatMessage = {
+      id: `msg_${baseId}`,
+      role: "user",
+      content: query,
+      timestamp: new Date(),
+    };
+
+    const assistantId = `msg_assistant_${baseId}`;
+    const placeholderMessage: ChatMessage = {
+      id: assistantId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+      citations: [],
+      contexts: [],
+      alerts: [],
+    };
+
+    setState((prev) => ({
+      ...prev,
+      messages: [...prev.messages, userMessage, placeholderMessage],
+      loading: true,
+      error: null,
+    }));
+
+    try {
+      const response = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, conversationId, query }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error("No se pudo iniciar el streaming del chat.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      const updateAssistantMessage = (updater: (current: ChatMessage) => ChatMessage) => {
+        setState((prev) => ({
+          ...prev,
+          messages: prev.messages.map((message) =>
+            message.id === assistantId ? updater(message) : message
+          ),
+        }));
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop() ?? "";
+
+        for (const block of blocks) {
+          const lines = block.split("\n");
+          const eventLine = lines.find((line) => line.startsWith("event: "));
+          const dataLine = lines.find((line) => line.startsWith("data: "));
+          if (!eventLine || !dataLine) continue;
+
+          const event = eventLine.replace("event: ", "").trim();
+          const data = JSON.parse(dataLine.replace("data: ", "")) as
+            | { delta?: string; error?: string }
+            | ChatStreamCompleteEvent;
+
+          if (event === "chunk") {
+            const delta = "delta" in data ? data.delta ?? "" : "";
+            updateAssistantMessage((current) => ({
+              ...current,
+              content: `${current.content}${delta}`,
+            }));
+            continue;
+          }
+
+          if (event === "complete") {
+            const complete = data as ChatStreamCompleteEvent;
+            updateAssistantMessage((current) => ({
+              ...current,
+              content: complete.primarySpecialistResponse || current.content,
+              routing: complete.routing,
+              citations: complete.citations ?? [],
+              contexts: complete.contexts ?? [],
+              alerts: complete.alerts ?? [],
+              groundingConfidence: complete.groundingConfidence,
+            }));
+            continue;
+          }
+
+          if (event === "error") {
+            const message = "error" in data ? data.error ?? "Error de chat no controlado." : "Error de chat no controlado.";
+            throw new Error(message);
+          }
+        }
+      }
+
+      setState((prev) => ({ ...prev, loading: false, error: null }));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: errorMessage,
+        messages: prev.messages.filter((message) => message.id !== assistantId),
+      }));
+      throw error;
+    }
+  }, [userId, conversationId]);
 
   const sendMessage = useCallback(async (query: string) => {
     if (!query.trim()) return;
@@ -118,5 +237,12 @@ export function useChat(userId: string, conversationId: string) {
     setState({ messages: [], loading: false, error: null });
   }, []);
 
-  return { messages: state.messages, loading: state.loading, error: state.error, sendMessage, clearMessages };
+  return {
+    messages: state.messages,
+    loading: state.loading,
+    error: state.error,
+    sendMessage,
+    sendMessageStreaming,
+    clearMessages,
+  };
 }

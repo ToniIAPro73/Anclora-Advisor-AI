@@ -3,6 +3,7 @@ import * as adminIngestRoute from "../src/app/api/admin/rag/ingest/route";
 import * as adminDocumentDeleteRoute from "../src/app/api/admin/rag/documents/[documentId]/route";
 import * as adminObservabilityRagRoute from "../src/app/api/admin/observability/rag/route";
 import * as adminStatusRoute from "../src/app/api/admin/rag/status/route";
+import * as chatStreamRoute from "../src/app/api/chat/stream/route";
 import * as invoicesRoute from "../src/app/api/invoices/route";
 import { AdminKnowledgeWorkspace } from "../src/components/features/AdminKnowledgeWorkspace";
 import dashboardLayout from "../src/app/dashboard/layout";
@@ -24,6 +25,7 @@ async function main(): Promise<void> {
   console.log("=== Smoke Hardening Check ===");
 
   assert(typeof chatRoute.POST === "function", "POST /api/chat handler exported");
+  assert(typeof chatStreamRoute.POST === "function", "POST /api/chat/stream handler exported");
   assert(typeof adminIngestRoute.POST === "function", "POST /api/admin/rag/ingest handler exported");
   assert(typeof adminDocumentDeleteRoute.DELETE === "function", "DELETE /api/admin/rag/documents/[documentId] handler exported");
   assert(typeof adminObservabilityRagRoute.GET === "function", "GET /api/admin/observability/rag handler exported");
