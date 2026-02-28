@@ -19,6 +19,7 @@ import * as invoicesRoute from "../src/app/api/invoices/route";
 import * as invoiceDetailRoute from "../src/app/api/invoices/[invoiceId]/route";
 import * as invoicePdfRoute from "../src/app/api/invoices/[invoiceId]/pdf/route";
 import * as invoiceSendRoute from "../src/app/api/invoices/[invoiceId]/send/route";
+import * as internalJobsProcessRoute from "../src/app/api/internal/jobs/process/route";
 import * as operationsJobsRoute from "../src/app/api/operations/jobs/route";
 import { AdminKnowledgeWorkspace } from "../src/components/features/AdminKnowledgeWorkspace";
 import { ChatInterface } from "../src/components/features/ChatInterface";
@@ -76,6 +77,7 @@ async function main(): Promise<void> {
   assert(typeof invoiceDetailRoute.DELETE === "function", "DELETE /api/invoices/[invoiceId] handler exported");
   assert(typeof invoicePdfRoute.GET === "function", "GET /api/invoices/[invoiceId]/pdf handler exported");
   assert(typeof invoiceSendRoute.POST === "function", "POST /api/invoices/[invoiceId]/send handler exported");
+  assert(typeof internalJobsProcessRoute.POST === "function", "POST /api/internal/jobs/process handler exported");
   assert(typeof operationsJobsRoute.GET === "function", "GET /api/operations/jobs handler exported");
   assert(typeof operationsJobsRoute.POST === "function", "POST /api/operations/jobs handler exported");
 

@@ -127,6 +127,30 @@ export async function listRecentEmailOutboxForUser(userId: string, limit = 8): P
   return (data ?? []) as EmailOutboxRecord[];
 }
 
+export async function listUserIdsWithPendingJobs(limit = 100): Promise<string[]> {
+  const supabase = createServiceSupabaseClient();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("app_jobs")
+    .select("user_id")
+    .eq("status", "pending")
+    .lte("run_after", now)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return Array.from(
+    new Set(
+      (data ?? [])
+        .map((item) => (typeof item.user_id === "string" ? item.user_id : ""))
+        .filter(Boolean)
+    )
+  );
+}
+
 export async function claimPendingJobs(params: {
   userId: string;
   limit: number;

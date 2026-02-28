@@ -7,6 +7,7 @@ import {
   claimPendingJobs,
   completeAppJob,
   failAppJob,
+  listUserIdsWithPendingJobs,
   markEmailOutboxFailed,
   markEmailOutboxSent,
   type AppJobRecord,
@@ -149,6 +150,38 @@ export async function processPendingAppJobs(params: {
 
   return {
     claimed: claimedJobs.length,
+    completed,
+    failed,
+  };
+}
+
+export async function processPendingAppJobsForAllUsers(params?: {
+  userLimit?: number;
+  jobsPerUserLimit?: number;
+}): Promise<{
+  userCount: number;
+  claimed: number;
+  completed: number;
+  failed: number;
+}> {
+  const userIds = await listUserIdsWithPendingJobs(params?.userLimit ?? 100);
+  let claimed = 0;
+  let completed = 0;
+  let failed = 0;
+
+  for (const userId of userIds) {
+    const result = await processPendingAppJobs({
+      userId,
+      limit: params?.jobsPerUserLimit ?? 25,
+    });
+    claimed += result.claimed;
+    completed += result.completed;
+    failed += result.failed;
+  }
+
+  return {
+    userCount: userIds.length,
+    claimed,
     completed,
     failed,
   };
