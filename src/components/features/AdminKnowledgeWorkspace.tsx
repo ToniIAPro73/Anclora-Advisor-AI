@@ -44,6 +44,39 @@ interface StatusResponse {
   error?: string;
 }
 
+interface ObservabilityResponse {
+  success: boolean;
+  summary?: {
+    total: number;
+    successRate: number;
+    avgTotalMs: number;
+    avgRetrievalMs: number;
+    avgLlmMs: number;
+    lowEvidenceRate: number;
+    failedCount: number;
+  };
+  traces?: Array<{
+    requestId: string;
+    timestamp: string;
+    success: boolean;
+    queryLength: number;
+    primarySpecialist: string | null;
+    groundingConfidence: "high" | "medium" | "low" | "none" | null;
+    citations: number;
+    alerts: number;
+    error: string | null;
+    performance: {
+      total_ms: number;
+      retrieval_ms: number;
+      llm_ms: number;
+      llm_path: string;
+      llm_model_used: string;
+      tool_used: string | null;
+    } | null;
+  }>;
+  error?: string;
+}
+
 interface IngestResponse {
   success: boolean;
   decision?: "GO" | "NO-GO";
@@ -113,6 +146,8 @@ export function AdminKnowledgeWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(initialDocuments[0]?.id ?? null);
   const [jobs, setJobs] = useState<NonNullable<StatusResponse["recentJobs"]>>([]);
+  const [traceSummary, setTraceSummary] = useState<ObservabilityResponse["summary"]>();
+  const [traces, setTraces] = useState<NonNullable<ObservabilityResponse["traces"]>>([]);
 
   const notebookPreset = useMemo(() => NOTEBOOK_PRESETS[domain], [domain]);
   const selectedDocument = useMemo(
@@ -125,17 +160,26 @@ export function AdminKnowledgeWorkspace({
     setError(null);
 
     try {
-      const response = await fetch("/api/admin/rag/status", { cache: "no-store" });
-      const result = (await response.json()) as StatusResponse;
-      if (!response.ok || !result.success) {
-        throw new Error(result.error ?? "No se pudo refrescar el estado RAG");
+      const [statusResponse, observabilityResponse] = await Promise.all([
+        fetch("/api/admin/rag/status", { cache: "no-store" }),
+        fetch("/api/admin/observability/rag", { cache: "no-store" }),
+      ]);
+      const statusResult = (await statusResponse.json()) as StatusResponse;
+      const observabilityResult = (await observabilityResponse.json()) as ObservabilityResponse;
+      if (!statusResponse.ok || !statusResult.success) {
+        throw new Error(statusResult.error ?? "No se pudo refrescar el estado RAG");
+      }
+      if (!observabilityResponse.ok || !observabilityResult.success) {
+        throw new Error(observabilityResult.error ?? "No se pudo refrescar la observabilidad RAG");
       }
 
-      setDocuments(result.recentDocuments ?? []);
-      setDocumentCount(result.counts.documents ?? 0);
-      setChunkCount(result.counts.chunks ?? 0);
-      setJobs(result.recentJobs ?? []);
-      setSelectedDocumentId((current) => current ?? result.recentDocuments?.[0]?.id ?? null);
+      setDocuments(statusResult.recentDocuments ?? []);
+      setDocumentCount(statusResult.counts.documents ?? 0);
+      setChunkCount(statusResult.counts.chunks ?? 0);
+      setJobs(statusResult.recentJobs ?? []);
+      setTraceSummary(observabilityResult.summary);
+      setTraces(observabilityResult.traces ?? []);
+      setSelectedDocumentId((current) => current ?? statusResult.recentDocuments?.[0]?.id ?? null);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Error al refrescar estado");
     } finally {
@@ -261,6 +305,101 @@ export function AdminKnowledgeWorkspace({
               <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Project ref</p>
               <p className="mt-1 text-sm font-semibold text-[#162944]">lvpplnqbyvscpuljnzqf</p>
             </div>
+          </div>
+        </article>
+
+        <article className="advisor-card shrink-0 p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="advisor-heading text-2xl text-[#162944]">Observabilidad RAG</h2>
+              <p className="mt-1 text-sm text-[#3a4f67]">Trazas recientes de `/api/chat` y agregados de latencia.</p>
+            </div>
+            <span className="advisor-chip">{traceSummary?.total ?? 0} trace(s)</span>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <div className="advisor-card-muted p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Success rate</p>
+              <p className="mt-1 text-xl font-semibold text-[#162944]">
+                {traceSummary ? `${(traceSummary.successRate * 100).toFixed(0)}%` : "n/a"}
+              </p>
+            </div>
+            <div className="advisor-card-muted p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Avg total</p>
+              <p className="mt-1 text-xl font-semibold text-[#162944]">
+                {traceSummary ? `${Math.round(traceSummary.avgTotalMs)} ms` : "n/a"}
+              </p>
+            </div>
+            <div className="advisor-card-muted p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Avg retrieval</p>
+              <p className="mt-1 text-xl font-semibold text-[#162944]">
+                {traceSummary ? `${Math.round(traceSummary.avgRetrievalMs)} ms` : "n/a"}
+              </p>
+            </div>
+            <div className="advisor-card-muted p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Avg LLM</p>
+              <p className="mt-1 text-xl font-semibold text-[#162944]">
+                {traceSummary ? `${Math.round(traceSummary.avgLlmMs)} ms` : "n/a"}
+              </p>
+            </div>
+            <div className="advisor-card-muted p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Low evidence</p>
+              <p className="mt-1 text-xl font-semibold text-[#162944]">
+                {traceSummary ? `${(traceSummary.lowEvidenceRate * 100).toFixed(0)}%` : "n/a"}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 max-h-64 space-y-3 overflow-y-auto pr-1">
+            {traces.length === 0 && (
+              <div className="advisor-card-muted p-3 text-sm text-[#3a4f67]">
+                Aun no hay trazas en memoria. Ejecuta consultas en el chat y pulsa "Refrescar estado".
+              </div>
+            )}
+
+            {traces.map((trace) => (
+              <div key={trace.requestId} className="advisor-card-muted p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#162944]">{trace.primarySpecialist ?? "sin routing"}</p>
+                    <p className="mt-1 text-xs text-[#3a4f67]">
+                      {formatDateTime(trace.timestamp)} | query {trace.queryLength} chars
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        trace.success ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {trace.success ? "success" : "failed"}
+                    </span>
+                    {trace.groundingConfidence && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                        {trace.groundingConfidence}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-2 grid gap-2 text-xs text-[#3a4f67] md:grid-cols-4">
+                  <p>total: <strong>{trace.performance?.total_ms ?? 0} ms</strong></p>
+                  <p>retrieval: <strong>{trace.performance?.retrieval_ms ?? 0} ms</strong></p>
+                  <p>llm: <strong>{trace.performance?.llm_ms ?? 0} ms</strong></p>
+                  <p>citas: <strong>{trace.citations}</strong></p>
+                </div>
+                {trace.performance && (
+                  <p className="mt-2 text-xs text-[#3a4f67]">
+                    path: <strong>{trace.performance.llm_path}</strong> | model: <strong>{trace.performance.llm_model_used}</strong>
+                    {trace.performance.tool_used ? <> | tool: <strong>{trace.performance.tool_used}</strong></> : null}
+                  </p>
+                )}
+                {trace.error && (
+                  <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+                    {trace.error}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </article>
 

@@ -1,6 +1,7 @@
 import * as chatRoute from "../src/app/api/chat/route";
 import * as adminIngestRoute from "../src/app/api/admin/rag/ingest/route";
 import * as adminDocumentDeleteRoute from "../src/app/api/admin/rag/documents/[documentId]/route";
+import * as adminObservabilityRagRoute from "../src/app/api/admin/observability/rag/route";
 import * as adminStatusRoute from "../src/app/api/admin/rag/status/route";
 import * as invoicesRoute from "../src/app/api/invoices/route";
 import { AdminKnowledgeWorkspace } from "../src/components/features/AdminKnowledgeWorkspace";
@@ -25,6 +26,7 @@ async function main(): Promise<void> {
   assert(typeof chatRoute.POST === "function", "POST /api/chat handler exported");
   assert(typeof adminIngestRoute.POST === "function", "POST /api/admin/rag/ingest handler exported");
   assert(typeof adminDocumentDeleteRoute.DELETE === "function", "DELETE /api/admin/rag/documents/[documentId] handler exported");
+  assert(typeof adminObservabilityRagRoute.GET === "function", "GET /api/admin/observability/rag handler exported");
   assert(typeof adminStatusRoute.GET === "function", "GET /api/admin/rag/status handler exported");
   assert(typeof invoicesRoute.GET === "function", "GET /api/invoices handler exported");
   assert(typeof invoicesRoute.POST === "function", "POST /api/invoices handler exported");

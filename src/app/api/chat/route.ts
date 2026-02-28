@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Orchestrator } from "../../../../lib/agents/orchestrator";
 import { getRequestId, log } from "@/lib/observability/logger";
+import { addRagTrace } from "@/lib/observability/rag-traces";
 import { resolveLocale, t } from "@/lib/i18n/messages";
 
 // Instancia global del orchestrator
@@ -46,6 +47,21 @@ export async function POST(request: NextRequest) {
       body.query
     );
 
+    addRagTrace({
+      requestId,
+      timestamp: new Date().toISOString(),
+      success: true,
+      queryLength: String(body.query).length,
+      userId: String(body.userId),
+      conversationId: String(body.conversationId),
+      primarySpecialist: result.routing?.primarySpecialist ?? null,
+      groundingConfidence: result.groundingConfidence,
+      citations: Array.isArray(result.citations) ? result.citations.length : 0,
+      alerts: Array.isArray(result.alerts) ? result.alerts.length : 0,
+      error: null,
+      performance: result.performance,
+    });
+
     const response = NextResponse.json(result);
     response.headers.set("x-request-id", requestId);
     log("info", "api_chat_request_succeeded", requestId, {
@@ -55,6 +71,20 @@ export async function POST(request: NextRequest) {
     });
     return response;
   } catch (error) {
+    addRagTrace({
+      requestId,
+      timestamp: new Date().toISOString(),
+      success: false,
+      queryLength: 0,
+      userId: null,
+      conversationId: null,
+      primarySpecialist: null,
+      groundingConfidence: null,
+      citations: 0,
+      alerts: 0,
+      error: error instanceof Error ? error.message : "unknown_error",
+      performance: null,
+    });
     log("error", "api_chat_request_failed", requestId, {
       error: error instanceof Error ? error.message : "unknown_error",
     });
