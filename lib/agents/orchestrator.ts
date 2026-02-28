@@ -238,14 +238,20 @@ export class Orchestrator {
     }));
   }
 
-  private shouldUseFastModel(hasEvidence: boolean, topScore: number, query: string): boolean {
+  private shouldUseFastModel(
+    hasEvidence: boolean,
+    topScore: number,
+    query: string,
+    chunks: RAGChunk[]
+  ): boolean {
     if (!this.fastPathEnabled) return false;
     if (!hasEvidence) return true;
     const tokenApprox = query.trim().split(/\s+/).filter(Boolean).length;
-    return topScore <= 1 && tokenApprox <= 10;
+    const topSimilarity = chunks[0]?.similarity ?? 0;
+    return topScore <= 2 && tokenApprox <= 12 && chunks.length <= 3 && topSimilarity < 0.45;
   }
 
-  private selectModel(hasEvidence: boolean, topScore: number, query: string): {
+  private selectModel(hasEvidence: boolean, topScore: number, query: string, chunks: RAGChunk[]): {
     model: string;
     path: OrchestratorResponse['performance']['llm_path'];
   } {
@@ -257,7 +263,7 @@ export class Orchestrator {
       return { model: this.noEvidenceFastModel, path: 'fast_no_evidence' };
     }
 
-    if (this.shouldUseFastModel(hasEvidence, topScore, query)) {
+    if (this.shouldUseFastModel(hasEvidence, topScore, query, chunks)) {
       return { model: this.fastModel, path: 'fast_simple' };
     }
 
@@ -359,7 +365,7 @@ export class Orchestrator {
     const systemPrompt = hasEvidence
       ? GROUNDED_CHAT_PROMPT.replace('{context}', contextText).replace('{query}', query)
       : NO_EVIDENCE_FALLBACK_PROMPT.replace('{query}', query);
-    const selectedModel = this.selectModel(hasEvidence, topScore, query);
+    const selectedModel = this.selectModel(hasEvidence, topScore, query, promptChunks);
     const modelToUse = selectedModel.model;
     llmModelUsed = modelToUse;
     llmPath = selectedModel.path;
