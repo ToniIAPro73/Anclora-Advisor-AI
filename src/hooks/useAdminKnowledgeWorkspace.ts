@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { AuditLogRecord } from "@/lib/audit/logs";
 import type {
+  AdminAuditLogsResponse,
   AdminDocumentRecord,
   IngestResponse,
   NotebookPreset,
@@ -39,10 +41,12 @@ export function useAdminKnowledgeWorkspace({
   initialDocuments,
   initialDocumentCount,
   initialChunkCount,
+  initialAuditLogs,
 }: {
   initialDocuments: AdminDocumentRecord[];
   initialDocumentCount: number;
   initialChunkCount: number;
+  initialAuditLogs: AuditLogRecord[];
 }) {
   const [documents, setDocuments] = useState<AdminDocumentRecord[]>(initialDocuments);
   const [documentCount, setDocumentCount] = useState(initialDocumentCount);
@@ -69,6 +73,7 @@ export function useAdminKnowledgeWorkspace({
   const [traceSummary, setTraceSummary] = useState<ObservabilityResponse["summary"]>();
   const [traces, setTraces] = useState<NonNullable<ObservabilityResponse["traces"]>>([]);
   const [hardware, setHardware] = useState<ObservabilityResponse["hardware"]>();
+  const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
 
   const notebookPreset = useMemo(() => NOTEBOOK_PRESETS[domain], [domain]);
   const filteredDocuments = useMemo(() => {
@@ -115,17 +120,22 @@ export function useAdminKnowledgeWorkspace({
         statusUrl.searchParams.set("query", inventorySearch.trim());
       }
 
-      const [statusResponse, observabilityResponse] = await Promise.all([
+      const [statusResponse, observabilityResponse, auditResponse] = await Promise.all([
         fetch(statusUrl.toString(), { cache: "no-store" }),
         fetch("/api/admin/observability/rag", { cache: "no-store" }),
+        fetch("/api/audit-logs?domain=admin_rag&limit=8", { cache: "no-store" }),
       ]);
       const statusResult = (await statusResponse.json()) as StatusResponse;
       const observabilityResult = (await observabilityResponse.json()) as ObservabilityResponse;
+      const auditResult = (await auditResponse.json()) as AdminAuditLogsResponse;
       if (!statusResponse.ok || !statusResult.success) {
         throw new Error(statusResult.error ?? "No se pudo refrescar el estado RAG");
       }
       if (!observabilityResponse.ok || !observabilityResult.success) {
         throw new Error(observabilityResult.error ?? "No se pudo refrescar la observabilidad RAG");
+      }
+      if (!auditResponse.ok || !auditResult.success) {
+        throw new Error(auditResult.error ?? "No se pudo refrescar la auditoria admin RAG");
       }
 
       setDocuments(statusResult.recentDocuments ?? []);
@@ -136,6 +146,7 @@ export function useAdminKnowledgeWorkspace({
       setTraceSummary(observabilityResult.summary);
       setTraces(observabilityResult.traces ?? []);
       setHardware(observabilityResult.hardware);
+      setAuditLogs(auditResult.logs ?? []);
       setSelectedDocumentId((current) => current ?? statusResult.recentDocuments?.[0]?.id ?? null);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Error al refrescar estado");
@@ -277,6 +288,7 @@ export function useAdminKnowledgeWorkspace({
       traceSummary,
       traces,
       hardware,
+      auditLogs,
       notebookPreset,
     },
     actions: {

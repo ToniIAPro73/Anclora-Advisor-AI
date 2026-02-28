@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentAppUserFromCookies } from "@/lib/auth/app-user";
+import { createAuditLog } from "@/lib/audit/logs";
 import { isAdminRole } from "@/lib/auth/roles";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-admin";
@@ -49,5 +50,21 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     userId: appUser.id,
     documentId,
   });
+  try {
+    await createAuditLog(supabase, {
+      userId: appUser.id,
+      domain: "admin_rag",
+      entityType: "rag_document",
+      entityId: documentId,
+      action: "deleted",
+      summary: "Documento RAG eliminado desde admin",
+    });
+  } catch (auditError) {
+    log("warn", "api_admin_rag_document_delete_audit_failed", requestId, {
+      userId: appUser.id,
+      documentId,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }

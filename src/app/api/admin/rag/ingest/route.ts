@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentAppUserFromCookies } from "@/lib/auth/app-user";
+import { createAuditLog } from "@/lib/audit/logs";
 import { isAdminRole } from "@/lib/auth/roles";
 import { ingestAdminSources } from "@/lib/rag/admin-ingest";
 import {
@@ -15,6 +16,7 @@ import {
   validateProjectRefCoherence,
 } from "@/lib/rag/governance";
 import { getRequestId, log } from "@/lib/observability/logger";
+import { createServiceSupabaseClient } from "@/lib/supabase/server-admin";
 
 const sourceSchema = z.object({
   title: z.string().min(5).max(500),
@@ -149,6 +151,26 @@ export async function POST(request: NextRequest) {
       },
     });
     response.headers.set("x-request-id", requestId);
+    try {
+      await createAuditLog(createServiceSupabaseClient(), {
+        userId: appUser.id,
+        domain: "admin_rag",
+        entityType: "rag_ingest_job",
+        entityId: job.id,
+        action: "validated",
+        summary: `Dry-run de ingesta RAG para ${payload.data.notebook_title}`,
+        metadata: {
+          domain: payload.data.domain,
+          sourceCount: normalizedSources.length,
+        },
+      });
+    } catch (auditError) {
+      log("warn", "api_admin_rag_ingest_dry_run_audit_failed", requestId, {
+        userId: appUser.id,
+        jobId: job.id,
+        error: auditError instanceof Error ? auditError.message : "unknown",
+      });
+    }
     return response;
   }
 
@@ -182,6 +204,28 @@ export async function POST(request: NextRequest) {
       chunksInserted: result.chunksInserted,
       replacedDocuments: result.replacedDocuments,
     });
+    try {
+      await createAuditLog(createServiceSupabaseClient(), {
+        userId: appUser.id,
+        domain: "admin_rag",
+        entityType: "rag_ingest_job",
+        entityId: job.id,
+        action: "completed",
+        summary: `Ingesta RAG completada para ${payload.data.notebook_title}`,
+        metadata: {
+          domain: payload.data.domain,
+          documentsProcessed: result.documentsProcessed,
+          chunksInserted: result.chunksInserted,
+          replacedDocuments: result.replacedDocuments,
+        },
+      });
+    } catch (auditError) {
+      log("warn", "api_admin_rag_ingest_success_audit_failed", requestId, {
+        userId: appUser.id,
+        jobId: job.id,
+        error: auditError instanceof Error ? auditError.message : "unknown",
+      });
+    }
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_error";
@@ -191,6 +235,26 @@ export async function POST(request: NextRequest) {
       jobId: job.id,
       error: message,
     });
+    try {
+      await createAuditLog(createServiceSupabaseClient(), {
+        userId: appUser.id,
+        domain: "admin_rag",
+        entityType: "rag_ingest_job",
+        entityId: job.id,
+        action: "failed",
+        summary: `Ingesta RAG fallida para ${payload.data.notebook_title}`,
+        metadata: {
+          domain: payload.data.domain,
+          error: message,
+        },
+      });
+    } catch (auditError) {
+      log("warn", "api_admin_rag_ingest_failure_audit_failed", requestId, {
+        userId: appUser.id,
+        jobId: job.id,
+        error: auditError instanceof Error ? auditError.message : "unknown",
+      });
+    }
     const response = NextResponse.json({ success: false, error: message }, { status: 500 });
     response.headers.set("x-request-id", requestId);
     return response;

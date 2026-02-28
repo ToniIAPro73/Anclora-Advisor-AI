@@ -1,5 +1,6 @@
 "use client";
 
+import { AuditTimeline } from "./AuditTimeline";
 import {
   AdminHardwarePanel,
   AdminHeaderPanel,
@@ -16,17 +17,20 @@ interface AdminKnowledgeWorkspaceProps {
   initialDocuments: AdminDocumentRecord[];
   initialDocumentCount: number;
   initialChunkCount: number;
+  initialAuditLogs: import("@/lib/audit/logs").AuditLogRecord[];
 }
 
 export function AdminKnowledgeWorkspace({
   initialDocuments,
   initialDocumentCount,
   initialChunkCount,
+  initialAuditLogs,
 }: AdminKnowledgeWorkspaceProps) {
   const { state, actions } = useAdminKnowledgeWorkspace({
     initialDocuments,
     initialDocumentCount,
     initialChunkCount,
+    initialAuditLogs,
   });
 
   return (
@@ -49,6 +53,7 @@ export function AdminKnowledgeWorkspace({
           baseline={state.hardware?.baseline}
           benchmark={state.hardware?.benchmark}
         />
+        <AuditTimeline title="Auditoria admin RAG" logs={state.auditLogs} />
         <AdminInventoryPanel
           documents={state.filteredDocuments}
           totalDocuments={state.filteredDocumentCount}

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { AuditLogRecord } from "@/lib/audit/logs";
 import { AdminKnowledgeWorkspace, type AdminDocumentRecord } from "@/components/features/AdminKnowledgeWorkspace";
 import { getCurrentAppUserFromCookies } from "@/lib/auth/app-user";
 import { isAdminRole } from "@/lib/auth/roles";
@@ -13,7 +14,12 @@ export default async function DashboardAdminPage() {
 
   const supabase = createServiceSupabaseClient();
 
-  const [{ count: documentCount }, { count: chunkCount }, { data: recentDocuments, error: recentError }] =
+  const [
+    { count: documentCount },
+    { count: chunkCount },
+    { data: recentDocuments, error: recentError },
+    { data: recentAuditLogs },
+  ] =
     await Promise.all([
       supabase.from("rag_documents").select("id", { count: "exact", head: true }),
       supabase.from("rag_chunks").select("id", { count: "exact", head: true }),
@@ -22,6 +28,12 @@ export default async function DashboardAdminPage() {
         .select("id, title, category, created_at, doc_metadata")
         .order("created_at", { ascending: false })
         .limit(50),
+      supabase
+        .from("app_audit_logs")
+        .select("id, user_id, domain, entity_type, entity_id, action, summary, metadata, created_at")
+        .eq("domain", "admin_rag")
+        .order("created_at", { ascending: false })
+        .limit(8),
     ]);
 
   return (
@@ -36,6 +48,7 @@ export default async function DashboardAdminPage() {
             initialDocuments={(recentDocuments ?? []) as AdminDocumentRecord[]}
             initialDocumentCount={documentCount ?? 0}
             initialChunkCount={chunkCount ?? 0}
+            initialAuditLogs={(recentAuditLogs ?? []) as unknown as AuditLogRecord[]}
           />
         )}
       </div>

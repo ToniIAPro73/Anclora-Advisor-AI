@@ -1,5 +1,7 @@
 "use client";
 
+import type { AuditLogRecord } from "@/lib/audit/logs";
+
 export interface AdminDocumentRecord {
   id: string;
   title: string;
@@ -116,6 +118,12 @@ export interface ObservabilityResponse {
     baseline?: HardwareBaselineSummary | null;
     benchmark?: HardwareBenchmarkSummary | null;
   };
+  error?: string;
+}
+
+export interface AdminAuditLogsResponse {
+  success: boolean;
+  logs?: AuditLogRecord[];
   error?: string;
 }
 
