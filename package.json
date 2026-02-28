@@ -13,6 +13,8 @@
     "reingest-patch": "tsx scripts/reingest-patch.ts",
     "rag:infra:apply": "tsx scripts/apply-match-chunks-rpc.ts",
     "rag:infra:verify": "tsx scripts/verify-rag-infra.ts",
+    "rag:metadata:apply": "tsx scripts/apply-rag-document-metadata.ts",
+    "rag:metadata:backfill": "tsx scripts/backfill-rag-metadata.ts",
     "rag:eval": "tsx scripts/eval-rag.ts",
     "rag:eval:chat": "tsx scripts/eval-rag.ts --include-chat",
     "rag:eval:gate": "tsx scripts/eval-rag.ts --include-chat --enforce",
