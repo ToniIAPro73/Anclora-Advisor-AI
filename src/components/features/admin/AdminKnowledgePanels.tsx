@@ -39,12 +39,20 @@ export function AdminHeaderPanel({
   chunkCount,
   notebookTitle,
   refreshing,
+  autoRefreshEnabled,
+  autoRefreshIntervalSec,
+  onAutoRefreshEnabledChange,
+  onAutoRefreshIntervalChange,
   onRefresh,
 }: {
   documentCount: number;
   chunkCount: number;
   notebookTitle: string;
   refreshing: boolean;
+  autoRefreshEnabled: boolean;
+  autoRefreshIntervalSec: 15 | 30 | 60;
+  onAutoRefreshEnabledChange: (enabled: boolean) => void;
+  onAutoRefreshIntervalChange: (value: 15 | 30 | 60) => void;
   onRefresh: () => void;
 }) {
   return (
@@ -56,14 +64,34 @@ export function AdminHeaderPanel({
             Ingesta controlada por notebook, validacion de scope y estado operativo del inventario RAG.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={refreshing}
-          className="advisor-btn border border-[#b8c8de] bg-white px-4 py-2 text-sm font-semibold text-[#162944] transition hover:bg-[#f3f7fd] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {refreshing ? "Refrescando..." : "Refrescar estado"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 rounded-xl border border-[#d2dceb] bg-white px-3 py-2 text-xs font-semibold text-[#162944]">
+            <input
+              type="checkbox"
+              checked={autoRefreshEnabled}
+              onChange={(event) => onAutoRefreshEnabledChange(event.target.checked)}
+            />
+            auto-refresh
+          </label>
+          <select
+            className="rounded-xl border border-[#d2dceb] bg-white px-3 py-2 text-xs font-semibold text-[#162944]"
+            value={autoRefreshIntervalSec}
+            onChange={(event) => onAutoRefreshIntervalChange(Number(event.target.value) as 15 | 30 | 60)}
+            disabled={!autoRefreshEnabled}
+          >
+            <option value={15}>15s</option>
+            <option value={30}>30s</option>
+            <option value={60}>60s</option>
+          </select>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="advisor-btn border border-[#b8c8de] bg-white px-4 py-2 text-sm font-semibold text-[#162944] transition hover:bg-[#f3f7fd] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {refreshing ? "Refrescando..." : "Refrescar estado"}
+          </button>
+        </div>
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">

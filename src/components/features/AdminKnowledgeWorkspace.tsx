@@ -37,6 +37,10 @@ export function AdminKnowledgeWorkspace({
           chunkCount={state.chunkCount}
           notebookTitle={state.notebookPreset.notebookTitle}
           refreshing={state.refreshing}
+          autoRefreshEnabled={state.autoRefreshEnabled}
+          autoRefreshIntervalSec={state.autoRefreshIntervalSec}
+          onAutoRefreshEnabledChange={actions.setAutoRefreshEnabled}
+          onAutoRefreshIntervalChange={actions.setAutoRefreshIntervalSec}
           onRefresh={() => void actions.refreshStatus()}
         />
         <AdminObservabilityPanel summary={state.traceSummary} traces={state.traces} />

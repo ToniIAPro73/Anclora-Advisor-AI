@@ -60,6 +60,8 @@ export function useAdminKnowledgeWorkspace({
   const [inventoryDomainFilter, setInventoryDomainFilter] = useState<"all" | "fiscal" | "laboral" | "mercado">("all");
   const [inventoryTopicFilter, setInventoryTopicFilter] = useState("");
   const [inventorySearch, setInventorySearch] = useState("");
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
+  const [autoRefreshIntervalSec, setAutoRefreshIntervalSec] = useState<15 | 30 | 60>(30);
   const [jobs, setJobs] = useState<NonNullable<StatusResponse["recentJobs"]>>([]);
   const [traceSummary, setTraceSummary] = useState<ObservabilityResponse["summary"]>();
   const [traces, setTraces] = useState<NonNullable<ObservabilityResponse["traces"]>>([]);
@@ -99,8 +101,18 @@ export function useAdminKnowledgeWorkspace({
     setError(null);
 
     try {
+      const statusUrl = new URL("/api/admin/rag/status", window.location.origin);
+      statusUrl.searchParams.set("limit", "50");
+      statusUrl.searchParams.set("domain", inventoryDomainFilter);
+      if (inventoryTopicFilter.trim().length > 0) {
+        statusUrl.searchParams.set("topic", inventoryTopicFilter.trim());
+      }
+      if (inventorySearch.trim().length > 0) {
+        statusUrl.searchParams.set("query", inventorySearch.trim());
+      }
+
       const [statusResponse, observabilityResponse] = await Promise.all([
-        fetch("/api/admin/rag/status", { cache: "no-store" }),
+        fetch(statusUrl.toString(), { cache: "no-store" }),
         fetch("/api/admin/observability/rag", { cache: "no-store" }),
       ]);
       const statusResult = (await statusResponse.json()) as StatusResponse;
@@ -125,11 +137,21 @@ export function useAdminKnowledgeWorkspace({
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [inventoryDomainFilter, inventorySearch, inventoryTopicFilter]);
 
   useEffect(() => {
     void refreshStatus();
   }, [refreshStatus]);
+
+  useEffect(() => {
+    if (!autoRefreshEnabled) return;
+
+    const timer = window.setInterval(() => {
+      void refreshStatus();
+    }, autoRefreshIntervalSec * 1000);
+
+    return () => window.clearInterval(timer);
+  }, [autoRefreshEnabled, autoRefreshIntervalSec, refreshStatus]);
 
   const submitIngest = useCallback(
     async (event: React.FormEvent<HTMLFormElement>, dryRun: boolean): Promise<void> => {
@@ -234,6 +256,8 @@ export function useAdminKnowledgeWorkspace({
       inventoryDomainFilter,
       inventoryTopicFilter,
       inventorySearch,
+      autoRefreshEnabled,
+      autoRefreshIntervalSec,
       filteredDocuments,
       selectedDocumentId,
       selectedDocument,
@@ -253,6 +277,8 @@ export function useAdminKnowledgeWorkspace({
       setInventoryDomainFilter,
       setInventoryTopicFilter,
       setInventorySearch,
+      setAutoRefreshEnabled,
+      setAutoRefreshIntervalSec,
       refreshStatus,
       submitIngest,
       deleteDocument,

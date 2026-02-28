@@ -33,6 +33,12 @@ export interface StatusResponse {
     documents: number;
     chunks: number;
   };
+  filters?: {
+    domain: string;
+    topic: string;
+    query: string;
+    limit: number;
+  };
   recentDocuments: AdminDocumentRecord[];
   recentJobs?: AdminIngestJobRecord[];
   error?: string;

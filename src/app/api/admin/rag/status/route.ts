@@ -8,6 +8,7 @@ import { createServiceSupabaseClient } from "@/lib/supabase/server-admin";
 export async function GET(request: NextRequest) {
   const requestId = getRequestId(request.headers.get("x-request-id"));
   const appUser = await getCurrentAppUserFromCookies();
+  const { searchParams } = new URL(request.url);
 
   if (!appUser || !appUser.isActive || !isAdminRole(appUser.role)) {
     log("warn", "api_admin_rag_status_forbidden", requestId, {
@@ -20,14 +21,46 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServiceSupabaseClient();
+  const domain = searchParams.get("domain")?.trim().toLowerCase() ?? "all";
+  const topic = searchParams.get("topic")?.trim() ?? "";
+  const query = searchParams.get("query")?.trim() ?? "";
+  const limitValue = Number.parseInt(searchParams.get("limit") ?? "50", 10);
+  const limit = Number.isFinite(limitValue) ? Math.min(Math.max(limitValue, 1), 100) : 50;
+
+  let documentsQuery = supabase
+    .from("rag_documents")
+    .select("id, title, category, created_at, doc_metadata")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (domain === "fiscal") {
+    documentsQuery = documentsQuery.ilike("doc_metadata->>notebook_title", "%FISCAL%");
+  } else if (domain === "laboral") {
+    documentsQuery = documentsQuery.ilike("doc_metadata->>notebook_title", "%RIESGO_LABORAL%");
+  } else if (domain === "mercado") {
+    documentsQuery = documentsQuery.ilike("doc_metadata->>notebook_title", "%MARCA_POSICIONAMIENTO%");
+  }
+
+  if (topic.length > 0) {
+    documentsQuery = documentsQuery.ilike("doc_metadata->>topic", `%${topic}%`);
+  }
+
+  if (query.length > 0) {
+    const escaped = query.replace(/[%_,]/g, " ").trim();
+    documentsQuery = documentsQuery.or(
+      [
+        `title.ilike.%${escaped}%`,
+        `doc_metadata->>notebook_title.ilike.%${escaped}%`,
+        `doc_metadata->>topic.ilike.%${escaped}%`,
+        `doc_metadata->>reason_for_fit.ilike.%${escaped}%`,
+      ].join(",")
+    );
+  }
+
   const [{ count: documentCount }, { count: chunkCount }, { data: recentDocuments, error }, recentJobs] = await Promise.all([
     supabase.from("rag_documents").select("id", { count: "exact", head: true }),
     supabase.from("rag_chunks").select("id", { count: "exact", head: true }),
-    supabase
-      .from("rag_documents")
-      .select("id, title, category, created_at, doc_metadata")
-      .order("created_at", { ascending: false })
-      .limit(50),
+    documentsQuery,
     listRecentAdminIngestJobs(8),
   ]);
 
@@ -43,6 +76,12 @@ export async function GET(request: NextRequest) {
     counts: {
       documents: documentCount ?? 0,
       chunks: chunkCount ?? 0,
+    },
+    filters: {
+      domain,
+      topic,
+      query,
+      limit,
     },
     recentDocuments: recentDocuments ?? [],
     recentJobs,
