@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentAppUserFromCookies } from "@/lib/auth/app-user";
 import { isAdminRole } from "@/lib/auth/roles";
+import { listRecentAdminIngestJobs } from "@/lib/rag/admin-jobs";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-admin";
 
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServiceSupabaseClient();
-  const [{ count: documentCount }, { count: chunkCount }, { data: recentDocuments, error }] = await Promise.all([
+  const [{ count: documentCount }, { count: chunkCount }, { data: recentDocuments, error }, recentJobs] = await Promise.all([
     supabase.from("rag_documents").select("id", { count: "exact", head: true }),
     supabase.from("rag_chunks").select("id", { count: "exact", head: true }),
     supabase
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
       .select("id, title, category, created_at, doc_metadata")
       .order("created_at", { ascending: false })
       .limit(5),
+    listRecentAdminIngestJobs(8),
   ]);
 
   if (error) {
@@ -43,6 +45,7 @@ export async function GET(request: NextRequest) {
       chunks: chunkCount ?? 0,
     },
     recentDocuments: recentDocuments ?? [],
+    recentJobs,
   });
   response.headers.set("x-request-id", requestId);
   log("info", "api_admin_rag_status_succeeded", requestId, {

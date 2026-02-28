@@ -29,6 +29,18 @@ interface StatusResponse {
     chunks: number;
   };
   recentDocuments: AdminDocumentRecord[];
+  recentJobs?: Array<{
+    id: string;
+    status: string;
+    domain: string;
+    notebook_title: string;
+    source_count: number;
+    documents_processed: number;
+    chunks_inserted: number;
+    replaced_documents: number;
+    error_message: string | null;
+    created_at: string;
+  }>;
   error?: string;
 }
 
@@ -43,6 +55,7 @@ interface IngestResponse {
     chunksInserted: number;
     replacedDocuments: number;
   };
+  jobId?: string;
   summary?: {
     sources: number;
     notebook_title: string;
@@ -99,6 +112,7 @@ export function AdminKnowledgeWorkspace({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(initialDocuments[0]?.id ?? null);
+  const [jobs, setJobs] = useState<NonNullable<StatusResponse["recentJobs"]>>([]);
 
   const notebookPreset = useMemo(() => NOTEBOOK_PRESETS[domain], [domain]);
   const selectedDocument = useMemo(
@@ -120,6 +134,7 @@ export function AdminKnowledgeWorkspace({
       setDocuments(result.recentDocuments ?? []);
       setDocumentCount(result.counts.documents ?? 0);
       setChunkCount(result.counts.chunks ?? 0);
+      setJobs(result.recentJobs ?? []);
       setSelectedDocumentId((current) => current ?? result.recentDocuments?.[0]?.id ?? null);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Error al refrescar estado");
@@ -164,12 +179,13 @@ export function AdminKnowledgeWorkspace({
       }
 
       if (dryRun) {
-        setMessage(`Dry-run OK para ${result.summary?.notebook_title ?? notebookPreset.notebookTitle}.`);
+        setMessage(`Dry-run OK para ${result.summary?.notebook_title ?? notebookPreset.notebookTitle}. Job ${result.jobId ?? "n/a"}.`);
+        await refreshStatus();
         return;
       }
 
       setMessage(
-        `Ingesta completada: ${result.result?.documentsProcessed ?? 0} documento(s), ${result.result?.chunksInserted ?? 0} chunk(s).`
+        `Ingesta completada: ${result.result?.documentsProcessed ?? 0} documento(s), ${result.result?.chunksInserted ?? 0} chunk(s). Job ${result.jobId ?? "n/a"}.`
       );
       setTitle("");
       setUrl("");
@@ -434,6 +450,57 @@ export function AdminKnowledgeWorkspace({
               </button>
             </div>
           </form>
+          <div className="mt-6 border-t border-[#d2dceb] pt-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="advisor-heading text-xl text-[#162944]">Jobs recientes</h3>
+                <p className="mt-1 text-sm text-[#3a4f67]">Historial de validaciones e ingestas admin.</p>
+              </div>
+              <span className="advisor-chip">{jobs.length} job(s)</span>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {jobs.length === 0 && (
+                <div className="advisor-card-muted p-3 text-sm text-[#3a4f67]">No hay jobs registrados todavia.</div>
+              )}
+
+              {jobs.map((job) => (
+                <div key={job.id} className="advisor-card-muted p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#162944]">{job.notebook_title}</p>
+                      <p className="mt-1 text-xs text-[#3a4f67]">
+                        {job.domain} | {job.source_count} source(s) | {formatDateTime(job.created_at)}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        job.status === "completed"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : job.status === "failed"
+                            ? "bg-red-100 text-red-700"
+                            : job.status === "running"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {job.status}
+                    </span>
+                  </div>
+                  <div className="mt-2 grid gap-2 text-xs text-[#3a4f67] sm:grid-cols-3">
+                    <p>docs: <strong>{job.documents_processed}</strong></p>
+                    <p>chunks: <strong>{job.chunks_inserted}</strong></p>
+                    <p>replaced: <strong>{job.replaced_documents}</strong></p>
+                  </div>
+                  {job.error_message && (
+                    <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+                      {job.error_message}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </aside>
     </div>

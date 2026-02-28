@@ -15,6 +15,7 @@
     "rag:infra:verify": "tsx scripts/verify-rag-infra.ts",
     "rbac:apply": "tsx scripts/apply-admin-rbac.ts",
     "rbac:set-role": "tsx scripts/set-user-role.ts",
+    "admin:jobs:apply": "tsx scripts/apply-admin-ingest-jobs.ts",
     "rag:metadata:apply": "tsx scripts/apply-rag-document-metadata.ts",
     "rag:metadata:backfill": "tsx scripts/backfill-rag-metadata.ts",
     "rag:eval": "tsx scripts/eval-rag.ts",

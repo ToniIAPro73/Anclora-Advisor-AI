@@ -4,6 +4,12 @@ import { getCurrentAppUserFromCookies } from "@/lib/auth/app-user";
 import { isAdminRole } from "@/lib/auth/roles";
 import { ingestAdminSources } from "@/lib/rag/admin-ingest";
 import {
+  completeAdminIngestJob,
+  createAdminIngestJob,
+  failAdminIngestJob,
+  updateAdminIngestJob,
+} from "@/lib/rag/admin-jobs";
+import {
   CANONICAL_PROJECT_REF,
   validateNotebookScope,
   validateProjectRefCoherence,
@@ -121,10 +127,21 @@ export async function POST(request: NextRequest) {
   }
 
   if (payload.data.dry_run) {
+    const job = await createAdminIngestJob({
+      requestedBy: appUser.id,
+      projectRef: payload.data.project_ref,
+      payload: {
+        ...payload.data,
+        sources: normalizedSources,
+      },
+      status: "validated",
+    });
+
     const response = NextResponse.json({
       success: true,
       decision: "GO",
       dry_run: true,
+      jobId: job.id,
       summary: {
         sources: normalizedSources.length,
         notebook_title: payload.data.notebook_title,
@@ -135,14 +152,27 @@ export async function POST(request: NextRequest) {
     return response;
   }
 
+  const job = await createAdminIngestJob({
+    requestedBy: appUser.id,
+    projectRef: payload.data.project_ref,
+    payload: {
+      ...payload.data,
+      sources: normalizedSources,
+    },
+    status: "pending",
+  });
+
   try {
+    await updateAdminIngestJob(job.id, { status: "running" });
     const result = await ingestAdminSources({
       ...payload.data,
       sources: normalizedSources,
     });
+    await completeAdminIngestJob(job.id, result);
     const response = NextResponse.json({
       success: true,
       decision: "GO",
+      jobId: job.id,
       result,
     });
     response.headers.set("x-request-id", requestId);
@@ -155,8 +185,10 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_error";
+    await failAdminIngestJob(job.id, message);
     log("error", "api_admin_rag_ingest_failed", requestId, {
       userId: appUser.id,
+      jobId: job.id,
       error: message,
     });
     const response = NextResponse.json({ success: false, error: message }, { status: 500 });
