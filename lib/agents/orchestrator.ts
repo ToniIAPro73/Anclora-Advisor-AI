@@ -81,6 +81,55 @@ interface GuardResult {
   revised_answer: string;
 }
 
+function stripSourcesSection(text: string): string {
+  return text.replace(/\n## Fuentes consultadas[\s\S]*$/i, '').trim();
+}
+
+function hasInlineCitation(text: string): boolean {
+  return /\[\d+\]/.test(text);
+}
+
+function hasSourcesSection(text: string): boolean {
+  return /## Fuentes consultadas/i.test(text);
+}
+
+function appendInlineCitation(text: string, citationIndex: number): string {
+  const cleaned = text.trim();
+  if (!cleaned) return `[${citationIndex}]`;
+
+  const sentenceMatch = cleaned.match(/^([\s\S]*?[.!?])(\s|$)/);
+  if (sentenceMatch && sentenceMatch[1]) {
+    const sentence = sentenceMatch[1];
+    return cleaned.replace(sentence, `${sentence} [${citationIndex}]`);
+  }
+
+  return `${cleaned} [${citationIndex}]`;
+}
+
+function buildSourcesSection(citations: CitationRef[]): string {
+  const lines = citations.map(
+    (citation) => `[${citation.index}] ${citation.title} (Confianza: ${Math.round(citation.similarity * 100)}%)`
+  );
+  return `## Fuentes consultadas\n${lines.join('\n')}`;
+}
+
+function ensureCitationsInResponse(text: string, citations: CitationRef[]): string {
+  if (citations.length === 0) {
+    return stripSourcesSection(text);
+  }
+
+  let output = stripSourcesSection(text);
+  if (!hasInlineCitation(output)) {
+    output = appendInlineCitation(output, citations[0].index);
+  }
+
+  if (!hasSourcesSection(output)) {
+    output = `${output}\n\n${buildSourcesSection(citations)}`.trim();
+  }
+
+  return output;
+}
+
 // ----------------------------------------------------------------
 // Keyword routing
 // ----------------------------------------------------------------
@@ -572,6 +621,10 @@ export class Orchestrator {
       totalConfidence: topSimilarity,
       warnings: hasEvidence ? [] : ['No se encontró evidencia suficiente en la base de conocimientos.'],
     }];
+
+    if (hasEvidence && citations.length > 0) {
+      primaryResponse = ensureCitationsInResponse(primaryResponse, citations);
+    }
 
     const result: OrchestratorResponse = {
       success:                  true,

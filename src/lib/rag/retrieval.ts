@@ -79,6 +79,8 @@ const HYBRID_ENABLED = process.env.RAG_HYBRID_ENABLED !== 'false';
 const HYBRID_VECTOR_CANDIDATES = Number.parseInt(process.env.RAG_HYBRID_VECTOR_CANDIDATES ?? '12', 10);
 const HYBRID_KEYWORD_CANDIDATES = Number.parseInt(process.env.RAG_HYBRID_KEYWORD_CANDIDATES ?? '12', 10);
 const HYBRID_RRF_K = Number.parseInt(process.env.RAG_HYBRID_RRF_K ?? '60', 10);
+const RERANK_ENABLED = process.env.RAG_RERANK_ENABLED !== 'false';
+const RERANK_CANDIDATES = Number.parseInt(process.env.RAG_RERANK_CANDIDATES ?? '10', 10);
 const TOKEN_STOPWORDS = new Set([
   'de', 'la', 'el', 'los', 'las', 'y', 'o', 'u', 'en', 'un', 'una', 'que', 'como', 'del', 'al',
   'para', 'por', 'con', 'sin', 'a', 'es', 'se', 'lo', 'las', 'los', 'su', 'sus', 'mi', 'mis',
@@ -209,6 +211,49 @@ function lexicalScore(queryTokens: string[], row: RawChunkRow): number {
     if (haystack.includes(token)) hits += 1;
   }
   return hits / queryTokens.length;
+}
+
+function lexicalScoreForChunk(queryTokens: string[], chunk: RAGChunk): number {
+  if (queryTokens.length === 0) return 0;
+  const haystack = `${chunk.metadata.title} ${chunk.content}`.toLowerCase();
+  let hits = 0;
+  for (const token of queryTokens) {
+    if (haystack.includes(token)) hits += 1;
+  }
+  return hits / queryTokens.length;
+}
+
+function rerankChunks(
+  chunks: RAGChunk[],
+  query: string,
+  metadataFilter: MetadataFilter,
+  limit: number
+): RAGChunk[] {
+  if (!RERANK_ENABLED || chunks.length <= 1) {
+    return chunks.slice(0, limit);
+  }
+
+  const queryTokens = tokenize(query);
+  const candidates = chunks.slice(0, Math.max(limit, RERANK_CANDIDATES));
+
+  const reranked = candidates
+    .map((chunk) => {
+      const lexical = lexicalScoreForChunk(queryTokens, chunk);
+      const meta = chunk.metadata.doc_metadata ?? {};
+      let metadataBoost = 0;
+
+      if (metadataFilter.topic && meta.topic === metadataFilter.topic) metadataBoost += 0.12;
+      if (metadataFilter.jurisdiction && meta.jurisdiction === metadataFilter.jurisdiction) metadataBoost += 0.08;
+      if (metadataFilter.source_type && meta.source_type === metadataFilter.source_type) metadataBoost += 0.04;
+
+      const score = chunk.similarity * 0.65 + lexical * 0.25 + metadataBoost;
+      return { chunk, score };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((entry) => entry.chunk);
+
+  return reranked;
 }
 
 function fuseHybridResults(
@@ -440,12 +485,13 @@ export async function retrieveContext(
     ? fuseHybridResults(
         vectorChunks,
         await fetchKeywordCandidates(query, dbCategory, HYBRID_KEYWORD_CANDIDATES),
-        limit
+        Math.max(limit, RERANK_CANDIDATES)
       )
-    : vectorChunks.slice(0, limit);
+    : vectorChunks.slice(0, Math.max(limit, RERANK_CANDIDATES));
 
   const filteredChunks = fusedChunks.filter((chunk) => matchesMetadataFilter(chunk, metadataFilter));
-  const chunks = filteredChunks.length > 0 ? filteredChunks.slice(0, limit) : fusedChunks.slice(0, limit);
+  const baseChunks = filteredChunks.length > 0 ? filteredChunks : fusedChunks;
+  const chunks = rerankChunks(baseChunks, query, metadataFilter, limit);
 
   retrievalCache.set(cacheKey, chunks);
   return { chunks, cacheHit: false };
