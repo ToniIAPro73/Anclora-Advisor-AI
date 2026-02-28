@@ -2,9 +2,11 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import { createAppJob } from "@/lib/operations/jobs";
 import { getRequestId, log } from "@/lib/observability/logger";
+import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
 const generateTemplatesSchema = z.object({
   horizonMonths: z.number().int().min(1).max(12).optional(),
@@ -15,15 +17,15 @@ async function getAuthenticatedContext() {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!accessToken) {
-    return { userId: null, error: "Missing session token" };
+    return { accessToken: null, userId: null, error: "Missing session token" };
   }
 
   const { user, error } = await validateAccessToken(accessToken);
   if (!user || error) {
-    return { userId: null, error: error ?? "Invalid session token" };
+    return { accessToken: null, userId: null, error: error ?? "Invalid session token" };
   }
 
-  return { userId: user.id, error: null };
+  return { accessToken, userId: user.id, error: null };
 }
 
 export async function POST(request: NextRequest) {
@@ -61,6 +63,27 @@ export async function POST(request: NextRequest) {
     });
     response.headers.set("x-request-id", requestId);
     log("info", "api_fiscal_templates_generate_enqueued", requestId, { userId: auth.userId, jobId: job.id });
+    if (auth.accessToken) {
+      try {
+        await createAuditLog(createUserScopedSupabaseClient(auth.accessToken), {
+          userId: auth.userId,
+          domain: "fiscal",
+          entityType: "fiscal_template_generation",
+          entityId: job.id,
+          action: "enqueued",
+          summary: "Generacion automatica fiscal encolada",
+          metadata: {
+            horizonMonths: payload.data.horizonMonths ?? 6,
+            templateIds: payload.data.templateIds ?? [],
+          },
+        });
+      } catch (auditError) {
+        log("warn", "api_fiscal_templates_generate_audit_failed", requestId, {
+          jobId: job.id,
+          error: auditError instanceof Error ? auditError.message : "unknown",
+        });
+      }
+    }
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to enqueue fiscal generation";

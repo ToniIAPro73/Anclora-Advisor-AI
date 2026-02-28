@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { AuditLogRecord } from "@/lib/audit/logs";
 import { InvoiceWorkspace } from "@/components/features/InvoiceWorkspace";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
 import type { InvoiceRecord } from "@/lib/invoices/contracts";
@@ -20,7 +21,15 @@ export default async function DashboardFacturacionPage() {
     .order("created_at", { ascending: false })
     .limit(60);
 
+  const { data: auditData } = await supabase
+    .from("app_audit_logs")
+    .select("id, user_id, domain, entity_type, entity_id, action, summary, metadata, created_at")
+    .eq("domain", "invoices")
+    .order("created_at", { ascending: false })
+    .limit(8);
+
   const invoices = (data ?? []) as InvoiceRecord[];
+  const auditLogs = (auditData ?? []) as unknown as AuditLogRecord[];
 
   return (
     <section className="flex h-full min-h-0 flex-col gap-3">
@@ -30,7 +39,7 @@ export default async function DashboardFacturacionPage() {
           Workspace operativo para alta, edicion, numeracion por serie, vista imprimible y envio asistido.
         </p>
       </article>
-      <InvoiceWorkspace initialInvoices={invoices} />
+      <InvoiceWorkspace initialInvoices={invoices} initialAuditLogs={auditLogs} />
     </section>
   );
 }

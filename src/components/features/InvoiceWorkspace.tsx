@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AuditTimeline } from "@/components/features/AuditTimeline";
+import type { AuditLogRecord } from "@/lib/audit/logs";
 import {
   invoiceStatusValues,
   type InvoiceRecord,
@@ -10,6 +12,7 @@ import { buildInvoiceReference } from "@/lib/invoices/service";
 
 interface InvoiceWorkspaceProps {
   initialInvoices: InvoiceRecord[];
+  initialAuditLogs: AuditLogRecord[];
 }
 
 type InvoiceFormState = {
@@ -110,8 +113,9 @@ function toFormState(invoice: InvoiceRecord): InvoiceFormState {
   };
 }
 
-export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
+export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceWorkspaceProps) {
   const [invoices, setInvoices] = useState<InvoiceRecord[]>(initialInvoices);
+  const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
   const [form, setForm] = useState<InvoiceFormState>(INITIAL_FORM);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<InvoiceFilterStatus>("all");
@@ -146,6 +150,18 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
   );
 
   const queuedDeliveries = useMemo(() => emailOutbox.filter((item) => item.status === "queued").length, [emailOutbox]);
+
+  async function refreshAuditLogs() {
+    try {
+      const response = await fetch("/api/audit-logs?domain=invoices&limit=8", { cache: "no-store" });
+      const result = (await response.json()) as { success: boolean; logs?: AuditLogRecord[] };
+      if (response.ok && result.success && result.logs) {
+        setAuditLogs(result.logs);
+      }
+    } catch {
+      // Ignore audit refresh errors in UI.
+    }
+  }
 
   async function refreshOperations() {
     try {
@@ -229,6 +245,7 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
       upsertInvoice(result.invoice);
       setOkMessage(isEditing ? "Factura actualizada." : "Factura guardada en borrador.");
       resetForm();
+      await refreshAuditLogs();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Error al guardar factura");
     } finally {
@@ -259,6 +276,7 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
 
       upsertInvoice(result.invoice);
       setOkMessage(`Factura marcada como ${status}.`);
+      await refreshAuditLogs();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Error al actualizar factura");
     } finally {
@@ -287,6 +305,7 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
         resetForm();
       }
       setOkMessage("Factura eliminada.");
+      await refreshAuditLogs();
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Error al eliminar factura");
     } finally {
@@ -324,6 +343,7 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
       upsertInvoice(result.invoice);
       await refreshOperations();
       setOkMessage(`Factura encolada para envio. Job ${result.delivery.jobId}.`);
+      await refreshAuditLogs();
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Error al preparar el envio");
     } finally {
@@ -561,6 +581,8 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
             </div>
           </div>
         </article>
+
+        <AuditTimeline title="Auditoria de facturacion" logs={auditLogs} />
       </div>
 
       <article className="advisor-card flex min-h-0 flex-col overflow-hidden lg:col-span-3">

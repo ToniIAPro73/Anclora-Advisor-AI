@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import { createLaborMitigationActionSchema, LABOR_MITIGATION_SELECT_FIELDS } from "@/lib/labor/assessments";
 import { resolveLocale, t } from "@/lib/i18n/messages";
@@ -85,7 +86,28 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return response;
   }
 
+  const actionRecord = data as unknown as { id: string | null };
   const response = NextResponse.json({ success: true, action: data });
   response.headers.set("x-request-id", requestId);
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "labor",
+      entityType: "labor_mitigation_action",
+      entityId: actionRecord.id ?? null,
+      action: "created",
+      summary: "Accion de mitigacion creada",
+      metadata: {
+        assessmentId,
+        status: payload.data.status,
+        dueDate: payload.data.dueDate ?? null,
+      },
+    });
+  } catch (auditError) {
+    log("warn", "api_labor_mitigation_post_audit_failed", requestId, {
+      assessmentId,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }

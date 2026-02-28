@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import { updateInvoiceSchema, type InvoiceRecord } from "@/lib/invoices/contracts";
 import { getNextInvoiceNumber, INVOICE_SELECT_FIELDS, normalizeInvoiceSeries } from "@/lib/invoices/service";
@@ -163,6 +164,25 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const response = NextResponse.json({ success: true, invoice: invoiceRecord });
   response.headers.set("x-request-id", requestId);
   log("info", "api_invoice_patch_succeeded", requestId, { invoiceId, status: invoiceRecord.status });
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "invoices",
+      entityType: "invoice",
+      entityId: invoiceId,
+      action: "updated",
+      summary: `Factura actualizada: ${invoiceRecord.client_name}`,
+      metadata: {
+        status: invoiceRecord.status,
+        patch,
+      },
+    });
+  } catch (auditError) {
+    log("warn", "api_invoice_patch_audit_failed", requestId, {
+      invoiceId,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }
 
@@ -198,5 +218,20 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const response = NextResponse.json({ success: true });
   response.headers.set("x-request-id", requestId);
   log("info", "api_invoice_delete_succeeded", requestId, { invoiceId });
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "invoices",
+      entityType: "invoice",
+      entityId: invoiceId,
+      action: "deleted",
+      summary: "Factura eliminada",
+    });
+  } catch (auditError) {
+    log("warn", "api_invoice_delete_audit_failed", requestId, {
+      invoiceId,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }

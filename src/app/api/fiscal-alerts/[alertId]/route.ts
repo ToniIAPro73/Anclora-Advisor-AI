@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import { updateFiscalAlertSchema } from "@/lib/fiscal/alerts";
 import { resolveLocale, t } from "@/lib/i18n/messages";
@@ -16,10 +17,10 @@ async function getAuthenticatedContext() {
 
   const { user, error } = await validateAccessToken(accessToken);
   if (!user || error) {
-    return { accessToken: null, error: error ?? "Invalid session token" };
+    return { accessToken: null, userId: null, error: error ?? "Invalid session token" };
   }
 
-  return { accessToken, error: null };
+  return { accessToken, userId: user.id, error: null };
 }
 
 type RouteContext = {
@@ -31,7 +32,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const locale = resolveLocale(request.headers.get("accept-language"));
   const auth = await getAuthenticatedContext();
 
-  if (!auth.accessToken) {
+  if (!auth.accessToken || !auth.userId) {
     log("warn", "api_fiscal_alert_auth_failed", requestId, { reason: auth.error ?? "unauthorized" });
     const response = NextResponse.json(
       { success: false, error: t(locale, "api.fiscal_alerts.invalid_session") },
@@ -82,6 +83,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const response = NextResponse.json({ success: true, alert: data });
   response.headers.set("x-request-id", requestId);
   log("info", "api_fiscal_alert_patch_succeeded", requestId, { alertId });
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "fiscal",
+      entityType: "fiscal_alert",
+      entityId: alertId,
+      action: "updated",
+      summary: "Alerta fiscal actualizada",
+      metadata: patch,
+    });
+  } catch (auditError) {
+    log("warn", "api_fiscal_alert_patch_audit_failed", requestId, {
+      alertId,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }
 
@@ -90,7 +107,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const locale = resolveLocale(request.headers.get("accept-language"));
   const auth = await getAuthenticatedContext();
 
-  if (!auth.accessToken) {
+  if (!auth.accessToken || !auth.userId) {
     log("warn", "api_fiscal_alert_auth_failed", requestId, { reason: auth.error ?? "unauthorized" });
     const response = NextResponse.json(
       { success: false, error: t(locale, "api.fiscal_alerts.invalid_session") },
@@ -117,5 +134,20 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const response = NextResponse.json({ success: true });
   response.headers.set("x-request-id", requestId);
   log("info", "api_fiscal_alert_delete_succeeded", requestId, { alertId });
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "fiscal",
+      entityType: "fiscal_alert",
+      entityId: alertId,
+      action: "deleted",
+      summary: "Alerta fiscal eliminada",
+    });
+  } catch (auditError) {
+    log("warn", "api_fiscal_alert_delete_audit_failed", requestId, {
+      alertId,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }

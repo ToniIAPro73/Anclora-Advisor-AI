@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import { createInvoiceSchema, type InvoiceRecord } from "@/lib/invoices/contracts";
 import { getNextInvoiceNumber, INVOICE_SELECT_FIELDS, normalizeInvoiceSeries } from "@/lib/invoices/service";
@@ -136,5 +137,24 @@ export async function POST(request: NextRequest) {
     invoiceId: invoiceRecord.id,
     status: invoiceRecord.status,
   });
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "invoices",
+      entityType: "invoice",
+      entityId: invoiceRecord.id,
+      action: "created",
+      summary: `Factura creada para ${invoiceRecord.client_name}`,
+      metadata: {
+        status: invoiceRecord.status,
+        total: invoiceRecord.total_amount,
+      },
+    });
+  } catch (auditError) {
+    log("warn", "api_invoices_post_audit_failed", requestId, {
+      invoiceId: invoiceRecord.id,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }

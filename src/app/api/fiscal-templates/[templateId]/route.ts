@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import { normalizeFiscalTemplatePatch, updateFiscalTemplateSchema } from "@/lib/fiscal/templates";
 import { resolveLocale, t } from "@/lib/i18n/messages";
@@ -16,10 +17,10 @@ async function getAuthenticatedContext() {
 
   const { user, error } = await validateAccessToken(accessToken);
   if (!user || error) {
-    return { accessToken: null, error: error ?? "Invalid session token" };
+    return { accessToken: null, userId: null, error: error ?? "Invalid session token" };
   }
 
-  return { accessToken, error: null };
+  return { accessToken, userId: user.id, error: null };
 }
 
 type RouteContext = {
@@ -31,7 +32,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const locale = resolveLocale(request.headers.get("accept-language"));
   const auth = await getAuthenticatedContext();
 
-  if (!auth.accessToken) {
+  if (!auth.accessToken || !auth.userId) {
     const response = NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     response.headers.set("x-request-id", requestId);
     return response;
@@ -65,6 +66,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const response = NextResponse.json({ success: true, template: data });
   response.headers.set("x-request-id", requestId);
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "fiscal",
+      entityType: "fiscal_template",
+      entityId: templateId,
+      action: "updated",
+      summary: "Plantilla fiscal actualizada",
+      metadata: payload.data,
+    });
+  } catch (auditError) {
+    log("warn", "api_fiscal_template_patch_audit_failed", requestId, {
+      templateId,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }
 
@@ -72,7 +89,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const requestId = getRequestId(request.headers.get("x-request-id"));
   const auth = await getAuthenticatedContext();
 
-  if (!auth.accessToken) {
+  if (!auth.accessToken || !auth.userId) {
     const response = NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     response.headers.set("x-request-id", requestId);
     return response;
@@ -91,5 +108,20 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
   const response = NextResponse.json({ success: true });
   response.headers.set("x-request-id", requestId);
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "fiscal",
+      entityType: "fiscal_template",
+      entityId: templateId,
+      action: "deleted",
+      summary: "Plantilla fiscal eliminada",
+    });
+  } catch (auditError) {
+    log("warn", "api_fiscal_template_delete_audit_failed", requestId, {
+      templateId,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }

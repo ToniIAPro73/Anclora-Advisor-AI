@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import { createFiscalTemplateSchema } from "@/lib/fiscal/templates";
 import { resolveLocale, t } from "@/lib/i18n/messages";
@@ -97,5 +98,24 @@ export async function POST(request: NextRequest) {
 
   const response = NextResponse.json({ success: true, template: data });
   response.headers.set("x-request-id", requestId);
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "fiscal",
+      entityType: "fiscal_template",
+      entityId: data?.id ?? null,
+      action: "created",
+      summary: "Plantilla fiscal creada",
+      metadata: {
+        recurrence: payload.data.recurrence,
+        dueDay: payload.data.dueDay,
+      },
+    });
+  } catch (auditError) {
+    log("warn", "api_fiscal_templates_post_audit_failed", requestId, {
+      templateId: data?.id ?? null,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }

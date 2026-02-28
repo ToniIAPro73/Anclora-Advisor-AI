@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import { createLaborRiskAssessmentSchema } from "@/lib/labor/assessments";
 import { resolveLocale, t } from "@/lib/i18n/messages";
@@ -112,5 +113,24 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({ success: true, assessment: data });
   response.headers.set("x-request-id", requestId);
   log("info", "api_labor_assessments_post_succeeded", requestId, { assessmentId: data?.id ?? null });
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "labor",
+      entityType: "labor_assessment",
+      entityId: data?.id ?? null,
+      action: "created",
+      summary: "Evaluacion laboral registrada",
+      metadata: {
+        riskLevel: payload.data.riskLevel,
+        riskScore: payload.data.riskScore,
+      },
+    });
+  } catch (auditError) {
+    log("warn", "api_labor_assessments_post_audit_failed", requestId, {
+      assessmentId: data?.id ?? null,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import { resolveLocale, t } from "@/lib/i18n/messages";
 import { getRequestId, log } from "@/lib/observability/logger";
@@ -113,5 +114,24 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({ success: true, alert: data });
   response.headers.set("x-request-id", requestId);
   log("info", "api_fiscal_alerts_post_succeeded", requestId, { alertId: data?.id ?? null });
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "fiscal",
+      entityType: "fiscal_alert",
+      entityId: data?.id ?? null,
+      action: "created",
+      summary: `Alerta fiscal creada: ${payload.data.alertType}`,
+      metadata: {
+        priority: payload.data.priority,
+        dueDate: payload.data.dueDate,
+      },
+    });
+  } catch (auditError) {
+    log("warn", "api_fiscal_alerts_post_audit_failed", requestId, {
+      alertId: data?.id ?? null,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }

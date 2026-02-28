@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import {
   LABOR_MITIGATION_SELECT_FIELDS,
@@ -24,10 +25,10 @@ async function getAuthenticatedContext() {
 
   const { user, error } = await validateAccessToken(accessToken);
   if (!user || error) {
-    return { accessToken: null, error: error ?? "Invalid session token" };
+    return { accessToken: null, userId: null, error: error ?? "Invalid session token" };
   }
 
-  return { accessToken, error: null };
+  return { accessToken, userId: user.id, error: null };
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
@@ -35,7 +36,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const locale = resolveLocale(request.headers.get("accept-language"));
   const auth = await getAuthenticatedContext();
 
-  if (!auth.accessToken) {
+  if (!auth.accessToken || !auth.userId) {
     const response = NextResponse.json(
       { success: false, error: t(locale, "api.labor_assessments.invalid_session") },
       { status: 401 }
@@ -130,6 +131,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const response = NextResponse.json({ success: true, action: data });
   response.headers.set("x-request-id", requestId);
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "labor",
+      entityType: "labor_mitigation_action",
+      entityId: actionId,
+      action: "updated",
+      summary: "Accion de mitigacion actualizada",
+      metadata: patch,
+    });
+  } catch (auditError) {
+    log("warn", "api_labor_mitigation_patch_audit_failed", requestId, {
+      actionId,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }
 
@@ -138,7 +155,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const locale = resolveLocale(request.headers.get("accept-language"));
   const auth = await getAuthenticatedContext();
 
-  if (!auth.accessToken) {
+  if (!auth.accessToken || !auth.userId) {
     const response = NextResponse.json(
       { success: false, error: t(locale, "api.labor_assessments.invalid_session") },
       { status: 401 }
@@ -163,5 +180,20 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
   const response = NextResponse.json({ success: true });
   response.headers.set("x-request-id", requestId);
+  try {
+    await createAuditLog(supabase, {
+      userId: auth.userId,
+      domain: "labor",
+      entityType: "labor_mitigation_action",
+      entityId: actionId,
+      action: "deleted",
+      summary: "Accion de mitigacion eliminada",
+    });
+  } catch (auditError) {
+    log("warn", "api_labor_mitigation_delete_audit_failed", requestId, {
+      actionId,
+      error: auditError instanceof Error ? auditError.message : "unknown",
+    });
+  }
   return response;
 }

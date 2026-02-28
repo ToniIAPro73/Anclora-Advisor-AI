@@ -5,6 +5,7 @@ import * as adminIngestRoute from "../src/app/api/admin/rag/ingest/route";
 import * as adminDocumentDeleteRoute from "../src/app/api/admin/rag/documents/[documentId]/route";
 import * as adminObservabilityRagRoute from "../src/app/api/admin/observability/rag/route";
 import * as adminStatusRoute from "../src/app/api/admin/rag/status/route";
+import * as auditLogsRoute from "../src/app/api/audit-logs/route";
 import * as chatStreamRoute from "../src/app/api/chat/stream/route";
 import * as fiscalAlertsRoute from "../src/app/api/fiscal-alerts/route";
 import * as fiscalAlertDetailRoute from "../src/app/api/fiscal-alerts/[alertId]/route";
@@ -55,6 +56,7 @@ async function main(): Promise<void> {
   assert(typeof adminDocumentDeleteRoute.DELETE === "function", "DELETE /api/admin/rag/documents/[documentId] handler exported");
   assert(typeof adminObservabilityRagRoute.GET === "function", "GET /api/admin/observability/rag handler exported");
   assert(typeof adminStatusRoute.GET === "function", "GET /api/admin/rag/status handler exported");
+  assert(typeof auditLogsRoute.GET === "function", "GET /api/audit-logs handler exported");
   assert(typeof fiscalAlertsRoute.GET === "function", "GET /api/fiscal-alerts handler exported");
   assert(typeof fiscalAlertsRoute.POST === "function", "POST /api/fiscal-alerts handler exported");
   assert(typeof fiscalAlertDetailRoute.PATCH === "function", "PATCH /api/fiscal-alerts/[alertId] handler exported");

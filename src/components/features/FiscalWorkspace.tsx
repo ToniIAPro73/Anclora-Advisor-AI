@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AuditTimeline } from "@/components/features/AuditTimeline";
 import { buildProactiveFiscalAlerts } from "@/lib/alerts/proactive-alerts";
+import type { AuditLogRecord } from "@/lib/audit/logs";
 import {
   fiscalAlertPriorityValues,
   fiscalAlertStatusValues,
@@ -21,6 +23,7 @@ import {
 interface FiscalWorkspaceProps {
   initialAlerts: FiscalAlertRecord[];
   initialTemplates: FiscalAlertTemplateRecord[];
+  initialAuditLogs: AuditLogRecord[];
 }
 
 type FilterStatus = "all" | FiscalAlertStatus;
@@ -124,9 +127,10 @@ function toTemplateForm(template: FiscalAlertTemplateRecord): TemplateFormState 
   };
 }
 
-export function FiscalWorkspace({ initialAlerts, initialTemplates }: FiscalWorkspaceProps) {
+export function FiscalWorkspace({ initialAlerts, initialTemplates, initialAuditLogs }: FiscalWorkspaceProps) {
   const [alerts, setAlerts] = useState(sortFiscalAlerts(initialAlerts));
   const [templates, setTemplates] = useState(initialTemplates);
+  const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
   const [alertForm, setAlertForm] = useState(INITIAL_ALERT_FORM);
   const [templateForm, setTemplateForm] = useState(INITIAL_TEMPLATE_FORM);
   const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
@@ -147,6 +151,18 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates }: FiscalWorks
   );
   const proactiveAlerts = useMemo(() => buildProactiveFiscalAlerts(alerts), [alerts]);
   const fiscalJobs = useMemo(() => jobs.filter((job) => job.job_kind === "fiscal_template_generation"), [jobs]);
+
+  async function refreshAuditLogs() {
+    try {
+      const response = await fetch("/api/audit-logs?domain=fiscal&limit=8", { cache: "no-store" });
+      const result = (await response.json()) as { success: boolean; logs?: AuditLogRecord[] };
+      if (response.ok && result.success && result.logs) {
+        setAuditLogs(result.logs);
+      }
+    } catch {
+      // Ignore audit refresh errors in UI.
+    }
+  }
 
   async function refreshJobs() {
     const response = await fetch("/api/operations/jobs", { cache: "no-store" });
@@ -187,6 +203,7 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates }: FiscalWorks
       setAlertForm(INITIAL_ALERT_FORM);
       setEditingAlertId(null);
       setOkMessage(isEditing ? "Alerta fiscal actualizada." : "Alerta fiscal creada.");
+      await refreshAuditLogs();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Error al guardar alerta fiscal");
     } finally {
@@ -227,6 +244,7 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates }: FiscalWorks
       setTemplateForm(INITIAL_TEMPLATE_FORM);
       setEditingTemplateId(null);
       setOkMessage(isEditing ? "Plantilla fiscal actualizada." : "Plantilla fiscal creada.");
+      await refreshAuditLogs();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Error al guardar plantilla fiscal");
     } finally {
@@ -250,6 +268,7 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates }: FiscalWorks
       }
       setAlerts((current) => sortFiscalAlerts(current.map((item) => (item.id === result.alert!.id ? result.alert! : item))));
       setOkMessage(`Alerta marcada como ${status}.`);
+      await refreshAuditLogs();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Error al actualizar alerta");
     } finally {
@@ -265,6 +284,7 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates }: FiscalWorks
     }
     onSuccess();
     setOkMessage(successMessage);
+    await refreshAuditLogs();
   }
 
   async function enqueueTemplates() {
@@ -283,6 +303,7 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates }: FiscalWorks
       }
       await refreshJobs();
       setOkMessage(`Generacion recurrente encolada. Job ${result.jobId}.`);
+      await refreshAuditLogs();
     } catch (generationError) {
       setError(generationError instanceof Error ? generationError.message : "Error al encolar generacion");
     } finally {
@@ -418,6 +439,8 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates }: FiscalWorks
             </button>
           </form>
         </article>
+
+        <AuditTimeline title="Auditoria fiscal" logs={auditLogs} />
       </div>
 
       <article className="advisor-card flex min-h-0 flex-col overflow-hidden lg:col-span-3">

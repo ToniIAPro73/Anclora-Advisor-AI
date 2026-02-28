@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AuditTimeline } from "@/components/features/AuditTimeline";
+import type { AuditLogRecord } from "@/lib/audit/logs";
 import {
   clampRiskScore,
   deriveRiskLevel,
@@ -15,6 +17,7 @@ import {
 interface LaborWorkspaceProps {
   initialAssessments: LaborRiskAssessmentRecord[];
   initialMitigationActions: LaborMitigationActionRecord[];
+  initialAuditLogs: AuditLogRecord[];
 }
 
 type LaborFormState = {
@@ -113,9 +116,10 @@ function toFormState(assessment: LaborRiskAssessmentRecord): LaborFormState {
   };
 }
 
-export function LaborWorkspace({ initialAssessments, initialMitigationActions }: LaborWorkspaceProps) {
+export function LaborWorkspace({ initialAssessments, initialMitigationActions, initialAuditLogs }: LaborWorkspaceProps) {
   const [assessments, setAssessments] = useState<LaborRiskAssessmentRecord[]>(initialAssessments);
   const [mitigationActions, setMitigationActions] = useState<LaborMitigationActionRecord[]>(initialMitigationActions);
+  const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
   const [form, setForm] = useState<LaborFormState>(INITIAL_FORM);
   const [mitigationForm, setMitigationForm] = useState<MitigationFormState>(INITIAL_MITIGATION_FORM);
   const [editingAssessmentId, setEditingAssessmentId] = useState<string | null>(null);
@@ -151,6 +155,18 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
   const overdueActions = selectedActions.filter(
     (item) => item.status !== "completed" && item.due_date && new Date(item.due_date) < new Date()
   ).length;
+
+  async function refreshAuditLogs() {
+    try {
+      const response = await fetch("/api/audit-logs?domain=labor&limit=8", { cache: "no-store" });
+      const result = (await response.json()) as { success: boolean; logs?: AuditLogRecord[] };
+      if (response.ok && result.success && result.logs) {
+        setAuditLogs(result.logs);
+      }
+    } catch {
+      // Ignore audit refresh errors in UI.
+    }
+  }
 
   function resetForm() {
     setForm(INITIAL_FORM);
@@ -229,6 +245,7 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
       setSelectedAssessmentId(savedAssessment.id);
       setOkMessage(isEditing ? "Evaluacion laboral actualizada." : "Evaluacion laboral registrada.");
       resetForm();
+      await refreshAuditLogs();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Error al guardar evaluacion laboral");
     } finally {
@@ -261,6 +278,7 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
         setSelectedAssessmentId(nextAssessment?.id ?? null);
       }
       setOkMessage("Evaluacion laboral eliminada.");
+      await refreshAuditLogs();
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Error al eliminar evaluacion laboral");
     } finally {
@@ -316,6 +334,7 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
       });
       resetMitigationForm();
       setOkMessage(isEditing ? "Accion de mitigacion actualizada." : "Accion de mitigacion creada.");
+      await refreshAuditLogs();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Error al guardar mitigacion");
     } finally {
@@ -344,6 +363,7 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
       const savedAction = result.action;
       setMitigationActions((previous) => previous.map((item) => (item.id === savedAction.id ? savedAction : item)));
       setOkMessage(`Mitigacion marcada como ${status}.`);
+      await refreshAuditLogs();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Error al actualizar mitigacion");
     } finally {
@@ -367,6 +387,7 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
       }
       setMitigationActions((previous) => previous.filter((item) => item.id !== actionId));
       setOkMessage("Mitigacion eliminada.");
+      await refreshAuditLogs();
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Error al eliminar mitigacion");
     } finally {
@@ -497,6 +518,8 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions }:
             </>
           )}
         </article>
+
+        <AuditTimeline title="Auditoria laboral" logs={auditLogs} />
       </div>
 
       <article className="advisor-card flex min-h-0 flex-col overflow-hidden lg:col-span-3">

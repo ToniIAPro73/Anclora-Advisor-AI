@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { AuditLogRecord } from "@/lib/audit/logs";
 import { FiscalWorkspace } from "@/components/features/FiscalWorkspace";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
 import type { FiscalAlertRecord } from "@/lib/fiscal/alerts";
@@ -25,9 +26,17 @@ export default async function DashboardFiscalPage() {
     .select("id, alert_type, description, priority, recurrence, due_day, due_month, start_date, is_active, created_at, updated_at")
     .order("created_at", { ascending: false });
 
+  const { data: auditData, error: auditError } = await supabase
+    .from("app_audit_logs")
+    .select("id, user_id, domain, entity_type, entity_id, action, summary, metadata, created_at")
+    .eq("domain", "fiscal")
+    .order("created_at", { ascending: false })
+    .limit(8);
+
   const alerts = (data ?? []) as FiscalAlertRecord[];
   const templates = (templateData ?? []) as FiscalAlertTemplateRecord[];
-  const combinedError = error?.message ?? templateError?.message ?? null;
+  const auditLogs = (auditData ?? []) as unknown as AuditLogRecord[];
+  const combinedError = error?.message ?? templateError?.message ?? auditError?.message ?? null;
 
   return (
     <section className="flex h-full min-h-0 flex-col gap-3">
@@ -42,7 +51,7 @@ export default async function DashboardFiscalPage() {
           </div>
         )}
       </article>
-      <FiscalWorkspace initialAlerts={alerts} initialTemplates={templates} />
+      <FiscalWorkspace initialAlerts={alerts} initialTemplates={templates} initialAuditLogs={auditLogs} />
     </section>
   );
 }

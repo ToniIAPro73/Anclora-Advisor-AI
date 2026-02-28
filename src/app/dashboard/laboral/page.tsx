@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { AuditLogRecord } from "@/lib/audit/logs";
 import { LaborWorkspace } from "@/components/features/LaborWorkspace";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
 import {
@@ -29,9 +30,17 @@ export default async function DashboardLaboralPage() {
     .order("created_at", { ascending: false })
     .limit(120);
 
+  const { data: auditData, error: auditError } = await supabase
+    .from("app_audit_logs")
+    .select("id, user_id, domain, entity_type, entity_id, action, summary, metadata, created_at")
+    .eq("domain", "labor")
+    .order("created_at", { ascending: false })
+    .limit(8);
+
   const assessments = (data ?? []) as LaborRiskAssessmentRecord[];
   const mitigationActions = (mitigationData ?? []) as unknown as LaborMitigationActionRecord[];
-  const combinedError = error?.message ?? mitigationError?.message ?? null;
+  const auditLogs = (auditData ?? []) as unknown as AuditLogRecord[];
+  const combinedError = error?.message ?? mitigationError?.message ?? auditError?.message ?? null;
 
   return (
     <section className="flex h-full min-h-0 flex-col gap-3">
@@ -46,7 +55,7 @@ export default async function DashboardLaboralPage() {
           </div>
         )}
       </article>
-      <LaborWorkspace initialAssessments={assessments} initialMitigationActions={mitigationActions} />
+      <LaborWorkspace initialAssessments={assessments} initialMitigationActions={mitigationActions} initialAuditLogs={auditLogs} />
     </section>
   );
 }

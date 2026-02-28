@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import type { InvoiceRecord } from "@/lib/invoices/contracts";
 import { buildInvoiceReference, INVOICE_SELECT_FIELDS } from "@/lib/invoices/service";
@@ -132,6 +133,25 @@ export async function POST(request: NextRequest, context: RouteContext) {
       jobId: job.id,
       outboxId: outbox.id,
     });
+    try {
+      await createAuditLog(supabase, {
+        userId: auth.userId,
+        domain: "invoices",
+        entityType: "invoice_delivery",
+        entityId: invoiceId,
+        action: "enqueued",
+        summary: `Envio de factura encolado para ${payload.data.recipientEmail}`,
+        metadata: {
+          jobId: job.id,
+          outboxId: outbox.id,
+        },
+      });
+    } catch (auditError) {
+      log("warn", "api_invoice_send_audit_failed", requestId, {
+        invoiceId,
+        error: auditError instanceof Error ? auditError.message : "unknown",
+      });
+    }
     return response;
   } catch (queueError) {
     log("error", "api_invoice_send_enqueue_failed", requestId, {
