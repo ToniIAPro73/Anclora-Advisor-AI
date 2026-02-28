@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
+import { buildProactiveFiscalAlerts } from "@/lib/alerts/proactive-alerts";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
 type FiscalAlert = {
@@ -70,6 +71,7 @@ export default async function DashboardFiscalPage() {
   const alerts = (data ?? []) as FiscalAlert[];
   const quotaCero = computeQuotaCeroState(alerts);
   const timelineItems = alerts.filter((alert) => alert.alert_type === "iva" || alert.alert_type === "irpf");
+  const proactiveAlerts = buildProactiveFiscalAlerts(alerts);
 
   return (
     <section className="grid gap-4 lg:grid-cols-3">
@@ -94,6 +96,36 @@ export default async function DashboardFiscalPage() {
             </p>
             <p className="mt-1 text-sm text-[#3a4f67]">Modelos 303 (IVA) y 130 (IRPF) ordenados por fecha.</p>
           </div>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Alertas proactivas</p>
+          {proactiveAlerts.length === 0 && (
+            <div className="rounded-xl border border-[#d2dceb] bg-[#f6f9ff] p-4 text-sm text-[#3a4f67]">
+              No hay alertas proactivas pendientes en este momento.
+            </div>
+          )}
+          {proactiveAlerts.map((item) => (
+            <div key={item.id} className="advisor-card-muted p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-[#162944]">{item.title}</p>
+                  <p className="mt-1 text-sm text-[#3a4f67]">{item.detail}</p>
+                </div>
+                <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getPriorityClass(item.severity)}`}>
+                  {item.severity}
+                </span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="rounded-full border border-[#d2dceb] bg-white px-2 py-0.5 text-xs font-semibold text-[#1c2b3c]">
+                  {item.dueLabel}
+                </span>
+                <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getStatusClass(item.status)}`}>
+                  estado: {item.status}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="mt-6 space-y-3">
@@ -135,6 +167,7 @@ export default async function DashboardFiscalPage() {
       <aside className="advisor-card p-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Resumen fiscal</p>
         <p className="mt-1 text-xl font-semibold text-[#162944]">{alerts.length} alerta(s) totales</p>
+        <p className="mt-2 text-sm text-[#3a4f67]">{proactiveAlerts.length} alerta(s) proactivas priorizadas.</p>
         <p className="mt-3 text-sm text-[#3a4f67]">Vista filtrada por RLS para el usuario autenticado.</p>
       </aside>
     </section>
