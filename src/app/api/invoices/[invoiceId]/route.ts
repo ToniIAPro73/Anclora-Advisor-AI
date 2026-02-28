@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { validateAccessToken } from "@/lib/auth/token";
-import { updateInvoiceSchema } from "@/lib/invoices/contracts";
+import { updateInvoiceSchema, type InvoiceRecord } from "@/lib/invoices/contracts";
+import { getNextInvoiceNumber, INVOICE_SELECT_FIELDS, normalizeInvoiceSeries } from "@/lib/invoices/service";
 import { resolveLocale, t } from "@/lib/i18n/messages";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
@@ -12,16 +13,24 @@ async function getAuthenticatedContext() {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!accessToken) {
-    return { accessToken: null, error: "Missing session token" };
+    return { accessToken: null, userId: null, error: "Missing session token" };
   }
 
   const { user, error } = await validateAccessToken(accessToken);
   if (!user || error) {
-    return { accessToken: null, error: error ?? "Invalid session token" };
+    return { accessToken: null, userId: null, error: error ?? "Invalid session token" };
   }
 
-  return { accessToken, error: null };
+  return { accessToken, userId: user.id, error: null };
 }
+
+type CurrentInvoiceRow = {
+  amount_base: number;
+  iva_rate: number;
+  irpf_retention: number;
+  issue_date: string;
+  series: string | null;
+};
 
 type RouteContext = {
   params: Promise<{ invoiceId: string }>;
@@ -32,7 +41,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const locale = resolveLocale(request.headers.get("accept-language"));
   const auth = await getAuthenticatedContext();
 
-  if (!auth.accessToken) {
+  if (!auth.accessToken || !auth.userId) {
     log("warn", "api_invoice_auth_failed", requestId, { reason: auth.error ?? "unauthorized" });
     const response = NextResponse.json(
       { success: false, error: t(locale, "api.invoices.invalid_session") },
@@ -55,27 +64,35 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const { invoiceId } = await context.params;
   const patch = payload.data;
-  const updatePayload: Record<string, string | number> = {};
+  const updatePayload: Record<string, string | number | null> = {};
 
   if (patch.clientName !== undefined) updatePayload.client_name = patch.clientName;
   if (patch.clientNif !== undefined) updatePayload.client_nif = patch.clientNif;
   if (patch.issueDate !== undefined) updatePayload.issue_date = patch.issueDate;
+  if (patch.recipientEmail !== undefined) updatePayload.recipient_email = patch.recipientEmail;
   if (patch.status !== undefined) updatePayload.status = patch.status;
 
   const needsRecalculation =
     patch.amountBase !== undefined || patch.ivaRate !== undefined || patch.irpfRetention !== undefined;
 
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
+  let currentInvoice: CurrentInvoiceRow | null = null;
 
-  if (needsRecalculation) {
-    const { data: currentInvoice, error: fetchError } = await supabase
+  const needsCurrentInvoice =
+    needsRecalculation || patch.issueDate !== undefined || patch.series !== undefined;
+
+  if (needsCurrentInvoice) {
+    const { data, error } = await supabase
       .from("invoices")
-      .select("amount_base, iva_rate, irpf_retention")
+      .select("amount_base, iva_rate, irpf_retention, issue_date, series")
       .eq("id", invoiceId)
       .single();
 
-    if (fetchError || !currentInvoice) {
-      log("error", "api_invoice_patch_load_failed", requestId, { invoiceId, error: fetchError?.message ?? "not_found" });
+    if (error || !data) {
+      log("error", "api_invoice_patch_load_failed", requestId, {
+        invoiceId,
+        error: error?.message ?? "not_found",
+      });
       const response = NextResponse.json(
         { success: false, error: t(locale, "api.invoices.db_error") },
         { status: 500 }
@@ -84,10 +101,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return response;
     }
 
+    currentInvoice = data as CurrentInvoiceRow;
+  }
+
+  if (needsRecalculation) {
     const calculation = calculateInvoiceTotals({
-      amountBase: patch.amountBase ?? Number(currentInvoice.amount_base),
-      ivaRate: patch.ivaRate ?? Number(currentInvoice.iva_rate),
-      irpfRetention: patch.irpfRetention ?? Number(currentInvoice.irpf_retention),
+      amountBase: patch.amountBase ?? Number(currentInvoice?.amount_base ?? 0),
+      ivaRate: patch.ivaRate ?? Number(currentInvoice?.iva_rate ?? 0),
+      irpfRetention: patch.irpfRetention ?? Number(currentInvoice?.irpf_retention ?? 0),
     });
 
     updatePayload.amount_base = calculation.amountBase;
@@ -96,11 +117,36 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     updatePayload.total_amount = calculation.totalAmount;
   }
 
+  if (patch.series !== undefined || patch.issueDate !== undefined) {
+    const nextIssueDate = patch.issueDate ?? currentInvoice?.issue_date ?? new Date().toISOString().slice(0, 10);
+    const nextSeries = normalizeInvoiceSeries(patch.series ?? currentInvoice?.series ?? undefined, nextIssueDate);
+    updatePayload.series = nextSeries;
+
+    const currentSeries = currentInvoice?.series ?? normalizeInvoiceSeries(undefined, currentInvoice?.issue_date ?? nextIssueDate);
+    if (nextSeries !== currentSeries) {
+      try {
+        updatePayload.invoice_number = await getNextInvoiceNumber(supabase, auth.userId, nextSeries);
+      } catch (sequenceError) {
+        log("error", "api_invoice_patch_sequence_failed", requestId, {
+          invoiceId,
+          error: sequenceError instanceof Error ? sequenceError.message : "unknown",
+          series: nextSeries,
+        });
+        const response = NextResponse.json(
+          { success: false, error: t(locale, "api.invoices.db_error") },
+          { status: 500 }
+        );
+        response.headers.set("x-request-id", requestId);
+        return response;
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from("invoices")
     .update(updatePayload)
     .eq("id", invoiceId)
-    .select("id, client_name, client_nif, amount_base, iva_rate, irpf_retention, total_amount, issue_date, status, created_at")
+    .select(INVOICE_SELECT_FIELDS)
     .single();
 
   if (error) {
@@ -113,9 +159,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return response;
   }
 
-  const response = NextResponse.json({ success: true, invoice: data });
+  const invoiceRecord = data as unknown as InvoiceRecord;
+  const response = NextResponse.json({ success: true, invoice: invoiceRecord });
   response.headers.set("x-request-id", requestId);
-  log("info", "api_invoice_patch_succeeded", requestId, { invoiceId, status: data?.status ?? null });
+  log("info", "api_invoice_patch_succeeded", requestId, { invoiceId, status: invoiceRecord.status });
   return response;
 }
 
@@ -124,7 +171,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const locale = resolveLocale(request.headers.get("accept-language"));
   const auth = await getAuthenticatedContext();
 
-  if (!auth.accessToken) {
+  if (!auth.accessToken || !auth.userId) {
     log("warn", "api_invoice_auth_failed", requestId, { reason: auth.error ?? "unauthorized" });
     const response = NextResponse.json(
       { success: false, error: t(locale, "api.invoices.invalid_session") },

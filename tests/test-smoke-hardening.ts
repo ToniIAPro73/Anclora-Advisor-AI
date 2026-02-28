@@ -14,6 +14,8 @@ import * as laborAssessmentActionsRoute from "../src/app/api/labor-risk-assessme
 import * as laborMitigationActionDetailRoute from "../src/app/api/labor-mitigation-actions/[actionId]/route";
 import * as invoicesRoute from "../src/app/api/invoices/route";
 import * as invoiceDetailRoute from "../src/app/api/invoices/[invoiceId]/route";
+import * as invoicePdfRoute from "../src/app/api/invoices/[invoiceId]/pdf/route";
+import * as invoiceSendRoute from "../src/app/api/invoices/[invoiceId]/send/route";
 import { AdminKnowledgeWorkspace } from "../src/components/features/AdminKnowledgeWorkspace";
 import { ChatInterface } from "../src/components/features/ChatInterface";
 import { FiscalWorkspace } from "../src/components/features/FiscalWorkspace";
@@ -63,6 +65,8 @@ async function main(): Promise<void> {
   assert(typeof invoicesRoute.POST === "function", "POST /api/invoices handler exported");
   assert(typeof invoiceDetailRoute.PATCH === "function", "PATCH /api/invoices/[invoiceId] handler exported");
   assert(typeof invoiceDetailRoute.DELETE === "function", "DELETE /api/invoices/[invoiceId] handler exported");
+  assert(typeof invoicePdfRoute.GET === "function", "GET /api/invoices/[invoiceId]/pdf handler exported");
+  assert(typeof invoiceSendRoute.POST === "function", "POST /api/invoices/[invoiceId]/send handler exported");
 
   assert(typeof AdminKnowledgeWorkspace === "function", "admin knowledge workspace exported");
   assert(typeof ChatInterface === "function", "chat interface exported");

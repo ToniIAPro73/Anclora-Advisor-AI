@@ -14,6 +14,10 @@ export interface InvoiceRecord {
   total_amount: number;
   issue_date: string;
   status: string;
+  series: string | null;
+  invoice_number: number | null;
+  recipient_email: string | null;
+  sent_at: string | null;
   created_at: string;
 }
 
@@ -24,6 +28,8 @@ export const createInvoiceSchema = z.object({
   ivaRate: z.number().min(0).max(100),
   irpfRetention: z.number().min(0).max(100),
   issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  series: z.string().min(1).max(20).transform((value) => value.trim().toUpperCase()).optional(),
+  recipientEmail: z.string().email().max(255).transform((value) => value.trim().toLowerCase()).optional(),
 });
 
 export const updateInvoiceSchema = z
@@ -34,6 +40,8 @@ export const updateInvoiceSchema = z
     ivaRate: z.number().min(0).max(100).optional(),
     irpfRetention: z.number().min(0).max(100).optional(),
     issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    series: z.string().min(1).max(20).transform((value) => value.trim().toUpperCase()).optional(),
+    recipientEmail: z.string().email().max(255).transform((value) => value.trim().toLowerCase()).optional(),
     status: z.enum(invoiceStatusValues).optional(),
   })
   .refine((value) => Object.values(value).some((item) => item !== undefined), {

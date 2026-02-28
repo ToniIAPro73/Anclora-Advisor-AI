@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { validateAccessToken } from "@/lib/auth/token";
-import { createInvoiceSchema } from "@/lib/invoices/contracts";
+import { createInvoiceSchema, type InvoiceRecord } from "@/lib/invoices/contracts";
+import { getNextInvoiceNumber, INVOICE_SELECT_FIELDS, normalizeInvoiceSeries } from "@/lib/invoices/service";
 import { resolveLocale, t } from "@/lib/i18n/messages";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
   const { data, error } = await supabase
     .from("invoices")
-    .select("id, client_name, client_nif, amount_base, iva_rate, irpf_retention, total_amount, issue_date, status, created_at")
+    .select(INVOICE_SELECT_FIELDS)
     .order("created_at", { ascending: false })
     .limit(60);
 
@@ -86,6 +87,21 @@ export async function POST(request: NextRequest) {
     irpfRetention: invoice.irpfRetention,
   });
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
+  const series = normalizeInvoiceSeries(invoice.series, invoice.issueDate);
+
+  let invoiceNumber: number;
+  try {
+    invoiceNumber = await getNextInvoiceNumber(supabase, auth.userId, series);
+  } catch (sequenceError) {
+    log("error", "api_invoices_sequence_failed", requestId, {
+      error: sequenceError instanceof Error ? sequenceError.message : "unknown",
+      series,
+      userId: auth.userId,
+    });
+    const response = NextResponse.json({ success: false, error: t(locale, "api.invoices.db_error") }, { status: 500 });
+    response.headers.set("x-request-id", requestId);
+    return response;
+  }
 
   const { data, error } = await supabase
     .from("invoices")
@@ -99,8 +115,11 @@ export async function POST(request: NextRequest) {
       total_amount: calculation.totalAmount,
       issue_date: invoice.issueDate,
       status: "draft",
+      series,
+      invoice_number: invoiceNumber,
+      recipient_email: invoice.recipientEmail ?? null,
     })
-    .select("id, client_name, client_nif, amount_base, iva_rate, irpf_retention, total_amount, issue_date, status, created_at")
+    .select(INVOICE_SELECT_FIELDS)
     .single();
 
   if (error) {
@@ -110,11 +129,12 @@ export async function POST(request: NextRequest) {
     return response;
   }
 
-  const response = NextResponse.json({ success: true, invoice: data });
+  const invoiceRecord = data as unknown as InvoiceRecord;
+  const response = NextResponse.json({ success: true, invoice: invoiceRecord });
   response.headers.set("x-request-id", requestId);
   log("info", "api_invoices_post_succeeded", requestId, {
-    invoiceId: data?.id ?? null,
-    status: data?.status ?? null,
+    invoiceId: invoiceRecord.id,
+    status: invoiceRecord.status,
   });
   return response;
 }

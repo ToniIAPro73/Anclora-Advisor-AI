@@ -6,6 +6,7 @@ import {
   type InvoiceRecord,
   type InvoiceStatus,
 } from "@/lib/invoices/contracts";
+import { buildInvoiceReference } from "@/lib/invoices/service";
 
 interface InvoiceWorkspaceProps {
   initialInvoices: InvoiceRecord[];
@@ -18,9 +19,20 @@ type InvoiceFormState = {
   ivaRate: string;
   irpfRetention: string;
   issueDate: string;
+  series: string;
+  recipientEmail: string;
 };
 
 type InvoiceFilterStatus = "all" | InvoiceStatus;
+
+type SendInvoiceResponse = {
+  success: boolean;
+  error?: string;
+  invoice?: InvoiceRecord;
+  mailtoUrl?: string;
+};
+
+const TODAY = new Date().toISOString().slice(0, 10);
 
 const INITIAL_FORM: InvoiceFormState = {
   clientName: "",
@@ -28,7 +40,9 @@ const INITIAL_FORM: InvoiceFormState = {
   amountBase: "1000",
   ivaRate: "21",
   irpfRetention: "15",
-  issueDate: new Date().toISOString().slice(0, 10),
+  issueDate: TODAY,
+  series: TODAY.slice(0, 4),
+  recipientEmail: "",
 };
 
 function toNumber(value: string): number {
@@ -70,6 +84,8 @@ function toFormState(invoice: InvoiceRecord): InvoiceFormState {
     ivaRate: Number(invoice.iva_rate).toFixed(2),
     irpfRetention: Number(invoice.irpf_retention).toFixed(2),
     issueDate: invoice.issue_date,
+    series: invoice.series ?? invoice.issue_date.slice(0, 4),
+    recipientEmail: invoice.recipient_email ?? "",
   };
 }
 
@@ -117,6 +133,15 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
     setOkMessage(null);
   }
 
+  function upsertInvoice(savedInvoice: InvoiceRecord) {
+    setInvoices((previous) => {
+      const next = previous.some((item) => item.id === savedInvoice.id)
+        ? previous.map((item) => (item.id === savedInvoice.id ? savedInvoice : item))
+        : [savedInvoice, ...previous];
+      return [...next].sort((left, right) => right.created_at.localeCompare(left.created_at)).slice(0, 60);
+    });
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -135,6 +160,8 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
           ivaRate: toNumber(form.ivaRate),
           irpfRetention: toNumber(form.irpfRetention),
           issueDate: form.issueDate,
+          series: form.series.trim().toUpperCase(),
+          recipientEmail: form.recipientEmail.trim() || undefined,
         }),
       });
 
@@ -148,13 +175,7 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
         throw new Error(result.error ?? "No se pudo guardar la factura");
       }
 
-      const savedInvoice = result.invoice;
-      setInvoices((previous) => {
-        const next = isEditing
-          ? previous.map((item) => (item.id === savedInvoice.id ? savedInvoice : item))
-          : [savedInvoice, ...previous];
-        return [...next].sort((left, right) => right.created_at.localeCompare(left.created_at)).slice(0, 60);
-      });
+      upsertInvoice(result.invoice);
       setOkMessage(isEditing ? "Factura actualizada." : "Factura guardada en borrador.");
       resetForm();
     } catch (submitError) {
@@ -185,8 +206,7 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
         throw new Error(result.error ?? "No se pudo actualizar el estado");
       }
 
-      const savedInvoice = result.invoice;
-      setInvoices((previous) => previous.map((item) => (item.id === savedInvoice.id ? savedInvoice : item)));
+      upsertInvoice(result.invoice);
       setOkMessage(`Factura marcada como ${status}.`);
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Error al actualizar factura");
@@ -223,6 +243,47 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
     }
   }
 
+  async function handleSend(invoice: InvoiceRecord) {
+    const fallbackEmail = invoice.recipient_email ?? form.recipientEmail;
+    const recipientEmail = window.prompt(
+      "Introduce el email de destino para preparar el envio:",
+      fallbackEmail
+    );
+
+    if (!recipientEmail) {
+      return;
+    }
+
+    setUpdatingInvoiceId(invoice.id);
+    setError(null);
+    setOkMessage(null);
+
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientEmail }),
+      });
+      const result = (await response.json()) as SendInvoiceResponse;
+
+      if (!response.ok || !result.success || !result.invoice || !result.mailtoUrl) {
+        throw new Error(result.error ?? "No se pudo preparar el envio");
+      }
+
+      upsertInvoice(result.invoice);
+      window.open(result.mailtoUrl, "_blank", "noopener,noreferrer");
+      setOkMessage("Envio asistido preparado.");
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : "Error al preparar el envio");
+    } finally {
+      setUpdatingInvoiceId(null);
+    }
+  }
+
+  function openPrintableView(invoiceId: string) {
+    window.open(`/api/invoices/${invoiceId}/pdf`, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div className="grid h-full min-h-0 gap-3 lg:grid-cols-5">
       <div className="flex min-h-0 flex-col gap-3 lg:col-span-2">
@@ -232,7 +293,9 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
               <h2 className="advisor-heading text-2xl text-[#162944]">
                 {editingInvoiceId ? "Editar factura" : "Nueva factura"}
               </h2>
-              <p className="mt-1 text-sm text-[#3a4f67]">Alta, edicion y cambio de estado sin salir del dashboard.</p>
+              <p className="mt-1 text-sm text-[#3a4f67]">
+                Alta, edicion, numeracion por serie y envio sin salir del dashboard.
+              </p>
             </div>
             {editingInvoiceId && (
               <button
@@ -267,6 +330,47 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
+                <label className="advisor-label" htmlFor="series">Serie</label>
+                <input
+                  id="series"
+                  className="advisor-input"
+                  maxLength={20}
+                  value={form.series}
+                  onChange={(event) => setForm((current) => ({ ...current, series: event.target.value.toUpperCase() }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="advisor-label" htmlFor="issueDate">Fecha de emision</label>
+                <input
+                  id="issueDate"
+                  type="date"
+                  className="advisor-input"
+                  value={form.issueDate}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      issueDate: event.target.value,
+                      series: current.series ? current.series : event.target.value.slice(0, 4),
+                    }))
+                  }
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="advisor-label" htmlFor="recipientEmail">Email destinatario</label>
+              <input
+                id="recipientEmail"
+                type="email"
+                className="advisor-input"
+                value={form.recipientEmail}
+                onChange={(event) => setForm((current) => ({ ...current, recipientEmail: event.target.value }))}
+                placeholder="cliente@empresa.com"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
                 <label className="advisor-label" htmlFor="amountBase">Base imponible</label>
                 <input
                   id="amountBase"
@@ -279,19 +383,6 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
                   required
                 />
               </div>
-              <div>
-                <label className="advisor-label" htmlFor="issueDate">Fecha de emision</label>
-                <input
-                  id="issueDate"
-                  type="date"
-                  className="advisor-input"
-                  value={form.issueDate}
-                  onChange={(event) => setForm((current) => ({ ...current, issueDate: event.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="advisor-label" htmlFor="ivaRate">IVA %</label>
                 <input
@@ -306,20 +397,20 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
                   required
                 />
               </div>
-              <div>
-                <label className="advisor-label" htmlFor="irpfRetention">Retencion IRPF %</label>
-                <input
-                  id="irpfRetention"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  className="advisor-input"
-                  value={form.irpfRetention}
-                  onChange={(event) => setForm((current) => ({ ...current, irpfRetention: event.target.value }))}
-                  required
-                />
-              </div>
+            </div>
+            <div>
+              <label className="advisor-label" htmlFor="irpfRetention">Retencion IRPF %</label>
+              <input
+                id="irpfRetention"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                className="advisor-input"
+                value={form.irpfRetention}
+                onChange={(event) => setForm((current) => ({ ...current, irpfRetention: event.target.value }))}
+                required
+              />
             </div>
 
             <div className="advisor-card-muted p-3">
@@ -358,7 +449,9 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h3 className="advisor-heading text-2xl text-[#162944]">Facturas recientes</h3>
-              <p className="mt-1 text-sm text-[#3a4f67]">{filteredInvoices.length} visible(s) de {invoices.length} registro(s).</p>
+              <p className="mt-1 text-sm text-[#3a4f67]">
+                {filteredInvoices.length} visible(s) de {invoices.length} registro(s).
+              </p>
             </div>
             <div>
               <label className="advisor-label" htmlFor="invoiceStatusFilter">Filtro de estado</label>
@@ -378,17 +471,23 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {filteredInvoices.length === 0 ? (
-            <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">No hay facturas para el filtro seleccionado.</div>
+            <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">
+              No hay facturas para el filtro seleccionado.
+            </div>
           ) : (
             <div className="space-y-2">
               {filteredInvoices.map((invoice) => {
                 const isBusy = updatingInvoiceId === invoice.id;
+                const reference = buildInvoiceReference(invoice.series, invoice.invoice_number);
                 return (
                   <div key={invoice.id} className="advisor-card-muted p-3">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold text-[#162944]">{invoice.client_name}</p>
                         <p className="text-xs text-[#3a4f67]">{invoice.client_nif}</p>
+                        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">
+                          {reference}
+                        </p>
                       </div>
                       <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getStatusClass(invoice.status)}`}>
                         {invoice.status}
@@ -401,6 +500,12 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
                       <p>Total: <strong>{formatAmount(Number(invoice.total_amount))}</strong></p>
                     </div>
                     <p className="mt-2 text-xs text-[#3a4f67]">Fecha emision: {formatDate(invoice.issue_date)}</p>
+                    <p className="mt-1 text-xs text-[#3a4f67]">
+                      Email: <strong>{invoice.recipient_email ?? "Sin definir"}</strong>
+                    </p>
+                    <p className="mt-1 text-xs text-[#3a4f67]">
+                      Enviada: <strong>{invoice.sent_at ? formatDate(invoice.sent_at) : "No"}</strong>
+                    </p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -408,6 +513,21 @@ export function InvoiceWorkspace({ initialInvoices }: InvoiceWorkspaceProps) {
                         onClick={() => startEditing(invoice)}
                       >
                         Editar
+                      </button>
+                      <button
+                        type="button"
+                        className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
+                        onClick={() => openPrintableView(invoice.id)}
+                      >
+                        Vista PDF
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        className="advisor-btn bg-indigo-600 px-3 py-2 text-sm font-semibold text-white"
+                        onClick={() => handleSend(invoice)}
+                      >
+                        Enviar
                       </button>
                       {invoice.status === "draft" && (
                         <button
