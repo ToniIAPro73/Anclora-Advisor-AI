@@ -9,6 +9,9 @@ const ES: MessageDict = {
   "api.invoices.invalid_session": "Token de sesión inválido",
   "api.invoices.invalid_payload": "Payload de factura inválido",
   "api.invoices.db_error": "Error de base de datos al procesar facturas",
+  "api.fiscal_alerts.invalid_session": "Token de sesión inválido",
+  "api.fiscal_alerts.invalid_payload": "Payload de alerta fiscal inválido",
+  "api.fiscal_alerts.db_error": "Error de base de datos al procesar alertas fiscales",
 };
 
 const EN: MessageDict = {
@@ -18,6 +21,9 @@ const EN: MessageDict = {
   "api.invoices.invalid_session": "Invalid session token",
   "api.invoices.invalid_payload": "Invalid invoice payload",
   "api.invoices.db_error": "Database error while processing invoices",
+  "api.fiscal_alerts.invalid_session": "Invalid session token",
+  "api.fiscal_alerts.invalid_payload": "Invalid fiscal alert payload",
+  "api.fiscal_alerts.db_error": "Database error while processing fiscal alerts",
 };
 
 export const I18N_MESSAGES: Record<LocaleCode, MessageDict> = {
@@ -33,4 +39,3 @@ export function resolveLocale(input?: string | null): LocaleCode {
 export function t(locale: LocaleCode, key: string): string {
   return I18N_MESSAGES[locale][key] ?? I18N_MESSAGES.es[key] ?? key;
 }
-
