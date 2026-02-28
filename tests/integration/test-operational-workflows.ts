@@ -1,4 +1,5 @@
 import { createFiscalAlertSchema, sortFiscalAlerts } from "../../src/lib/fiscal/alerts";
+import { createFiscalTemplateSchema, getFiscalTemplateLabel } from "../../src/lib/fiscal/templates";
 import { deliverInvoiceByEmail } from "../../src/lib/invoices/delivery";
 import { renderInvoicePrintableHtml } from "../../src/lib/invoices/pdf";
 import type { InvoiceRecord } from "../../src/lib/invoices/contracts";
@@ -105,6 +106,26 @@ async function main(): Promise<void> {
     },
   ]);
   assert(sortedAlerts[0]?.id === "a", "fiscal alerts are sorted by due date ascending");
+
+  const fiscalTemplate = createFiscalTemplateSchema.parse({
+    alertType: "iva",
+    description: "  Preparar y revisar Modelo 303 trimestral  ",
+    priority: "high",
+    recurrence: "quarterly",
+    dueDay: 20,
+    startDate: "2026-01-01",
+    isActive: true,
+  });
+  assert(fiscalTemplate.description === "Preparar y revisar Modelo 303 trimestral", "fiscal template schema trims description");
+  assert(
+    getFiscalTemplateLabel({
+      alert_type: fiscalTemplate.alertType,
+      recurrence: fiscalTemplate.recurrence,
+      due_day: fiscalTemplate.dueDay,
+      due_month: null,
+    }).includes("trimestral"),
+    "fiscal template label describes recurrence"
+  );
 
   const laborAssessment = createLaborRiskAssessmentSchema.parse({
     scenarioDescription: "  Compatibilidad parcial con actividad por cuenta ajena y salida ordenada del empleo. ",

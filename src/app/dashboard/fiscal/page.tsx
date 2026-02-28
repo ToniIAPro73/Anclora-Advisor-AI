@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { FiscalWorkspace } from "@/components/features/FiscalWorkspace";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
 import type { FiscalAlertRecord } from "@/lib/fiscal/alerts";
+import type { FiscalAlertTemplateRecord } from "@/lib/fiscal/templates";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
 export default async function DashboardFiscalPage() {
@@ -19,7 +20,14 @@ export default async function DashboardFiscalPage() {
     .order("due_date", { ascending: true })
     .limit(60);
 
+  const { data: templateData, error: templateError } = await supabase
+    .from("fiscal_alert_templates")
+    .select("id, alert_type, description, priority, recurrence, due_day, due_month, start_date, is_active, created_at, updated_at")
+    .order("created_at", { ascending: false });
+
   const alerts = (data ?? []) as FiscalAlertRecord[];
+  const templates = (templateData ?? []) as FiscalAlertTemplateRecord[];
+  const combinedError = error?.message ?? templateError?.message ?? null;
 
   return (
     <section className="flex h-full min-h-0 flex-col gap-3">
@@ -28,13 +36,13 @@ export default async function DashboardFiscalPage() {
         <p className="mt-2 text-sm text-[#3a4f67]">
           Workspace operativo para crear, priorizar y cerrar alertas fiscales del usuario autenticado.
         </p>
-        {error && (
+        {combinedError && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            No se pudieron cargar alertas fiscales: {error.message}
+            No se pudieron cargar datos fiscales: {combinedError}
           </div>
         )}
       </article>
-      <FiscalWorkspace initialAlerts={alerts} />
+      <FiscalWorkspace initialAlerts={alerts} initialTemplates={templates} />
     </section>
   );
 }

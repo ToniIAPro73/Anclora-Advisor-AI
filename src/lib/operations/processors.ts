@@ -1,3 +1,4 @@
+import { generateFiscalAlertsFromTemplates } from "@/lib/fiscal/generation";
 import type { InvoiceRecord } from "@/lib/invoices/contracts";
 import { deliverInvoiceByEmail } from "@/lib/invoices/delivery";
 import { buildInvoiceReference, INVOICE_SELECT_FIELDS } from "@/lib/invoices/service";
@@ -18,6 +19,21 @@ function getString(payload: Record<string, unknown>, key: string): string {
     throw new Error(`Invalid job payload: ${key}`);
   }
   return value;
+}
+
+async function processFiscalTemplateGeneration(job: AppJobRecord): Promise<void> {
+  const templateIds = Array.isArray(job.payload.templateIds)
+    ? job.payload.templateIds.filter((value): value is string => typeof value === "string")
+    : undefined;
+  const horizonMonths = typeof job.payload.horizonMonths === "number" ? job.payload.horizonMonths : 6;
+
+  const result = await generateFiscalAlertsFromTemplates({
+    userId: job.user_id,
+    templateIds,
+    horizonMonths,
+  });
+
+  await completeAppJob(job.id, result);
 }
 
 async function processInvoiceEmailDelivery(job: AppJobRecord): Promise<void> {
@@ -96,6 +112,12 @@ export async function processPendingAppJobs(params: {
     try {
       if (job.job_kind === "invoice_email_delivery") {
         await processInvoiceEmailDelivery(job);
+        completed += 1;
+        continue;
+      }
+
+      if (job.job_kind === "fiscal_template_generation") {
+        await processFiscalTemplateGeneration(job);
         completed += 1;
         continue;
       }
