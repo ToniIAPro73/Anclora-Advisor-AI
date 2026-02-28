@@ -1,0 +1,75 @@
+{
+  "generated_at": "2026-02-28T01:17:11.843Z",
+  "models": [
+    "llama3.2:latest",
+    "phi3:latest",
+    "gemma3:1b"
+  ],
+  "results": [
+    {
+      "model": "llama3.2:latest",
+      "case_id": "grounded_cuota_cero",
+      "type": "grounded",
+      "latency_ms": 7961,
+      "chars": 109,
+      "ok": true
+    },
+    {
+      "model": "llama3.2:latest",
+      "case_id": "no_evidence_futbol",
+      "type": "no_evidence",
+      "latency_ms": 2278,
+      "chars": 304,
+      "ok": true
+    },
+    {
+      "model": "phi3:latest",
+      "case_id": "grounded_cuota_cero",
+      "type": "grounded",
+      "latency_ms": 6754,
+      "chars": 175,
+      "ok": true
+    },
+    {
+      "model": "phi3:latest",
+      "case_id": "no_evidence_futbol",
+      "type": "no_evidence",
+      "latency_ms": 4770,
+      "chars": 530,
+      "ok": true
+    },
+    {
+      "model": "gemma3:1b",
+      "case_id": "grounded_cuota_cero",
+      "type": "grounded",
+      "latency_ms": 5307,
+      "chars": 49,
+      "ok": true
+    },
+    {
+      "model": "gemma3:1b",
+      "case_id": "no_evidence_futbol",
+      "type": "no_evidence",
+      "latency_ms": 832,
+      "chars": 56,
+      "ok": true
+    }
+  ],
+  "summary": [
+    {
+      "model": "llama3.2:latest",
+      "ok_count": 2,
+      "avg_latency_ms": 5119.5
+    },
+    {
+      "model": "phi3:latest",
+      "ok_count": 2,
+      "avg_latency_ms": 5762
+    },
+    {
+      "model": "gemma3:1b",
+      "ok_count": 2,
+      "avg_latency_ms": 3069.5
+    }
+  ]
+}

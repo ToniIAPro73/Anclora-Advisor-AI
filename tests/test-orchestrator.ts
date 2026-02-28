@@ -20,6 +20,10 @@ async function test() {
   console.log('Alerts:', result1.alerts);
   console.log('Performance:', result1.performance);
 
+  console.log('\n--- TEST 1B: Misma consulta para comprobar cache ---');
+  const result1Cached = await orchestrator.processQuery(userId, conversationId, query1);
+  console.log('Performance (cached):', result1Cached.performance);
+
   console.log('\n--- TEST 2: Consulta fuera de dominio (No alucinación) ---');
   const query2 = '¿Quién ganó el mundial de fútbol en 1930?';
   const result2 = await orchestrator.processQuery(userId, conversationId, query2);

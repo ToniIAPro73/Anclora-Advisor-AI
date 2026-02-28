@@ -64,7 +64,10 @@ export interface OrchestratorResponse {
     persistence_ms: number;
     total_ms: number;
     llm_model_used: string;
+    llm_path: 'primary' | 'fast_simple' | 'fast_no_evidence' | 'fallback' | 'local_no_evidence';
     used_fallback_model: boolean;
+    retrieval_cache_hit: boolean;
+    response_cache_hit: boolean;
   };
 }
 
@@ -121,6 +124,7 @@ interface RetrievalAttempt {
 
 interface RetrievalCascadeResult {
   chunks: RAGChunk[];
+  cacheHit: boolean;
 }
 
 async function retrieveWithCascade(
@@ -144,18 +148,18 @@ async function retrieveWithCascade(
   }
 
   for (const attempt of attempts) {
-    const chunks = await retrieveContext(query, {
+    const retrieval = await retrieveContext(query, {
       category: attempt.category,
       threshold: attempt.threshold,
       limit: attempt.limit,
     });
 
-    if (chunks.length > 0) {
-      return { chunks };
+    if (retrieval.chunks.length > 0) {
+      return { chunks: retrieval.chunks, cacheHit: retrieval.cacheHit };
     }
   }
 
-  return { chunks: [] };
+  return { chunks: [], cacheHit: false };
 }
 
 // ----------------------------------------------------------------
@@ -167,9 +171,14 @@ export class Orchestrator {
   private primaryModel: string;
   private fallbackModel: string;
   private fastModel: string;
+  private noEvidenceFastModel: string;
   private fastPathEnabled: boolean;
+  private localNoEvidenceEnabled: boolean;
   private contextMaxChunks: number;
   private contextChunkMaxChars: number;
+  private responseCacheTtlMs: number;
+  private responseCacheMaxEntries: number;
+  private responseCache: Map<string, { value: OrchestratorResponse; expiresAt: number }>;
 
   constructor() {
     this.supabase  = createClient(
@@ -179,10 +188,44 @@ export class Orchestrator {
     this.ollamaBaseUrl = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
     this.primaryModel = process.env.OLLAMA_MODEL_PRIMARY ?? process.env.OLLAMA_MODEL ?? 'qwen2.5:14b';
     this.fallbackModel = process.env.OLLAMA_MODEL_FALLBACK ?? 'llama3.1:8b';
-    this.fastModel = process.env.OLLAMA_MODEL_FAST ?? this.fallbackModel;
+    this.fastModel = process.env.OLLAMA_MODEL_FAST ?? 'llama3.2:latest';
+    this.noEvidenceFastModel = process.env.OLLAMA_MODEL_NO_EVIDENCE ?? 'gemma3:1b';
     this.fastPathEnabled = process.env.ORCHESTRATOR_FASTPATH_ENABLED !== 'false';
+    this.localNoEvidenceEnabled = process.env.ORCHESTRATOR_LOCAL_NO_EVIDENCE !== 'false';
     this.contextMaxChunks = Number.parseInt(process.env.ORCHESTRATOR_CONTEXT_MAX_CHUNKS ?? '3', 10);
     this.contextChunkMaxChars = Number.parseInt(process.env.ORCHESTRATOR_CONTEXT_CHUNK_MAX_CHARS ?? '1200', 10);
+    this.responseCacheTtlMs = Number.parseInt(process.env.ORCHESTRATOR_RESPONSE_CACHE_TTL_MS ?? '180000', 10);
+    this.responseCacheMaxEntries = Number.parseInt(process.env.ORCHESTRATOR_RESPONSE_CACHE_MAX_ENTRIES ?? '128', 10);
+    this.responseCache = new Map();
+  }
+
+  private getResponseCacheKey(query: string): string {
+    return query.trim().toLowerCase();
+  }
+
+  private getCachedResponse(cacheKey: string): OrchestratorResponse | null {
+    const entry = this.responseCache.get(cacheKey);
+    if (!entry) return null;
+    if (entry.expiresAt <= Date.now()) {
+      this.responseCache.delete(cacheKey);
+      return null;
+    }
+
+    return {
+      ...entry.value,
+      performance: { ...entry.value.performance },
+    };
+  }
+
+  private setCachedResponse(cacheKey: string, value: OrchestratorResponse): void {
+    if (this.responseCache.size >= this.responseCacheMaxEntries) {
+      const oldestKey = this.responseCache.keys().next().value;
+      if (oldestKey) this.responseCache.delete(oldestKey);
+    }
+    this.responseCache.set(cacheKey, {
+      value,
+      expiresAt: Date.now() + this.responseCacheTtlMs,
+    });
   }
 
   private trimContextForPrompt(chunks: RAGChunk[]): RAGChunk[] {
@@ -200,6 +243,29 @@ export class Orchestrator {
     if (!hasEvidence) return true;
     const tokenApprox = query.trim().split(/\s+/).filter(Boolean).length;
     return topScore <= 1 && tokenApprox <= 10;
+  }
+
+  private selectModel(hasEvidence: boolean, topScore: number, query: string): {
+    model: string;
+    path: OrchestratorResponse['performance']['llm_path'];
+  } {
+    if (!this.fastPathEnabled) {
+      return { model: this.primaryModel, path: 'primary' };
+    }
+
+    if (!hasEvidence) {
+      return { model: this.noEvidenceFastModel, path: 'fast_no_evidence' };
+    }
+
+    if (this.shouldUseFastModel(hasEvidence, topScore, query)) {
+      return { model: this.fastModel, path: 'fast_simple' };
+    }
+
+    return { model: this.primaryModel, path: 'primary' };
+  }
+
+  private buildNoEvidenceResponse(): string {
+    return 'No tengo evidencia suficiente en mi base de conocimientos especializada para responder esta consulta. Te recomiendo verificar la información en una fuente fiable o consultarlo con un asesor cualificado.';
   }
 
   private async generateWithOllama(model: string, systemPrompt: string, query: string): Promise<string> {
@@ -240,8 +306,24 @@ export class Orchestrator {
     const tTotalStart = Date.now();
     let llmModelUsed = this.primaryModel;
     let usedFallbackModel = false;
+    let llmPath: OrchestratorResponse['performance']['llm_path'] = 'primary';
     let llmPrimaryMs = 0;
     let llmFallbackMs = 0;
+    const responseCacheKey = this.getResponseCacheKey(query);
+    const cachedResponse = this.getCachedResponse(responseCacheKey);
+    if (cachedResponse) {
+      const totalMs = Date.now() - tTotalStart;
+      cachedResponse.performance.routing_ms = 0;
+      cachedResponse.performance.retrieval_ms = 0;
+      cachedResponse.performance.prompt_build_ms = 0;
+      cachedResponse.performance.llm_ms = 0;
+      cachedResponse.performance.llm_primary_ms = 0;
+      cachedResponse.performance.llm_fallback_ms = 0;
+      cachedResponse.performance.persistence_ms = 0;
+      cachedResponse.performance.total_ms = totalMs;
+      cachedResponse.performance.response_cache_hit = true;
+      return cachedResponse;
+    }
 
     // 1. Routing
     const tRoutingStart = Date.now();
@@ -277,35 +359,44 @@ export class Orchestrator {
     const systemPrompt = hasEvidence
       ? GROUNDED_CHAT_PROMPT.replace('{context}', contextText).replace('{query}', query)
       : NO_EVIDENCE_FALLBACK_PROMPT.replace('{query}', query);
-    const modelToUse = this.shouldUseFastModel(hasEvidence, topScore, query) ? this.fastModel : this.primaryModel;
+    const selectedModel = this.selectModel(hasEvidence, topScore, query);
+    const modelToUse = selectedModel.model;
     llmModelUsed = modelToUse;
+    llmPath = selectedModel.path;
 
-    try {
-      // Primary: Ollama qwen2.5:14b (default)
-      const tPrimaryStart = Date.now();
+    if (!hasEvidence && this.localNoEvidenceEnabled) {
+      primaryResponse = this.buildNoEvidenceResponse();
+      llmModelUsed = 'local:no_evidence';
+      llmPath = 'local_no_evidence';
+    } else {
       try {
-        primaryResponse = await this.generateWithOllama(modelToUse, systemPrompt, query);
-      } finally {
-        llmPrimaryMs = Date.now() - tPrimaryStart;
-      }
-    } catch (primaryError) {
-      console.error('[Orchestrator] Primary Ollama model failed, using local fallback:', primaryError);
-
-      try {
-        // Fallback: Ollama llama3.1:8b (default)
-        const tFallbackStart = Date.now();
+        // Primary: Ollama qwen2.5:14b (default)
+        const tPrimaryStart = Date.now();
         try {
-          primaryResponse = await this.generateWithOllama(this.fallbackModel, systemPrompt, query);
+          primaryResponse = await this.generateWithOllama(modelToUse, systemPrompt, query);
         } finally {
-          llmFallbackMs = Date.now() - tFallbackStart;
+          llmPrimaryMs = Date.now() - tPrimaryStart;
         }
-        llmModelUsed = this.fallbackModel;
-        usedFallbackModel = true;
-      } catch (fallbackError) {
-        console.error('[Orchestrator] Local Ollama fallback also failed:', fallbackError);
-        primaryResponse = hasEvidence
-          ? 'He encontrado información relevante en mi base de conocimientos pero no puedo generar una respuesta completa en este momento. Por favor, consulta con un asesor humano.'
-          : 'No tengo evidencia suficiente en mi base de datos especializada para responder esta consulta. Te recomiendo consultar con un asesor fiscal, laboral o inmobiliario certificado.';
+      } catch (primaryError) {
+        console.error('[Orchestrator] Primary Ollama model failed, using local fallback:', primaryError);
+
+        try {
+          // Fallback: Ollama llama3.1:8b (default)
+          const tFallbackStart = Date.now();
+          try {
+            primaryResponse = await this.generateWithOllama(this.fallbackModel, systemPrompt, query);
+          } finally {
+            llmFallbackMs = Date.now() - tFallbackStart;
+          }
+          llmModelUsed = this.fallbackModel;
+          llmPath = 'fallback';
+          usedFallbackModel = true;
+        } catch (fallbackError) {
+          console.error('[Orchestrator] Local Ollama fallback also failed:', fallbackError);
+          primaryResponse = hasEvidence
+            ? 'He encontrado información relevante en mi base de conocimientos pero no puedo generar una respuesta completa en este momento. Por favor, consulta con un asesor humano.'
+            : 'No tengo evidencia suficiente en mi base de datos especializada para responder esta consulta. Te recomiendo consultar con un asesor fiscal, laboral o inmobiliario certificado.';
+        }
       }
     }
     const llmMs = Date.now() - tLlmStart;
@@ -376,7 +467,10 @@ export class Orchestrator {
         persistence_ms: 0,
         total_ms: 0,
         llm_model_used: llmModelUsed,
+        llm_path: llmPath,
         used_fallback_model: usedFallbackModel,
+        retrieval_cache_hit: retrieval.cacheHit,
+        response_cache_hit: false,
       },
     };
 
@@ -387,6 +481,7 @@ export class Orchestrator {
     const totalMs = Date.now() - tTotalStart;
     result.performance.persistence_ms = persistenceMs;
     result.performance.total_ms = totalMs;
+    this.setCachedResponse(responseCacheKey, result);
 
     return result;
   }

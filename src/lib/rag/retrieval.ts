@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { TtlCache } from '../cache/memory';
 import { generateEmbedding } from './embeddings';
 
 // ----------------------------------------------------------------
@@ -62,6 +63,15 @@ export interface RetrievalOptions {
   /** Minimum cosine similarity (default: 0.35 — tuned for 18-chunk corpus) */
   threshold?: number;
 }
+
+export interface RetrievalResult {
+  chunks: RAGChunk[];
+  cacheHit: boolean;
+}
+
+const RETRIEVAL_CACHE_TTL_MS = Number.parseInt(process.env.RETRIEVAL_CACHE_TTL_MS ?? '300000', 10);
+const RETRIEVAL_CACHE_MAX_ENTRIES = Number.parseInt(process.env.RETRIEVAL_CACHE_MAX_ENTRIES ?? '256', 10);
+const retrievalCache = new TtlCache<RAGChunk[]>(RETRIEVAL_CACHE_TTL_MS, RETRIEVAL_CACHE_MAX_ENTRIES);
 
 interface RawChunkRow {
   id: string;
@@ -194,16 +204,27 @@ async function fallbackRetrieveWithoutRpc(
 export async function retrieveContext(
   query: string,
   options: RetrievalOptions = {}
-): Promise<RAGChunk[]> {
+): Promise<RetrievalResult> {
   const { category, limit = 5, threshold = 0.35 } = options;
   const dbCategory = resolveCategory(category);
+  const cacheKey = JSON.stringify({
+    query: query.trim().toLowerCase(),
+    category: dbCategory,
+    limit,
+    threshold,
+  });
+
+  const cached = retrievalCache.get(cacheKey);
+  if (cached) {
+    return { chunks: cached, cacheHit: true };
+  }
 
   let embedding: number[];
   try {
     embedding = await generateEmbedding(query);
   } catch (embeddingError) {
     console.error('[RAG] Embedding generation failed:', embeddingError);
-    return [];
+    return { chunks: [], cacheHit: false };
   }
 
   const { data, error } = await getSupabase().rpc('match_chunks', {
@@ -216,11 +237,15 @@ export async function retrieveContext(
   if (error) {
     if (error.code === 'PGRST202') {
       console.warn('[RAG] match_chunks RPC not found, using JS fallback retrieval');
-      return fallbackRetrieveWithoutRpc(embedding, dbCategory, limit, threshold);
+      const fallbackChunks = await fallbackRetrieveWithoutRpc(embedding, dbCategory, limit, threshold);
+      retrievalCache.set(cacheKey, fallbackChunks);
+      return { chunks: fallbackChunks, cacheHit: false };
     }
     console.error('[RAG] match_chunks RPC error:', error);
-    return [];
+    return { chunks: [], cacheHit: false };
   }
 
-  return (data ?? []) as RAGChunk[];
+  const chunks = (data ?? []) as RAGChunk[];
+  retrievalCache.set(cacheKey, chunks);
+  return { chunks, cacheHit: false };
 }

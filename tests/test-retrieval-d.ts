@@ -41,9 +41,10 @@ async function runTests(): Promise<void> {
   // ── T1: Fiscal retrieval ──────────────────────────────────────
   console.log('T1 — Fiscal: "¿Cuáles son los plazos del IVA?"');
   {
-    const chunks = await retrieveContext('¿Cuáles son los plazos del IVA?', {
+    const retrieval = await retrieveContext('¿Cuáles son los plazos del IVA?', {
       category: 'fiscal', threshold: 0.35, limit: 5,
     });
+    const chunks = retrieval.chunks;
     assert(chunks.length > 0,           'At least 1 chunk returned', `got ${chunks.length}`);
     assert(
       chunks.every(c => c.metadata.category === 'fiscal'),
@@ -59,9 +60,10 @@ async function runTests(): Promise<void> {
   // ── T2: Laboral retrieval ─────────────────────────────────────
   console.log('\nT2 — Laboral: "¿Qué riesgos tiene la pluriactividad?"');
   {
-    const chunks = await retrieveContext('¿Qué riesgos tiene la pluriactividad?', {
+    const retrieval = await retrieveContext('¿Qué riesgos tiene la pluriactividad?', {
       category: 'labor', threshold: 0.35, limit: 5,
     });
+    const chunks = retrieval.chunks;
     assert(chunks.length > 0, 'At least 1 chunk returned', `got ${chunks.length}`);
     if (chunks.length > 0) {
       console.log(`    Top chunk: "${chunks[0].metadata.title}" (${(chunks[0].similarity * 100).toFixed(1)}%)`);
@@ -71,9 +73,10 @@ async function runTests(): Promise<void> {
   // ── T3: Mercado/Marca retrieval ───────────────────────────────
   console.log('\nT3 — Mercado/Marca: "¿Cómo definir una USP en marca personal inmobiliaria premium?"');
   {
-    const chunks = await retrieveContext('¿Cómo definir una USP en marca personal inmobiliaria premium?', {
+    const retrieval = await retrieveContext('¿Cómo definir una USP en marca personal inmobiliaria premium?', {
       category: 'market', threshold: 0.30, limit: 5,
     });
+    const chunks = retrieval.chunks;
     assert(chunks.length > 0, 'At least 1 chunk returned', `got ${chunks.length}`);
     if (chunks.length > 0) {
       console.log(`    Top chunk: "${chunks[0].metadata.title}" (${(chunks[0].similarity * 100).toFixed(1)}%)`);

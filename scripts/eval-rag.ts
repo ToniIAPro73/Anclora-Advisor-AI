@@ -165,11 +165,12 @@ async function main(): Promise<void> {
   };
 
   for (const c of inDomain) {
-    const chunks = await retrieveContext(c.query, {
+    const retrieval = await retrieveContext(c.query, {
       category: c.expected_domain,
       limit: opts.k,
       threshold: opts.retrievalThreshold,
     });
+    const chunks = retrieval.chunks;
 
     const matchIdx = chunks.findIndex((ch) => ch.metadata.category === c.expected_domain);
     const rr = reciprocalRank(matchIdx);
@@ -184,7 +185,7 @@ async function main(): Promise<void> {
 
     const top = chunks[0];
     console.log(
-      `IN  ${c.id}: hit=${hit} rr=${rr.toFixed(3)} top=${top ? `${top.metadata.category}@${top.similarity.toFixed(2)}` : 'none'}`
+      `IN  ${c.id}: hit=${hit} rr=${rr.toFixed(3)} cache=${retrieval.cacheHit ? 1 : 0} top=${top ? `${top.metadata.category}@${top.similarity.toFixed(2)}` : 'none'}`
     );
   }
 

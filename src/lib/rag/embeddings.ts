@@ -1,6 +1,11 @@
+import { TtlCache } from '../cache/memory';
+
 const EMBEDDING_DIM = 384;
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
 const OLLAMA_EMBED_MODEL = process.env.OLLAMA_EMBED_MODEL ?? 'all-minilm';
+const EMBEDDING_CACHE_TTL_MS = Number.parseInt(process.env.EMBEDDING_CACHE_TTL_MS ?? '900000', 10);
+const EMBEDDING_CACHE_MAX_ENTRIES = Number.parseInt(process.env.EMBEDDING_CACHE_MAX_ENTRIES ?? '256', 10);
+const embeddingCache = new TtlCache<number[]>(EMBEDDING_CACHE_TTL_MS, EMBEDDING_CACHE_MAX_ENTRIES);
 
 function normalizeVector(values: number[]): number[] {
   let norm = 0;
@@ -39,6 +44,12 @@ async function generateEmbeddingWithOllama(text: string): Promise<number[]> {
  * Uses local Ollama embeddings model (default: all-minilm).
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
+  const cacheKey = text.trim().toLowerCase();
+  const cached = embeddingCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
   const vec = await generateEmbeddingWithOllama(text);
 
   if (vec.length !== EMBEDDING_DIM) {
@@ -48,5 +59,6 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     );
   }
 
+  embeddingCache.set(cacheKey, vec);
   return vec;
 }
