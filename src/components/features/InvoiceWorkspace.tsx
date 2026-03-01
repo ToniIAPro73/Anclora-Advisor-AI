@@ -36,6 +36,15 @@ type InvoiceFilters = {
   dateTo: string;
 };
 
+type InvoiceBookRow = {
+  period: string;
+  total: number;
+  count: number;
+  paid: number;
+  issued: number;
+  draft: number;
+};
+
 type SendInvoiceResponse = {
   success: boolean;
   error?: string;
@@ -110,6 +119,13 @@ function formatAmount(value: number): string {
   }).format(value);
 }
 
+function getInvoicePeriod(date: string): string {
+  return new Intl.DateTimeFormat("es-ES", {
+    month: "short",
+    year: "numeric",
+  }).format(new Date(date));
+}
+
 function getStatusClass(status: string): string {
   if (status === "paid") return "bg-emerald-100 text-emerald-700 border-emerald-200";
   if (status === "issued") return "bg-blue-100 text-blue-700 border-blue-200";
@@ -161,6 +177,27 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
   );
 
   const queuedDeliveries = useMemo(() => emailOutbox.filter((item) => item.status === "queued").length, [emailOutbox]);
+  const invoiceBook = useMemo<InvoiceBookRow[]>(() => {
+    const groups = new Map<string, InvoiceBookRow>();
+    for (const invoice of invoices) {
+      const period = getInvoicePeriod(invoice.issue_date);
+      const current = groups.get(period) ?? {
+        period,
+        total: 0,
+        count: 0,
+        paid: 0,
+        issued: 0,
+        draft: 0,
+      };
+      current.total += Number(invoice.total_amount);
+      current.count += 1;
+      current.paid += invoice.status === "paid" ? 1 : 0;
+      current.issued += invoice.status === "issued" ? 1 : 0;
+      current.draft += invoice.status === "draft" ? 1 : 0;
+      groups.set(period, current);
+    }
+    return Array.from(groups.values());
+  }, [invoices]);
 
   async function refreshAuditLogs() {
     try {
@@ -426,6 +463,66 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
     }
   }
 
+  async function handleDuplicate(invoiceId: string) {
+    setUpdatingInvoiceId(invoiceId);
+    setError(null);
+    setOkMessage(null);
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}/duplicate`, {
+        method: "POST",
+      });
+      const result = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        invoice?: InvoiceRecord;
+      };
+      if (!response.ok || !result.success || !result.invoice) {
+        throw new Error(result.error ?? "No se pudo duplicar la factura");
+      }
+      upsertInvoice(result.invoice);
+      await refreshInvoices();
+      await refreshAuditLogs();
+      setOkMessage("Factura duplicada como nuevo borrador.");
+    } catch (duplicateError) {
+      setError(duplicateError instanceof Error ? duplicateError.message : "Error al duplicar factura");
+    } finally {
+      setUpdatingInvoiceId(null);
+    }
+  }
+
+  async function handleExport(format: "csv" | "json") {
+    setError(null);
+    setOkMessage(null);
+    try {
+      const params = new URLSearchParams();
+      if (filters.q.trim()) params.set("q", filters.q.trim());
+      if (filters.status !== "all") params.set("status", filters.status);
+      if (filters.series.trim()) params.set("series", filters.series.trim().toUpperCase());
+      if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+      if (filters.dateTo) params.set("dateTo", filters.dateTo);
+      params.set("format", format);
+      params.set("limit", "500");
+
+      const response = await fetch(`/api/invoices/export?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error("No se pudo exportar el libro de facturas");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `facturas-${new Date().toISOString().slice(0, 10)}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      setOkMessage(`Libro exportado en formato ${format.toUpperCase()}.`);
+    } catch (exportError) {
+      setError(exportError instanceof Error ? exportError.message : "Error al exportar facturas");
+    }
+  }
+
   function openPrintableView(invoiceId: string) {
     window.open(`/api/invoices/${invoiceId}/pdf`, "_blank", "noopener,noreferrer");
   }
@@ -590,6 +687,52 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
           <div className="mt-4 rounded-2xl border border-[#d2dceb] bg-white p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Libro de facturas</p>
+                <p className="mt-1 text-sm text-[#162944]">{invoiceBook.length} periodo(s) visibles</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
+                  onClick={() => void handleExport("csv")}
+                >
+                  Exportar CSV
+                </button>
+                <button
+                  type="button"
+                  className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
+                  onClick={() => void handleExport("json")}
+                >
+                  Exportar JSON
+                </button>
+              </div>
+            </div>
+            <div className="mt-3 space-y-2">
+              {invoiceBook.length === 0 ? (
+                <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-2 text-xs text-[#3a4f67]">
+                  No hay periodos visibles para el filtro actual.
+                </div>
+              ) : (
+                invoiceBook.map((row) => (
+                  <div key={row.period} className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3 text-xs text-[#3a4f67]">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-[#162944]">{row.period}</p>
+                      <p className="font-semibold text-[#162944]">{formatAmount(row.total)}</p>
+                    </div>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-4">
+                      <p>Total: <strong className="text-[#162944]">{row.count}</strong></p>
+                      <p>Borrador: <strong className="text-[#162944]">{row.draft}</strong></p>
+                      <p>Emitida: <strong className="text-[#162944]">{row.issued}</strong></p>
+                      <p>Pagada: <strong className="text-[#162944]">{row.paid}</strong></p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+          <div className="mt-4 rounded-2xl border border-[#d2dceb] bg-white p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Cola operativa</p>
                 <p className="mt-1 text-sm text-[#162944]">{queuedDeliveries} envio(s) pendiente(s)</p>
               </div>
@@ -704,6 +847,14 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
                         onClick={() => startEditing(invoice)}
                       >
                         Editar
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isBusy}
+                        className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
+                        onClick={() => void handleDuplicate(invoice.id)}
+                      >
+                        Duplicar
                       </button>
                       <button
                         type="button"

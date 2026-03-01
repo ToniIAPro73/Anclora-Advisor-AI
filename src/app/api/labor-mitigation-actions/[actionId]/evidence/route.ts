@@ -118,6 +118,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         label,
         url: buildLaborEvidenceDownloadUrl(actionId, storagePath),
         addedAt: new Date().toISOString(),
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+        storagePath,
       },
     ];
 

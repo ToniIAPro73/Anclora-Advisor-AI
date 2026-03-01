@@ -5,14 +5,18 @@
 - CRUD basico de `invoices` con RLS por usuario.
 - Gestion de estados `draft`, `issued` y `paid`.
 - Numeracion por serie.
+- Duplicado de facturas como nuevo borrador.
 - Vista imprimible lista para PDF.
 - Envio real por SMTP con PDF adjunto via outbox y job queue.
+- Exportacion del libro visible en CSV y JSON.
 
 ## Endpoints
 - `GET /api/invoices`
 - `POST /api/invoices`
 - `PATCH /api/invoices/[invoiceId]`
 - `DELETE /api/invoices/[invoiceId]`
+- `POST /api/invoices/[invoiceId]/duplicate`
+- `GET /api/invoices/export`
 - `GET /api/invoices/[invoiceId]/pdf`
 - `POST /api/invoices/[invoiceId]/send`
 - `GET /api/operations/jobs`
@@ -23,7 +27,9 @@
 - Recalculo automatico de base, IVA, IRPF y total.
 - Serie y email destinatario editables.
 - Resumen de volumen y estados.
+- Libro de facturas agrupado por periodo y estado.
 - Lista filtrable con acciones de emitir, marcar pagada, volver a borrador, eliminar, abrir vista PDF, encolar envios y procesar cola.
+- Accion de duplicar factura desde listado.
 - Filtros avanzados por cliente/NIF, serie, estado y rango de fechas.
 
 ## Flujo

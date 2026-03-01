@@ -18,6 +18,10 @@ export interface LaborMitigationEvidenceLink {
   label: string;
   url: string;
   addedAt: string | null;
+  fileName?: string | null;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
+  storagePath?: string | null;
 }
 
 export interface LaborRiskAssessmentRecord {
@@ -123,9 +127,17 @@ const evidenceLinkSchema = z.object({
   label: z.string().min(1).max(255).transform((value) => value.trim()),
   url: z.string().url().max(2000).transform((value) => value.trim()),
   addedAt: z.string().datetime().nullable().optional(),
+  fileName: z.string().max(255).nullable().optional(),
+  mimeType: z.string().max(255).nullable().optional(),
+  sizeBytes: z.number().int().nonnegative().nullable().optional(),
+  storagePath: z.string().max(1000).nullable().optional(),
 }).transform((value) => ({
   ...value,
   addedAt: value.addedAt ?? null,
+  fileName: value.fileName ?? null,
+  mimeType: value.mimeType ?? null,
+  sizeBytes: value.sizeBytes ?? null,
+  storagePath: value.storagePath ?? null,
 }));
 const optionalChecklistItems = z.array(checklistItemSchema).max(20).optional();
 const optionalEvidenceLinks = z.array(evidenceLinkSchema).max(20).optional();

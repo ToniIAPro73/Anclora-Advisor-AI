@@ -4,7 +4,13 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import { createInvoiceSchema, invoiceStatusValues, type InvoiceRecord } from "@/lib/invoices/contracts";
-import { getNextInvoiceNumber, INVOICE_SELECT_FIELDS, normalizeInvoiceSeries } from "@/lib/invoices/service";
+import {
+  applyInvoiceFilters,
+  getNextInvoiceNumber,
+  INVOICE_SELECT_FIELDS,
+  normalizeInvoiceQueryParams,
+  normalizeInvoiceSeries,
+} from "@/lib/invoices/service";
 import { resolveLocale, t } from "@/lib/i18n/messages";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
@@ -41,34 +47,24 @@ export async function GET(request: NextRequest) {
 
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
   const searchParams = request.nextUrl.searchParams;
-  const query = searchParams.get("q")?.trim() ?? "";
-  const status = searchParams.get("status")?.trim() ?? "";
-  const series = searchParams.get("series")?.trim().toUpperCase() ?? "";
-  const dateFrom = searchParams.get("dateFrom")?.trim() ?? "";
-  const dateTo = searchParams.get("dateTo")?.trim() ?? "";
-  const limit = Math.max(1, Math.min(100, Number.parseInt(searchParams.get("limit") ?? "60", 10) || 60));
+  const filters = normalizeInvoiceQueryParams({
+    q: searchParams.get("q") ?? undefined,
+    status: searchParams.get("status") ?? undefined,
+    series: searchParams.get("series") ?? undefined,
+    dateFrom: searchParams.get("dateFrom") ?? undefined,
+    dateTo: searchParams.get("dateTo") ?? undefined,
+    limit: Number.parseInt(searchParams.get("limit") ?? "60", 10) || 60,
+  });
 
-  let dbQuery = supabase
+  const dbQuery = applyInvoiceFilters(
+    supabase
     .from("invoices")
     .select(INVOICE_SELECT_FIELDS)
     .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (status && invoiceStatusValues.includes(status as (typeof invoiceStatusValues)[number])) {
-    dbQuery = dbQuery.eq("status", status);
-  }
-  if (series) {
-    dbQuery = dbQuery.eq("series", series);
-  }
-  if (dateFrom) {
-    dbQuery = dbQuery.gte("issue_date", dateFrom);
-  }
-  if (dateTo) {
-    dbQuery = dbQuery.lte("issue_date", dateTo);
-  }
-  if (query) {
-    dbQuery = dbQuery.or(`client_name.ilike.%${query}%,client_nif.ilike.%${query}%`);
-  }
+    .limit(filters.limit),
+    filters,
+    invoiceStatusValues
+  );
 
   const { data, error } = await dbQuery;
 

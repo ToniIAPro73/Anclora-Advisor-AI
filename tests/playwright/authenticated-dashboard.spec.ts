@@ -135,6 +135,9 @@ test("labor UI creates assessment, mitigation and verifies storage evidence flow
   await expect(page.getByText("Evidencia subida correctamente.")).toBeVisible();
   const evidenceLink = page.getByRole("link", { name: evidenceLabel, exact: true });
   await expect(evidenceLink).toBeVisible();
+  await expect(
+    mitigationCard.locator("p").filter({ hasText: "labor-evidence.txt · text/plain" }).first()
+  ).toBeVisible();
 
   const popupPromise = page.context().waitForEvent("page");
   await evidenceLink.click();

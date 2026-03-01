@@ -43,6 +43,13 @@ type MitigationFormState = {
   status: LaborMitigationStatus;
 };
 
+type AssessmentFilters = {
+  scenarioQuery: string;
+  ownerQuery: string;
+  actionStatus: "all" | LaborMitigationStatus;
+  slaState: "all" | "ok" | "warning" | "breached";
+};
+
 const INITIAL_FORM: LaborFormState = {
   scenarioDescription: "",
   riskScore: "0.35",
@@ -64,6 +71,13 @@ const INITIAL_MITIGATION_FORM: MitigationFormState = {
   status: "pending",
 };
 
+const INITIAL_FILTERS: AssessmentFilters = {
+  scenarioQuery: "",
+  ownerQuery: "",
+  actionStatus: "all",
+  slaState: "all",
+};
+
 function formatDate(date: string): string {
   return new Intl.DateTimeFormat("es-ES", {
     day: "2-digit",
@@ -81,6 +95,13 @@ function formatDateOnly(date: string | null): string {
     month: "short",
     year: "numeric",
   }).format(new Date(date));
+}
+
+function formatBytes(sizeBytes: number | null | undefined): string {
+  if (!sizeBytes || sizeBytes <= 0) return "N/D";
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+  if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function getRiskClass(level: string): string {
@@ -208,6 +229,7 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
   const [updatingActionId, setUpdatingActionId] = useState<string | null>(null);
   const [evidenceLabel, setEvidenceLabel] = useState("");
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [filters, setFilters] = useState<AssessmentFilters>(INITIAL_FILTERS);
   const [error, setError] = useState<string | null>(null);
   const [okMessage, setOkMessage] = useState<string | null>(null);
 
@@ -228,13 +250,40 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
     () => mitigationActions.filter((item) => item.assessment_id === selectedAssessment?.id),
     [mitigationActions, selectedAssessment]
   );
-  const pendingActions = selectedActions.filter((item) => item.status === "pending").length;
-  const inProgressActions = selectedActions.filter((item) => item.status === "in_progress").length;
-  const completedActions = selectedActions.filter((item) => item.status === "completed").length;
-  const overdueActions = selectedActions.filter(
+  const filteredAssessments = useMemo(() => {
+    const scenarioNeedle = filters.scenarioQuery.trim().toLowerCase();
+    return assessments.filter((assessment) => {
+      if (!scenarioNeedle) {
+        return true;
+      }
+      return assessment.scenario_description.toLowerCase().includes(scenarioNeedle);
+    });
+  }, [assessments, filters.scenarioQuery]);
+  const filteredActions = useMemo(() => {
+    const ownerNeedle = filters.ownerQuery.trim().toLowerCase();
+    return selectedActions.filter((action) => {
+      if (filters.actionStatus !== "all" && action.status !== filters.actionStatus) {
+        return false;
+      }
+      if (filters.slaState !== "all" && getSlaState(action) !== filters.slaState) {
+        return false;
+      }
+      if (ownerNeedle) {
+        const haystack = `${action.owner_name ?? ""} ${action.owner_email ?? ""}`.toLowerCase();
+        if (!haystack.includes(ownerNeedle)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [selectedActions, filters.actionStatus, filters.ownerQuery, filters.slaState]);
+  const pendingActions = filteredActions.filter((item) => item.status === "pending").length;
+  const inProgressActions = filteredActions.filter((item) => item.status === "in_progress").length;
+  const completedActions = filteredActions.filter((item) => item.status === "completed").length;
+  const overdueActions = filteredActions.filter(
     (item) => item.status !== "completed" && item.due_date && new Date(item.due_date) < new Date()
   ).length;
-  const slaBreachedActions = selectedActions.filter((item) => getSlaState(item) === "breached").length;
+  const slaBreachedActions = filteredActions.filter((item) => getSlaState(item) === "breached").length;
 
   async function refreshAuditLogs() {
     try {
@@ -726,13 +775,47 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
         <div className="shrink-0 border-b border-[#d2dceb] px-4 py-3">
           <h3 className="advisor-heading text-2xl text-[#162944]">Seguimiento laboral</h3>
           <p className="mt-1 text-sm text-[#3a4f67]">Selecciona una evaluacion y gestiona sus mitigaciones.</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <input
+              className="advisor-input"
+              placeholder="Buscar escenario"
+              value={filters.scenarioQuery}
+              onChange={(event) => setFilters((current) => ({ ...current, scenarioQuery: event.target.value }))}
+            />
+            <input
+              className="advisor-input"
+              placeholder="Responsable o email"
+              value={filters.ownerQuery}
+              onChange={(event) => setFilters((current) => ({ ...current, ownerQuery: event.target.value }))}
+            />
+            <select
+              className="advisor-input"
+              value={filters.actionStatus}
+              onChange={(event) => setFilters((current) => ({ ...current, actionStatus: event.target.value as AssessmentFilters["actionStatus"] }))}
+            >
+              <option value="all">Todos los estados</option>
+              {laborMitigationStatusValues.map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+            <select
+              className="advisor-input"
+              value={filters.slaState}
+              onChange={(event) => setFilters((current) => ({ ...current, slaState: event.target.value as AssessmentFilters["slaState"] }))}
+            >
+              <option value="all">Todos los SLA</option>
+              <option value="ok">OK</option>
+              <option value="warning">Warning</option>
+              <option value="breached">SLA roto</option>
+            </select>
+          </div>
         </div>
         <div className="grid min-h-0 flex-1 gap-3 p-3 lg:grid-cols-[1.2fr_1fr]">
           <div className="min-h-0 overflow-y-auto space-y-3 pr-1">
-            {assessments.length === 0 ? (
+            {filteredAssessments.length === 0 ? (
               <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">Sin historial laboral disponible.</div>
             ) : (
-              assessments.map((assessment) => {
+              filteredAssessments.map((assessment) => {
                 const level = deriveRiskLevel(assessment.risk_score, assessment.risk_level);
                 const score = toPercentage(assessment.risk_score);
                 const isBusy = updatingAssessmentId === assessment.id;
@@ -787,6 +870,9 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
                     <p>Vencidas: <strong className="text-[#162944]">{overdueActions}</strong></p>
                     <p>SLA roto: <strong className="text-[#162944]">{slaBreachedActions}</strong></p>
                   </div>
+                  <p className="mt-2 text-xs text-[#3a4f67]">
+                    Filtros activos: {filteredActions.length} accion(es) visible(s) de {selectedActions.length}.
+                  </p>
                 </article>
 
                 <article className="advisor-card p-4">
@@ -892,10 +978,10 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
                 <article className="advisor-card p-4">
                   <h4 className="advisor-heading text-xl text-[#162944]">Acciones</h4>
                   <div className="mt-3 space-y-3">
-                    {selectedActions.length === 0 ? (
+                    {filteredActions.length === 0 ? (
                       <div className="advisor-card-muted p-3 text-sm text-[#3a4f67]">No hay mitigaciones registradas para esta evaluacion.</div>
                     ) : (
-                      selectedActions.map((action) => {
+                      filteredActions.map((action) => {
                         const isBusy = updatingActionId === action.id;
                         const checklist = action.checklist_items ?? [];
                         const evidenceLinks = action.evidence_links ?? [];
@@ -970,10 +1056,18 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
                                 <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Evidencias enlazadas</p>
                                 <div className="mt-2 space-y-1">
                                   {evidenceLinks.map((item) => (
-                                    <div key={item.id} className="flex flex-wrap items-center justify-between gap-2">
-                                      <a href={item.url} target="_blank" rel="noreferrer" className="block text-sm font-semibold text-[#1dab89] hover:underline">
-                                        {item.label}
-                                      </a>
+                                    <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#d2dceb] bg-white px-3 py-2">
+                                      <div className="min-w-0">
+                                        <a href={item.url} target="_blank" rel="noreferrer" className="block text-sm font-semibold text-[#1dab89] hover:underline">
+                                          {item.label}
+                                        </a>
+                                        <p className="mt-1 text-xs text-[#3a4f67]">
+                                          {item.fileName ?? "Sin nombre"} · {item.mimeType ?? "tipo desconocido"} · {formatBytes(item.sizeBytes)}
+                                        </p>
+                                        <p className="mt-1 text-[11px] text-[#6b7f94]">
+                                          {item.addedAt ? `Subida ${formatDate(item.addedAt)}` : "Sin fecha"}{item.storagePath ? ` · ${item.storagePath}` : ""}
+                                        </p>
+                                      </div>
                                       <button type="button" disabled={isBusy} className="text-xs font-semibold text-red-700 hover:underline" onClick={() => void handleEvidenceDelete(action, item.url)}>
                                         Eliminar
                                       </button>

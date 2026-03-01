@@ -3,6 +3,7 @@ import { createFiscalTemplateSchema, getFiscalTemplateLabel } from "../../src/li
 import { deliverInvoiceByEmail } from "../../src/lib/invoices/delivery";
 import { renderInvoicePrintableHtml } from "../../src/lib/invoices/pdf";
 import type { InvoiceRecord } from "../../src/lib/invoices/contracts";
+import { buildInvoiceCsv, buildInvoiceReference } from "../../src/lib/invoices/service";
 import {
   createLaborMitigationActionSchema,
   createLaborRiskAssessmentSchema,
@@ -76,6 +77,25 @@ async function main(): Promise<void> {
   assert(printableHtml.includes("Factura 2026-0007"), "printable HTML includes invoice reference");
   assert(printableHtml.includes("Cliente Demo SL"), "printable HTML includes client name");
   assert(printableHtml.includes("1060,00"), "printable HTML includes formatted total amount");
+  assert(buildInvoiceReference(invoice.series, invoice.invoice_number) === "2026-0007", "invoice reference helper pads numbering");
+
+  const invoiceCsv = buildInvoiceCsv([
+    {
+      reference: "2026-0007",
+      clientName: invoice.client_name,
+      clientNif: invoice.client_nif,
+      issueDate: invoice.issue_date,
+      status: invoice.status,
+      series: invoice.series ?? "",
+      amountBase: Number(invoice.amount_base),
+      ivaRate: Number(invoice.iva_rate),
+      irpfRetention: Number(invoice.irpf_retention),
+      totalAmount: Number(invoice.total_amount),
+      recipientEmail: invoice.recipient_email ?? "",
+    },
+  ]);
+  assert(invoiceCsv.includes("reference,client_name"), "invoice csv export includes headers");
+  assert(invoiceCsv.includes("2026-0007"), "invoice csv export includes invoice reference");
 
   const fiscalAlert = createFiscalAlertSchema.parse({
     alertType: "iva",
@@ -153,7 +173,15 @@ async function main(): Promise<void> {
       { id: "c2", label: " Solicitar criterio legal ", completed: true, completedAt: "2026-03-01T10:00:00.000Z" },
     ],
     evidenceLinks: [
-      { id: "e1", label: " Contrato ", url: "https://example.com/contrato.pdf" },
+      {
+        id: "e1",
+        label: " Contrato ",
+        url: "https://example.com/contrato.pdf",
+        fileName: "contrato.pdf",
+        mimeType: "application/pdf",
+        sizeBytes: 2048,
+        storagePath: "user/action/contrato.pdf",
+      },
     ],
   });
   assert(laborAction.title === "Revisar pacto de exclusividad", "labor action schema trims title");
@@ -164,6 +192,8 @@ async function main(): Promise<void> {
   assert(laborAction.slaDueAt === "2026-03-10", "labor action schema keeps sla due date");
   assert(laborAction.checklistItems?.[0]?.label === "Revisar contrato", "labor action schema trims checklist labels");
   assert(laborAction.evidenceLinks?.[0]?.label === "Contrato", "labor action schema trims evidence labels");
+  assert(laborAction.evidenceLinks?.[0]?.fileName === "contrato.pdf", "labor action schema keeps evidence file name");
+  assert(laborAction.evidenceLinks?.[0]?.storagePath === "user/action/contrato.pdf", "labor action schema keeps evidence storage path");
 
   console.log("Operational integration status: PASS");
 }
