@@ -62,14 +62,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
       description: payload.data.description ?? null,
       status: payload.data.status,
       due_date: payload.data.dueDate ?? null,
+      sla_due_at: payload.data.slaDueAt ?? null,
       owner_name: payload.data.ownerName ?? null,
       owner_email: payload.data.ownerEmail ?? null,
       evidence_notes: payload.data.evidenceNotes ?? null,
       closure_notes: payload.data.closureNotes ?? null,
+      checklist_items: payload.data.checklistItems ?? [],
+      evidence_links: payload.data.evidenceLinks ?? [],
       started_at: payload.data.status === "in_progress" ? new Date().toISOString() : null,
       completed_at: payload.data.status === "completed" ? new Date().toISOString() : null,
       last_follow_up_at:
-        payload.data.evidenceNotes || payload.data.closureNotes || payload.data.status !== "pending"
+        payload.data.evidenceNotes ||
+        payload.data.closureNotes ||
+        (payload.data.checklistItems?.length ?? 0) > 0 ||
+        (payload.data.evidenceLinks?.length ?? 0) > 0 ||
+        payload.data.status !== "pending"
           ? new Date().toISOString()
           : null,
     })
@@ -101,6 +108,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         assessmentId,
         status: payload.data.status,
         dueDate: payload.data.dueDate ?? null,
+        slaDueAt: payload.data.slaDueAt ?? null,
       },
     });
   } catch (auditError) {

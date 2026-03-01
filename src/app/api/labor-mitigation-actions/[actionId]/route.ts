@@ -78,15 +78,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 
   const current = currentAction as unknown as LaborMitigationActionRecord;
-  const updatePayload: Record<string, string | null> = {};
+  const updatePayload: Record<string, string | null | boolean | object | object[]> = {};
   if (patch.title !== undefined) updatePayload.title = patch.title;
   if (patch.description !== undefined) updatePayload.description = patch.description;
   if (patch.status !== undefined) updatePayload.status = patch.status;
   if (patch.dueDate !== undefined) updatePayload.due_date = patch.dueDate;
+  if (patch.slaDueAt !== undefined) updatePayload.sla_due_at = patch.slaDueAt;
   if (patch.ownerName !== undefined) updatePayload.owner_name = patch.ownerName;
   if (patch.ownerEmail !== undefined) updatePayload.owner_email = patch.ownerEmail;
   if (patch.evidenceNotes !== undefined) updatePayload.evidence_notes = patch.evidenceNotes;
   if (patch.closureNotes !== undefined) updatePayload.closure_notes = patch.closureNotes;
+  if (patch.checklistItems !== undefined) updatePayload.checklist_items = patch.checklistItems;
+  if (patch.evidenceLinks !== undefined) updatePayload.evidence_links = patch.evidenceLinks;
   if (patch.status === "in_progress" && !current.started_at) {
     updatePayload.started_at = new Date().toISOString();
   }
@@ -106,6 +109,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     patch.status !== undefined ||
     patch.evidenceNotes !== undefined ||
     patch.closureNotes !== undefined ||
+    patch.checklistItems !== undefined ||
+    patch.evidenceLinks !== undefined ||
     patch.ownerName !== undefined ||
     patch.ownerEmail !== undefined
   ) {

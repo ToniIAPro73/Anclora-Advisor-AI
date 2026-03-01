@@ -145,12 +145,23 @@ async function main(): Promise<void> {
     evidenceNotes: "  Se revisa el contrato y se abre seguimiento. ",
     closureNotes: "  Sin cierre por ahora. ",
     dueDate: "2026-03-15",
+    slaDueAt: "2026-03-10",
+    checklistItems: [
+      { id: "c1", label: " Revisar contrato ", completed: false },
+      { id: "c2", label: " Solicitar criterio legal ", completed: true, completedAt: "2026-03-01T10:00:00.000Z" },
+    ],
+    evidenceLinks: [
+      { id: "e1", label: " Contrato ", url: "https://example.com/contrato.pdf" },
+    ],
   });
   assert(laborAction.title === "Revisar pacto de exclusividad", "labor action schema trims title");
   assert(laborAction.status === "pending", "labor action schema defaults to pending status");
   assert(laborAction.ownerName === "Toni", "labor action schema trims owner name");
   assert(laborAction.ownerEmail === "toni@demo.com", "labor action schema normalizes owner email");
   assert(laborAction.evidenceNotes === "Se revisa el contrato y se abre seguimiento.", "labor action schema trims evidence notes");
+  assert(laborAction.slaDueAt === "2026-03-10", "labor action schema keeps sla due date");
+  assert(laborAction.checklistItems?.[0]?.label === "Revisar contrato", "labor action schema trims checklist labels");
+  assert(laborAction.evidenceLinks?.[0]?.label === "Contrato", "labor action schema trims evidence labels");
 
   console.log("Operational integration status: PASS");
 }

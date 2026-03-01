@@ -8,6 +8,8 @@ import {
   deriveRiskLevel,
   laborMitigationStatusValues,
   laborRiskLevelValues,
+  type LaborMitigationChecklistItem,
+  type LaborMitigationEvidenceLink,
   type LaborMitigationActionRecord,
   type LaborMitigationStatus,
   type LaborRiskAssessmentRecord,
@@ -31,10 +33,13 @@ type MitigationFormState = {
   title: string;
   description: string;
   dueDate: string;
+  slaDueAt: string;
   ownerName: string;
   ownerEmail: string;
   evidenceNotes: string;
   closureNotes: string;
+  checklistText: string;
+  evidenceLinksText: string;
   status: LaborMitigationStatus;
 };
 
@@ -49,10 +54,13 @@ const INITIAL_MITIGATION_FORM: MitigationFormState = {
   title: "",
   description: "",
   dueDate: "",
+  slaDueAt: "",
   ownerName: "",
   ownerEmail: "",
   evidenceNotes: "",
   closureNotes: "",
+  checklistText: "",
+  evidenceLinksText: "",
   status: "pending",
 };
 
@@ -107,6 +115,75 @@ function parseRecommendations(value: string): string[] {
     .filter(Boolean);
 }
 
+function createClientId(prefix: string, index: number): string {
+  return `${prefix}_${index + 1}`;
+}
+
+function parseChecklistText(value: string): LaborMitigationChecklistItem[] {
+  return value
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((label, index) => ({
+      id: createClientId("check", index),
+      label,
+      completed: false,
+      completedAt: null,
+    }));
+}
+
+function formatChecklistText(items: LaborMitigationChecklistItem[] | null | undefined): string {
+  return (items ?? []).map((item) => item.label).join("\n");
+}
+
+function parseEvidenceLinksText(value: string): LaborMitigationEvidenceLink[] {
+  return value
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((line, index) => {
+      const [maybeLabel, maybeUrl] = line.includes("|")
+        ? line.split("|").map((segment) => segment.trim())
+        : [line, line];
+      const url = maybeUrl || maybeLabel;
+      const label = maybeUrl ? maybeLabel : `Evidencia ${index + 1}`;
+      return {
+        id: createClientId("evidence", index),
+        label,
+        url,
+        addedAt: null,
+      };
+    })
+    .filter((item) => /^https?:\/\//i.test(item.url));
+}
+
+function formatEvidenceLinksText(items: LaborMitigationEvidenceLink[] | null | undefined): string {
+  return (items ?? []).map((item) => `${item.label} | ${item.url}`).join("\n");
+}
+
+function getChecklistProgress(items: LaborMitigationChecklistItem[] | null | undefined): { done: number; total: number } {
+  const total = items?.length ?? 0;
+  const done = (items ?? []).filter((item) => item.completed).length;
+  return { done, total };
+}
+
+function getSlaState(action: LaborMitigationActionRecord): "ok" | "warning" | "breached" | "none" {
+  if (!action.sla_due_at) return "none";
+  if (action.status === "completed") return "ok";
+  const slaDate = new Date(action.sla_due_at);
+  const now = new Date();
+  if (slaDate < now) return "breached";
+  if (slaDate.getTime() - now.getTime() <= 24 * 60 * 60 * 1000) return "warning";
+  return "ok";
+}
+
+function getSlaClass(state: ReturnType<typeof getSlaState>): string {
+  if (state === "breached") return "bg-red-100 text-red-700 border-red-200";
+  if (state === "warning") return "bg-amber-100 text-amber-700 border-amber-200";
+  if (state === "ok") return "bg-emerald-100 text-emerald-700 border-emerald-200";
+  return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
 function toFormState(assessment: LaborRiskAssessmentRecord): LaborFormState {
   return {
     scenarioDescription: assessment.scenario_description,
@@ -155,6 +232,7 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
   const overdueActions = selectedActions.filter(
     (item) => item.status !== "completed" && item.due_date && new Date(item.due_date) < new Date()
   ).length;
+  const slaBreachedActions = selectedActions.filter((item) => getSlaState(item) === "breached").length;
 
   async function refreshAuditLogs() {
     try {
@@ -184,10 +262,13 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
       title: action.title,
       description: action.description ?? "",
       dueDate: action.due_date ?? "",
+      slaDueAt: action.sla_due_at ?? "",
       ownerName: action.owner_name ?? "",
       ownerEmail: action.owner_email ?? "",
       evidenceNotes: action.evidence_notes ?? "",
       closureNotes: action.closure_notes ?? "",
+      checklistText: formatChecklistText(action.checklist_items),
+      evidenceLinksText: formatEvidenceLinksText(action.evidence_links),
       status: action.status as LaborMitigationStatus,
     });
     setError(null);
@@ -307,10 +388,13 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
             title: mitigationForm.title.trim(),
             description: mitigationForm.description.trim() || null,
             dueDate: mitigationForm.dueDate || null,
+            slaDueAt: mitigationForm.slaDueAt || null,
             ownerName: mitigationForm.ownerName.trim() || null,
             ownerEmail: mitigationForm.ownerEmail.trim() || null,
             evidenceNotes: mitigationForm.evidenceNotes.trim() || null,
             closureNotes: mitigationForm.closureNotes.trim() || null,
+            checklistItems: parseChecklistText(mitigationForm.checklistText),
+            evidenceLinks: parseEvidenceLinksText(mitigationForm.evidenceLinksText),
             status: mitigationForm.status,
           }),
         }
@@ -366,6 +450,45 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
       await refreshAuditLogs();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Error al actualizar mitigacion");
+    } finally {
+      setUpdatingActionId(null);
+    }
+  }
+
+  async function handleChecklistToggle(action: LaborMitigationActionRecord, itemId: string) {
+    setUpdatingActionId(action.id);
+    setError(null);
+    setOkMessage(null);
+    try {
+      const nextChecklist = (action.checklist_items ?? []).map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              completed: !item.completed,
+              completedAt: item.completed ? null : new Date().toISOString(),
+            }
+          : item
+      );
+      const response = await fetch(`/api/labor-mitigation-actions/${action.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checklistItems: nextChecklist }),
+      });
+      const result = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        action?: LaborMitigationActionRecord;
+      };
+      if (!response.ok || !result.success || !result.action) {
+        throw new Error(result.error ?? "No se pudo actualizar el checklist");
+      }
+      setMitigationActions((previous) =>
+        previous.map((item) => (item.id === result.action?.id ? result.action : item))
+      );
+      setOkMessage("Checklist actualizado.");
+      await refreshAuditLogs();
+    } catch (toggleError) {
+      setError(toggleError instanceof Error ? toggleError.message : "Error al actualizar checklist");
     } finally {
       setUpdatingActionId(null);
     }
@@ -585,6 +708,7 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
                     <p>En curso: <strong className="text-[#162944]">{inProgressActions}</strong></p>
                     <p>Completadas: <strong className="text-[#162944]">{completedActions}</strong></p>
                     <p>Vencidas: <strong className="text-[#162944]">{overdueActions}</strong></p>
+                    <p>SLA roto: <strong className="text-[#162944]">{slaBreachedActions}</strong></p>
                   </div>
                 </article>
 
@@ -633,13 +757,17 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
                         <input id="mitigationDueDate" type="date" className="advisor-input" value={mitigationForm.dueDate} onChange={(event) => setMitigationForm((current) => ({ ...current, dueDate: event.target.value }))} />
                       </div>
                       <div>
-                        <label className="advisor-label" htmlFor="mitigationStatus">Estado</label>
-                        <select id="mitigationStatus" className="advisor-input" value={mitigationForm.status} onChange={(event) => setMitigationForm((current) => ({ ...current, status: event.target.value as LaborMitigationStatus }))}>
-                          {laborMitigationStatusValues.map((status) => (
-                            <option key={status} value={status}>{status}</option>
-                          ))}
-                        </select>
+                        <label className="advisor-label" htmlFor="mitigationSlaDueAt">SLA compromiso</label>
+                        <input id="mitigationSlaDueAt" type="date" className="advisor-input" value={mitigationForm.slaDueAt} onChange={(event) => setMitigationForm((current) => ({ ...current, slaDueAt: event.target.value }))} />
                       </div>
+                    </div>
+                    <div>
+                      <label className="advisor-label" htmlFor="mitigationStatus">Estado</label>
+                      <select id="mitigationStatus" className="advisor-input" value={mitigationForm.status} onChange={(event) => setMitigationForm((current) => ({ ...current, status: event.target.value as LaborMitigationStatus }))}>
+                        {laborMitigationStatusValues.map((status) => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="advisor-label" htmlFor="mitigationEvidenceNotes">Seguimiento / evidencias</label>
@@ -648,6 +776,14 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
                     <div>
                       <label className="advisor-label" htmlFor="mitigationClosureNotes">Notas de cierre</label>
                       <textarea id="mitigationClosureNotes" className="advisor-input min-h-20 resize-y" value={mitigationForm.closureNotes} onChange={(event) => setMitigationForm((current) => ({ ...current, closureNotes: event.target.value }))} placeholder="Motivo de cierre, validacion final o decision tomada." />
+                    </div>
+                    <div>
+                      <label className="advisor-label" htmlFor="mitigationChecklist">Checklist (una tarea por linea)</label>
+                      <textarea id="mitigationChecklist" className="advisor-input min-h-24 resize-y" value={mitigationForm.checklistText} onChange={(event) => setMitigationForm((current) => ({ ...current, checklistText: event.target.value }))} placeholder="Revisar clausula de exclusividad&#10;Solicitar criterio legal&#10;Documentar compatibilidad horaria" />
+                    </div>
+                    <div>
+                      <label className="advisor-label" htmlFor="mitigationEvidenceLinks">Evidencias enlazadas (Etiqueta | URL)</label>
+                      <textarea id="mitigationEvidenceLinks" className="advisor-input min-h-20 resize-y" value={mitigationForm.evidenceLinksText} onChange={(event) => setMitigationForm((current) => ({ ...current, evidenceLinksText: event.target.value }))} placeholder="Contrato firmado | https://...&#10;Dictamen externo | https://..." />
                     </div>
                     <button type="submit" disabled={mitigationSubmitting} className="advisor-btn advisor-btn-primary advisor-btn-full">
                       {mitigationSubmitting ? "Guardando..." : editingActionId ? "Actualizar mitigacion" : "Crear mitigacion"}
@@ -663,6 +799,10 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
                     ) : (
                       selectedActions.map((action) => {
                         const isBusy = updatingActionId === action.id;
+                        const checklist = action.checklist_items ?? [];
+                        const evidenceLinks = action.evidence_links ?? [];
+                        const checklistProgress = getChecklistProgress(checklist);
+                        const slaState = getSlaState(action);
                         return (
                           <div key={action.id} className="advisor-card-muted p-3">
                             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -676,12 +816,41 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
                             </div>
                             <p className="mt-2 text-xs text-[#3a4f67]">Objetivo: {formatDateOnly(action.due_date)}</p>
                             <p className="mt-1 text-xs text-[#3a4f67]">
+                              SLA:{" "}
+                              <span className={`rounded-full border px-2 py-0.5 font-semibold ${getSlaClass(slaState)}`}>
+                                {action.sla_due_at ? formatDateOnly(action.sla_due_at) : "Sin SLA"}
+                              </span>
+                            </p>
+                            <p className="mt-1 text-xs text-[#3a4f67]">
                               Responsable: <strong className="text-[#162944]">{action.owner_name || "Sin asignar"}</strong>
                               {action.owner_email ? ` (${action.owner_email})` : ""}
                             </p>
                             <p className="mt-1 text-xs text-[#3a4f67]">
                               Inicio: {formatDateOnly(action.started_at)} · Ultimo seguimiento: {formatDateOnly(action.last_follow_up_at)} · Cierre: {formatDateOnly(action.completed_at)}
                             </p>
+                            {checklist.length > 0 && (
+                              <div className="mt-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">
+                                  Checklist {checklistProgress.done}/{checklistProgress.total}
+                                </p>
+                                <div className="mt-2 space-y-2">
+                                  {checklist.map((item) => (
+                                    <label key={item.id} className="flex items-start gap-2 text-sm text-[#3a4f67]">
+                                      <input
+                                        type="checkbox"
+                                        checked={item.completed}
+                                        disabled={isBusy}
+                                        onChange={() => void handleChecklistToggle(action, item.id)}
+                                        className="mt-1 h-4 w-4 rounded border-[#b8c8de] text-[#1dab89] focus:ring-[#1dab89]"
+                                      />
+                                      <span className={item.completed ? "line-through text-[#6b7f94]" : ""}>
+                                        {item.label}
+                                      </span>
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             {(action.evidence_notes || action.closure_notes) && (
                               <div className="mt-3 space-y-2 text-sm text-[#3a4f67]">
                                 {action.evidence_notes && (
@@ -696,6 +865,18 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
                                     <p className="mt-1">{action.closure_notes}</p>
                                   </div>
                                 )}
+                              </div>
+                            )}
+                            {evidenceLinks.length > 0 && (
+                              <div className="mt-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Evidencias enlazadas</p>
+                                <div className="mt-2 space-y-1">
+                                  {evidenceLinks.map((item) => (
+                                    <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="block text-sm font-semibold text-[#1dab89] hover:underline">
+                                      {item.label}
+                                    </a>
+                                  ))}
+                                </div>
                               </div>
                             )}
                             <div className="mt-3 flex flex-wrap gap-2">

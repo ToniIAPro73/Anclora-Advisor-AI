@@ -47,7 +47,7 @@ export default async function DashboardLaboralPage() {
       <article className="advisor-card shrink-0 p-4">
         <h1 className="advisor-heading text-3xl text-[#162944]">Monitor Laboral</h1>
         <p className="mt-2 text-sm text-[#3a4f67]">
-          Workspace operativo para registrar escenarios de pluriactividad, estimar riesgo y seguir mitigaciones.
+          Workspace operativo para registrar escenarios de pluriactividad, estimar riesgo y seguir mitigaciones con SLA, checklist y evidencias.
         </p>
         {combinedError && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
