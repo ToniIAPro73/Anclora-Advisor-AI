@@ -75,6 +75,22 @@ interface ChatStreamCompleteEvent extends ChatApiResponse {
   performance?: Record<string, unknown>;
 }
 
+function buildAssistantMessageFromApiResponse(
+  current: ChatMessage,
+  response: ChatApiResponse
+): ChatMessage {
+  return {
+    ...current,
+    content: response.primarySpecialistResponse || current.content,
+    routing: response.routing,
+    citations: response.citations ?? [],
+    contexts: response.contexts ?? [],
+    alerts: response.alerts ?? [],
+    suggestedActions: response.suggestedActions ?? [],
+    groundingConfidence: response.groundingConfidence,
+  };
+}
+
 export function useChat(userId: string, conversationId: string, initialMessages: ChatMessage[] = []) {
   const [state, setState] = useState<ChatState>({ messages: initialMessages, loading: false, error: null });
 
@@ -174,16 +190,7 @@ export function useChat(userId: string, conversationId: string, initialMessages:
 
           if (event === "complete") {
             const complete = data as ChatStreamCompleteEvent;
-            updateAssistantMessage((current) => ({
-              ...current,
-              content: complete.primarySpecialistResponse || current.content,
-              routing: complete.routing,
-              citations: complete.citations ?? [],
-              contexts: complete.contexts ?? [],
-              alerts: complete.alerts ?? [],
-              suggestedActions: complete.suggestedActions ?? [],
-              groundingConfidence: complete.groundingConfidence,
-            }));
+            updateAssistantMessage((current) => buildAssistantMessageFromApiResponse(current, complete));
             continue;
           }
 
@@ -196,14 +203,41 @@ export function useChat(userId: string, conversationId: string, initialMessages:
 
       setState((prev) => ({ ...prev, loading: false, error: null }));
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      setState((prev) => ({
-        ...prev,
-        loading: false,
-        error: errorMessage,
-        messages: prev.messages.filter((message) => message.id !== assistantId),
-      }));
-      throw error;
+      try {
+        const fallbackResponse = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, conversationId: resolvedConversationId, query }),
+        });
+        const fallbackResult = (await fallbackResponse.json()) as ChatApiResponse;
+
+        if (!fallbackResponse.ok || !fallbackResult.success) {
+          throw new Error(fallbackResult.error ?? "No se pudo recuperar la respuesta del chat.");
+        }
+
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: null,
+          messages: prev.messages.map((message) =>
+            message.id === assistantId ? buildAssistantMessageFromApiResponse(message, fallbackResult) : message
+          ),
+        }));
+        return;
+      } catch (fallbackError) {
+        const errorMessage = fallbackError instanceof Error
+          ? fallbackError.message
+          : error instanceof Error
+            ? error.message
+            : "Unknown error";
+        setState((prev) => ({
+          ...prev,
+          loading: false,
+          error: errorMessage,
+          messages: prev.messages.filter((message) => message.id !== assistantId),
+        }));
+        throw fallbackError;
+      }
     }
   }, [userId, conversationId]);
 
