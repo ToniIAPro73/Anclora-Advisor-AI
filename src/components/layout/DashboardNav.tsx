@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
 import type { AppRole } from "@/lib/auth/roles";
+import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const baseLinks = [
@@ -23,7 +23,7 @@ interface DashboardNavProps {
 export function DashboardNav({ role }: DashboardNavProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
+  const { sidebarCollapsed: collapsed, setSidebarCollapsed } = useAppPreferences();
   const links = role === "admin" ? [...baseLinks, adminLink] : baseLinks;
 
   const handleLogout = async () => {
@@ -59,7 +59,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
         <div className="mt-3 hidden md:flex md:justify-end">
           <button
             type="button"
-            onClick={() => setCollapsed((prev) => !prev)}
+            onClick={() => setSidebarCollapsed(!collapsed)}
             className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/25 bg-white/5 text-white transition hover:bg-white/15"
             aria-label={collapsed ? "Expandir sidebar" : "Contraer sidebar"}
             title={collapsed ? "Expandir sidebar" : "Contraer sidebar"}
