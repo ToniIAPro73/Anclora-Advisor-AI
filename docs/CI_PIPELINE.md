@@ -12,7 +12,8 @@
   - `npm run -s test:integration:ops`
 
 - `e2e-ui`
-  - solo se ejecuta si existen secretos de Supabase en GitHub Actions
+  - siempre arranca, pero hace `preflight` de secretos antes de instalar nada
+  - si faltan secretos, avisa y marca el job como `skipped logic`, no como fallo
   - instala Chromium
   - genera `.env.local`
   - ejecuta `npm run -s test:e2e:ui`
@@ -26,3 +27,4 @@
 ## Criterio
 - La calidad base corre siempre.
 - El E2E UI no bloquea entornos sin secretos configurados.
+- El workflow debe poder ejecutarse remotamente incluso con `secret list` vacio.

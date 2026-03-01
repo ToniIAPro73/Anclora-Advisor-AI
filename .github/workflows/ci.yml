@@ -34,8 +34,9 @@ jobs:
         run: npm run -s test:integration:ops
 
   e2e-ui:
-    if: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL != '' && secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY != '' && secrets.SUPABASE_SERVICE_ROLE_KEY != '' }}
     runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.preflight.outputs.enabled }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,13 +47,38 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Preflight secrets
+        id: preflight
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          missing=0
+          for name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY DATABASE_URL; do
+            value="${!name}"
+            if [ -z "$value" ]; then
+              echo "::warning::Missing GitHub secret: $name"
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 0 ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install dependencies
+        if: ${{ steps.preflight.outputs.enabled == 'true' }}
         run: npm ci
 
       - name: Install Playwright Chromium
+        if: ${{ steps.preflight.outputs.enabled == 'true' }}
         run: npx playwright install --with-deps chromium
 
       - name: Create .env.local
+        if: ${{ steps.preflight.outputs.enabled == 'true' }}
         run: |
           cat <<'EOF' > .env.local
           NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
@@ -68,10 +94,15 @@ jobs:
           EOF
 
       - name: Playwright UI E2E
+        if: ${{ steps.preflight.outputs.enabled == 'true' }}
         run: npm run -s test:e2e:ui
 
+      - name: Skip E2E UI
+        if: ${{ steps.preflight.outputs.enabled != 'true' }}
+        run: echo "Skipping Playwright UI E2E because required GitHub secrets are not configured."
+
       - name: Upload Playwright artifacts
-        if: always()
+        if: ${{ always() && steps.preflight.outputs.enabled == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-artifacts
