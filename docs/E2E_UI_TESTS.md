@@ -4,6 +4,9 @@
 - Login real por UI contra Supabase.
 - Navegacion autenticada entre `Chat`, `Fiscal`, `Laboral` y `Facturacion`.
 - Alta real de factura desde la interfaz.
+- Alta real de plantilla y alerta fiscal desde UI.
+- Alta real de evaluacion y mitigacion laboral desde UI.
+- Subida, apertura y borrado de evidencia laboral en Supabase Storage.
 
 ## Comando
 - `npm run test:e2e:ui`

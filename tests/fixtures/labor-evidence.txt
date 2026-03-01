@@ -1,0 +1,2 @@
+Evidencia de prueba para Playwright.
+Este archivo valida la subida y descarga desde Supabase Storage.
