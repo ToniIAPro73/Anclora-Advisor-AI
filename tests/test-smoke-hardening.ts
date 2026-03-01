@@ -20,6 +20,7 @@ import * as laborMitigationEvidenceRoute from "../src/app/api/labor-mitigation-a
 import * as invoicesRoute from "../src/app/api/invoices/route";
 import * as invoiceDetailRoute from "../src/app/api/invoices/[invoiceId]/route";
 import * as invoiceDuplicateRoute from "../src/app/api/invoices/[invoiceId]/duplicate/route";
+import * as invoiceRectifyRoute from "../src/app/api/invoices/[invoiceId]/rectify/route";
 import * as invoicePaymentsRoute from "../src/app/api/invoices/[invoiceId]/payments/route";
 import * as invoicePaymentDetailRoute from "../src/app/api/invoice-payments/[paymentId]/route";
 import * as invoiceExportRoute from "../src/app/api/invoices/export/route";
@@ -86,6 +87,7 @@ async function main(): Promise<void> {
   assert(typeof invoiceDetailRoute.PATCH === "function", "PATCH /api/invoices/[invoiceId] handler exported");
   assert(typeof invoiceDetailRoute.DELETE === "function", "DELETE /api/invoices/[invoiceId] handler exported");
   assert(typeof invoiceDuplicateRoute.POST === "function", "POST /api/invoices/[invoiceId]/duplicate handler exported");
+  assert(typeof invoiceRectifyRoute.POST === "function", "POST /api/invoices/[invoiceId]/rectify handler exported");
   assert(typeof invoicePaymentsRoute.GET === "function", "GET /api/invoices/[invoiceId]/payments handler exported");
   assert(typeof invoicePaymentsRoute.POST === "function", "POST /api/invoices/[invoiceId]/payments handler exported");
   assert(typeof invoicePaymentDetailRoute.DELETE === "function", "DELETE /api/invoice-payments/[paymentId] handler exported");

@@ -81,6 +81,10 @@ test("login flow and dashboard navigation create a real invoice", async ({ page 
   await page.getByRole("button", { name: "Registrar cobro parcial" }).click();
   await expect(page.getByText("Primer cobro parcial")).toBeVisible();
   await expect(invoiceCard.getByText("Pendiente:")).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept("Rectificacion UI"));
+  await invoiceCard.getByRole("button", { name: "Rectificar" }).click();
+  await expect(page.getByText("Factura rectificativa creada.")).toBeVisible();
+  await expect(page.getByText("Rectificativa").first()).toBeVisible();
 });
 
 test("fiscal UI creates a real alert and template", async ({ page }) => {
@@ -100,6 +104,8 @@ test("fiscal UI creates a real alert and template", async ({ page }) => {
   await templateCard.getByRole("button", { name: "Crear plantilla" }).click();
   await expect(page.getByText("Plantilla fiscal creada.")).toBeVisible();
   await expect(page.getByText(fiscalTemplateDescription).first()).toBeVisible();
+  const createdTemplateCard = page.locator("div").filter({ has: page.getByText(fiscalTemplateDescription) }).first();
+  await expect(createdTemplateCard).toContainText("303");
 
   await alertCard.locator("textarea").fill(fiscalAlertDescription);
   await alertCard.getByRole("button", { name: "Crear alerta" }).click();

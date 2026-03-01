@@ -18,12 +18,16 @@ export const INVOICE_SELECT_FIELDS = [
   "payment_method",
   "payment_reference",
   "payment_notes",
+  "invoice_type",
+  "rectifies_invoice_id",
+  "rectification_reason",
   "created_at",
 ].join(", ");
 
 export type InvoiceFilterInput = {
   q?: string;
   status?: string;
+  invoiceType?: string;
   series?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -64,10 +68,15 @@ export function buildInvoiceReference(series: string | null, invoiceNumber: numb
   return `${series}-${String(invoiceNumber).padStart(4, "0")}`;
 }
 
+export function getInvoiceTypeLabel(invoiceType: string | null | undefined): string {
+  return invoiceType === "rectificative" ? "Rectificativa" : "Factura";
+}
+
 export function normalizeInvoiceQueryParams(input: InvoiceFilterInput) {
   return {
     q: input.q?.trim() ?? "",
     status: input.status?.trim() ?? "",
+    invoiceType: input.invoiceType?.trim() ?? "",
     series: input.series?.trim().toUpperCase() ?? "",
     dateFrom: input.dateFrom?.trim() ?? "",
     dateTo: input.dateTo?.trim() ?? "",
@@ -91,6 +100,9 @@ export function applyInvoiceFilters<T>(
 
   if (filters.status && validStatuses.includes(filters.status)) {
     nextQuery = getFilterable().eq("status", filters.status) as T;
+  }
+  if (filters.invoiceType) {
+    nextQuery = getFilterable().eq("invoice_type", filters.invoiceType) as T;
   }
   if (filters.series) {
     nextQuery = getFilterable().eq("series", filters.series) as T;

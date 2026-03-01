@@ -1,6 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import type { InvoiceRecord } from "@/lib/invoices/contracts";
-import { buildInvoiceReference } from "@/lib/invoices/service";
+import { buildInvoiceReference, getInvoiceTypeLabel } from "@/lib/invoices/service";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-ES", {
@@ -31,7 +31,7 @@ export function getInvoicePdfFileName(invoice: InvoiceRecord): string {
   const reference = buildInvoiceReference(invoice.series, invoice.invoice_number)
     .replace(/\//g, "-")
     .replace(/ /g, "-");
-  return `factura-${reference}.pdf`;
+  return `${invoice.invoice_type === "rectificative" ? "factura-rectificativa" : "factura"}-${reference}.pdf`;
 }
 
 export function renderInvoicePrintableHtml(invoice: InvoiceRecord): string {
@@ -40,12 +40,13 @@ export function renderInvoicePrintableHtml(invoice: InvoiceRecord): string {
   const irpfAmount = (amountBase * Number(invoice.irpf_retention)) / 100;
   const totalAmount = Number(invoice.total_amount);
   const invoiceReference = buildInvoiceReference(invoice.series, invoice.invoice_number);
+  const invoiceTypeLabel = getInvoiceTypeLabel(invoice.invoice_type);
 
   return `<!DOCTYPE html>
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <title>Factura ${escapeHtml(invoiceReference)}</title>
+    <title>${escapeHtml(invoiceTypeLabel)} ${escapeHtml(invoiceReference)}</title>
     <style>
       body { font-family: Arial, sans-serif; color: #162944; margin: 32px; }
       .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
@@ -60,8 +61,9 @@ export function renderInvoicePrintableHtml(invoice: InvoiceRecord): string {
   <body>
     <div class="header">
       <div>
-        <h1>Factura ${escapeHtml(invoiceReference)}</h1>
+        <h1>${escapeHtml(invoiceTypeLabel)} ${escapeHtml(invoiceReference)}</h1>
         <p class="muted">Emitida el ${escapeHtml(formatDate(invoice.issue_date))}</p>
+        ${invoice.rectification_reason ? `<p class="muted">Motivo: ${escapeHtml(invoice.rectification_reason)}</p>` : ""}
       </div>
       <div class="card">
         <strong>Cliente</strong>
@@ -104,11 +106,16 @@ export async function generateInvoicePdfBuffer(invoice: InvoiceRecord): Promise<
   const irpfAmount = (amountBase * Number(invoice.irpf_retention)) / 100;
   const totalAmount = Number(invoice.total_amount);
   const invoiceReference = buildInvoiceReference(invoice.series, invoice.invoice_number);
+  const invoiceTypeLabel = getInvoiceTypeLabel(invoice.invoice_type);
 
   let y = 790;
-  page.drawText(`Factura ${invoiceReference}`, { x: 50, y, size: 24, font: boldFont, color: dark });
+  page.drawText(`${invoiceTypeLabel} ${invoiceReference}`, { x: 50, y, size: 24, font: boldFont, color: dark });
   y -= 26;
   page.drawText(`Fecha de emision: ${formatDate(invoice.issue_date)}`, { x: 50, y, size: 11, font, color: muted });
+  if (invoice.rectification_reason) {
+    y -= 16;
+    page.drawText(`Motivo: ${invoice.rectification_reason}`, { x: 50, y, size: 11, font, color: muted });
+  }
   y -= 38;
 
   page.drawText("Cliente", { x: 50, y, size: 14, font: boldFont, color: dark });

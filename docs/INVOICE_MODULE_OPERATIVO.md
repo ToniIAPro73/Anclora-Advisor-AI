@@ -11,6 +11,7 @@
 - Exportacion del libro visible en CSV y JSON.
 - Seguimiento de cobro con fecha, metodo, referencia y notas.
 - Cobros parciales con historico por factura.
+- Facturas rectificativas vinculadas a una factura origen.
 
 ## Endpoints
 - `GET /api/invoices`
@@ -24,6 +25,7 @@
 - `GET /api/invoices/[invoiceId]/payments`
 - `POST /api/invoices/[invoiceId]/payments`
 - `DELETE /api/invoice-payments/[paymentId]`
+- `POST /api/invoices/[invoiceId]/rectify`
 - `GET /api/operations/jobs`
 - `POST /api/operations/jobs`
 
@@ -36,6 +38,7 @@
 - Lista filtrable con acciones de emitir, marcar pagada, volver a borrador, eliminar, abrir vista PDF, encolar envios y procesar cola.
 - Registro de cobro desde listado o formulario de edicion.
 - Registro de cobros parciales sobre la factura seleccionada.
+- Accion directa para crear una rectificativa negativa como nuevo borrador.
 - Accion de duplicar factura desde listado.
 - Filtros avanzados por cliente/NIF, serie, estado y rango de fechas.
 - Resumen de volumen total, cobrado y pendiente de cobro.
@@ -50,6 +53,7 @@
 - `Registrar cobro` actualiza `paid_at`, `payment_method`, `payment_reference` y deja trazabilidad operativa.
 - Cada cobro parcial se guarda en `invoice_payments`.
 - La factura pasa a `paid` solo cuando la suma de cobros alcanza el total.
+- Las rectificativas se crean con `invoice_type=rectificative`, `rectifies_invoice_id` y motivo de rectificacion.
 
 ## Variables de entorno
 - `SMTP_HOST`

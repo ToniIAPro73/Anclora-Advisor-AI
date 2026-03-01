@@ -130,6 +130,8 @@ export async function generateFiscalAlertsFromTemplates(params: {
           template_id: template.id,
           period_key: periodKey,
           source: "template",
+          tax_regime: template.tax_regime,
+          tax_model: template.tax_model,
         });
 
       if (insertError) {

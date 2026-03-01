@@ -36,6 +36,9 @@ function buildInvoiceFixture(): InvoiceRecord {
     payment_method: null,
     payment_reference: null,
     payment_notes: null,
+    invoice_type: "standard",
+    rectifies_invoice_id: null,
+    rectification_reason: null,
     created_at: "2026-02-28T10:00:00.000Z",
   };
 }
@@ -118,9 +121,12 @@ async function main(): Promise<void> {
     dueDate: "2026-04-20",
     priority: "high",
     workflowStatus: "prepared",
+    taxRegime: "general",
+    taxModel: "303",
   });
   assert(fiscalAlert.description === "Presentar IVA trimestral", "fiscal alert schema trims description");
   assert(fiscalAlert.workflowStatus === "prepared", "fiscal alert schema keeps workflow status");
+  assert(fiscalAlert.taxModel === "303", "fiscal alert schema keeps tax model");
 
   const sortedAlerts = sortFiscalAlerts([
     {
@@ -130,6 +136,13 @@ async function main(): Promise<void> {
       due_date: "2026-04-20",
       priority: "high",
       status: "pending",
+      workflow_status: "pending",
+      presented_at: null,
+      template_id: null,
+      period_key: null,
+      source: "manual",
+      tax_regime: "general",
+      tax_model: "303",
       created_at: "2026-03-01T12:00:00.000Z",
     },
     {
@@ -139,6 +152,13 @@ async function main(): Promise<void> {
       due_date: "2026-03-20",
       priority: "medium",
       status: "pending",
+      workflow_status: "pending",
+      presented_at: null,
+      template_id: null,
+      period_key: null,
+      source: "manual",
+      tax_regime: "general",
+      tax_model: "130",
       created_at: "2026-03-01T09:00:00.000Z",
     },
   ]);
@@ -152,6 +172,8 @@ async function main(): Promise<void> {
     dueDay: 20,
     startDate: "2026-01-01",
     isActive: true,
+    taxRegime: "general",
+    taxModel: "303",
   });
   assert(fiscalTemplate.description === "Preparar y revisar Modelo 303 trimestral", "fiscal template schema trims description");
   assert(
@@ -160,6 +182,8 @@ async function main(): Promise<void> {
       recurrence: fiscalTemplate.recurrence,
       due_day: fiscalTemplate.dueDay,
       due_month: null,
+      tax_regime: fiscalTemplate.taxRegime,
+      tax_model: fiscalTemplate.taxModel,
     }).includes("trimestral"),
     "fiscal template label describes recurrence"
   );

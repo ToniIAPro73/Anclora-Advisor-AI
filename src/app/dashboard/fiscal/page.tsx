@@ -22,13 +22,13 @@ export default async function DashboardFiscalPage({ searchParams }: DashboardFis
   const supabase = createUserScopedSupabaseClient(accessToken);
   const { data, error } = await supabase
     .from("fiscal_alerts")
-    .select("id, alert_type, description, due_date, priority, status, workflow_status, presented_at, template_id, period_key, source, created_at")
+    .select("id, alert_type, description, due_date, priority, status, workflow_status, presented_at, template_id, period_key, source, tax_regime, tax_model, created_at")
     .order("due_date", { ascending: true })
     .limit(60);
 
   const { data: templateData, error: templateError } = await supabase
     .from("fiscal_alert_templates")
-    .select("id, alert_type, description, priority, recurrence, due_day, due_month, start_date, is_active, created_at, updated_at")
+    .select("id, alert_type, description, priority, recurrence, due_day, due_month, start_date, is_active, tax_regime, tax_model, created_at, updated_at")
     .order("created_at", { ascending: false });
 
   const { data: auditData, error: auditError } = await supabase

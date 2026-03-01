@@ -1,6 +1,13 @@
 import { z } from "zod";
-import type { FiscalAlertPriority, FiscalAlertType } from "@/lib/fiscal/alerts";
-import { fiscalAlertPriorityValues, fiscalAlertTypeValues } from "@/lib/fiscal/alerts";
+import type { FiscalAlertPriority, FiscalAlertType, FiscalTaxModel, FiscalTaxRegime } from "@/lib/fiscal/alerts";
+import {
+  fiscalAlertPriorityValues,
+  fiscalAlertTypeValues,
+  fiscalTaxModelValues,
+  fiscalTaxRegimeValues,
+  getFiscalTaxModelLabel,
+  getFiscalTaxRegimeLabel,
+} from "@/lib/fiscal/alerts";
 
 export const fiscalTemplateRecurrenceValues = ["monthly", "quarterly", "annual"] as const;
 export type FiscalTemplateRecurrence = (typeof fiscalTemplateRecurrenceValues)[number];
@@ -15,6 +22,8 @@ export interface FiscalAlertTemplateRecord {
   due_month: number | null;
   start_date: string;
   is_active: boolean;
+  tax_regime: string | null;
+  tax_model: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +37,8 @@ const fiscalTemplateSchemaBase = z.object({
   dueMonth: z.number().int().min(1).max(12).nullable().optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   isActive: z.boolean().optional(),
+  taxRegime: z.enum(fiscalTaxRegimeValues).optional(),
+  taxModel: z.enum(fiscalTaxModelValues).optional(),
 });
 
 function validateAnnualDueMonth(
@@ -57,6 +68,8 @@ export function getFiscalTemplateLabel(template: {
   recurrence: string;
   due_day: number;
   due_month: number | null;
+  tax_regime?: string | null;
+  tax_model?: string | null;
 }): string {
   const recurrence = template.recurrence === "monthly"
     ? "mensual"
@@ -64,11 +77,12 @@ export function getFiscalTemplateLabel(template: {
       ? "trimestral"
       : "anual";
 
-  if (template.recurrence === "annual") {
-    return `${template.alert_type} · ${recurrence} · dia ${template.due_day}/${template.due_month}`;
-  }
-
-  return `${template.alert_type} · ${recurrence} · dia ${template.due_day}`;
+  const cadence = template.recurrence === "annual"
+    ? `${recurrence} · dia ${template.due_day}/${template.due_month}`
+    : `${recurrence} · dia ${template.due_day}`;
+  const model = template.tax_model ? getFiscalTaxModelLabel(template.tax_model) : "Sin modelo";
+  const regime = template.tax_regime ? getFiscalTaxRegimeLabel(template.tax_regime) : "General";
+  return `${template.alert_type} · ${model} · ${regime} · ${cadence}`;
 }
 
 export function normalizeFiscalTemplatePatch(input: {
@@ -80,6 +94,8 @@ export function normalizeFiscalTemplatePatch(input: {
   dueMonth?: number | null;
   startDate?: string;
   isActive?: boolean;
+  taxRegime?: FiscalTaxRegime;
+  taxModel?: FiscalTaxModel;
 }) {
   const patch: Record<string, string | number | boolean | null> = {};
   if (input.alertType !== undefined) patch.alert_type = input.alertType;
@@ -90,5 +106,7 @@ export function normalizeFiscalTemplatePatch(input: {
   if (input.dueMonth !== undefined) patch.due_month = input.dueMonth;
   if (input.startDate !== undefined) patch.start_date = input.startDate;
   if (input.isActive !== undefined) patch.is_active = input.isActive;
+  if (input.taxRegime !== undefined) patch.tax_regime = input.taxRegime;
+  if (input.taxModel !== undefined) patch.tax_model = input.taxModel;
   return patch;
 }

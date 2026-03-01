@@ -1,8 +1,10 @@
 import { z } from "zod";
 
 export const invoiceStatusValues = ["draft", "issued", "paid"] as const;
+export const invoiceTypeValues = ["standard", "rectificative"] as const;
 
 export type InvoiceStatus = (typeof invoiceStatusValues)[number];
+export type InvoiceType = (typeof invoiceTypeValues)[number];
 
 export interface InvoiceRecord {
   id: string;
@@ -22,6 +24,9 @@ export interface InvoiceRecord {
   payment_method: string | null;
   payment_reference: string | null;
   payment_notes: string | null;
+  invoice_type: string | null;
+  rectifies_invoice_id: string | null;
+  rectification_reason: string | null;
   created_at: string;
 }
 
@@ -49,6 +54,9 @@ export const createInvoiceSchema = z.object({
   paymentMethod: z.string().min(2).max(80).transform((value) => value.trim()).optional(),
   paymentReference: z.string().min(1).max(120).transform((value) => value.trim()).optional(),
   paymentNotes: z.string().max(2000).transform((value) => value.trim()).optional(),
+  invoiceType: z.enum(invoiceTypeValues).optional(),
+  rectifiesInvoiceId: z.string().uuid().optional(),
+  rectificationReason: z.string().max(2000).transform((value) => value.trim()).optional(),
 });
 
 export const updateInvoiceSchema = z
@@ -66,6 +74,9 @@ export const updateInvoiceSchema = z
     paymentMethod: z.string().min(2).max(80).transform((value) => value.trim()).nullable().optional(),
     paymentReference: z.string().min(1).max(120).transform((value) => value.trim()).nullable().optional(),
     paymentNotes: z.string().max(2000).transform((value) => value.trim()).nullable().optional(),
+    invoiceType: z.enum(invoiceTypeValues).optional(),
+    rectifiesInvoiceId: z.string().uuid().nullable().optional(),
+    rectificationReason: z.string().max(2000).transform((value) => value.trim()).nullable().optional(),
   })
   .refine((value) => Object.values(value).some((item) => item !== undefined), {
     message: "At least one field must be provided",

@@ -54,7 +54,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     .from("fiscal_alert_templates")
     .update(normalizeFiscalTemplatePatch(payload.data))
     .eq("id", templateId)
-    .select("id, alert_type, description, priority, recurrence, due_day, due_month, start_date, is_active, created_at, updated_at")
+    .select("id, alert_type, description, priority, recurrence, due_day, due_month, start_date, is_active, tax_regime, tax_model, created_at, updated_at")
     .single();
 
   if (error) {

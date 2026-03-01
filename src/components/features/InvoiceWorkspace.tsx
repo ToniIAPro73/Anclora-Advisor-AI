@@ -5,11 +5,13 @@ import { AuditTimeline } from "@/components/features/AuditTimeline";
 import type { AuditLogRecord } from "@/lib/audit/logs";
 import {
   type InvoicePaymentRecord,
+  invoiceTypeValues,
   invoiceStatusValues,
   type InvoiceRecord,
   type InvoiceStatus,
+  type InvoiceType,
 } from "@/lib/invoices/contracts";
-import { buildInvoiceReference } from "@/lib/invoices/service";
+import { buildInvoiceReference, getInvoiceTypeLabel } from "@/lib/invoices/service";
 
 interface InvoiceWorkspaceProps {
   initialInvoices: InvoiceRecord[];
@@ -35,6 +37,7 @@ type InvoiceFormState = {
 };
 
 type InvoiceFilterStatus = "all" | InvoiceStatus;
+type InvoiceFilterType = "all" | InvoiceType;
 
 type PaymentFormState = {
   amount: string;
@@ -47,6 +50,7 @@ type PaymentFormState = {
 type InvoiceFilters = {
   q: string;
   status: InvoiceFilterStatus;
+  invoiceType: InvoiceFilterType;
   series: string;
   dateFrom: string;
   dateTo: string;
@@ -109,6 +113,7 @@ const INITIAL_FORM: InvoiceFormState = {
 const INITIAL_FILTERS: InvoiceFilters = {
   q: "",
   status: "all",
+  invoiceType: "all",
   series: "",
   dateFrom: "",
   dateTo: "",
@@ -222,6 +227,10 @@ export function InvoiceWorkspace({
   const draftCount = useMemo(() => invoices.filter((invoice) => invoice.status === "draft").length, [invoices]);
   const issuedCount = useMemo(() => invoices.filter((invoice) => invoice.status === "issued").length, [invoices]);
   const paidCount = useMemo(() => invoices.filter((invoice) => invoice.status === "paid").length, [invoices]);
+  const rectificativeCount = useMemo(
+    () => invoices.filter((invoice) => invoice.invoice_type === "rectificative").length,
+    [invoices]
+  );
   const totalVolume = useMemo(
     () => invoices.reduce((sum, invoice) => sum + Number(invoice.total_amount), 0),
     [invoices]
@@ -335,6 +344,7 @@ export function InvoiceWorkspace({
       const params = new URLSearchParams();
       if (nextFilters.q.trim()) params.set("q", nextFilters.q.trim());
       if (nextFilters.status !== "all") params.set("status", nextFilters.status);
+      if (nextFilters.invoiceType !== "all") params.set("invoiceType", nextFilters.invoiceType);
       if (nextFilters.series.trim()) params.set("series", nextFilters.series.trim().toUpperCase());
       if (nextFilters.dateFrom) params.set("dateFrom", nextFilters.dateFrom);
       if (nextFilters.dateTo) params.set("dateTo", nextFilters.dateTo);
@@ -673,6 +683,7 @@ export function InvoiceWorkspace({
       const params = new URLSearchParams();
       if (filters.q.trim()) params.set("q", filters.q.trim());
       if (filters.status !== "all") params.set("status", filters.status);
+      if (filters.invoiceType !== "all") params.set("invoiceType", filters.invoiceType);
       if (filters.series.trim()) params.set("series", filters.series.trim().toUpperCase());
       if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
       if (filters.dateTo) params.set("dateTo", filters.dateTo);
@@ -701,6 +712,36 @@ export function InvoiceWorkspace({
 
   function openPrintableView(invoiceId: string) {
     window.open(`/api/invoices/${invoiceId}/pdf`, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleRectify(invoiceId: string) {
+    const reason = window.prompt("Motivo de la rectificativa:", "Rectificacion operativa");
+    if (!reason) {
+      return;
+    }
+
+    setUpdatingInvoiceId(invoiceId);
+    setError(null);
+    setOkMessage(null);
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}/rectify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const result = (await response.json()) as { success: boolean; error?: string; invoice?: InvoiceRecord };
+      if (!response.ok || !result.success || !result.invoice) {
+        throw new Error(result.error ?? "No se pudo crear la rectificativa");
+      }
+      upsertInvoice(result.invoice);
+      await refreshInvoices();
+      await refreshAuditLogs();
+      setOkMessage("Factura rectificativa creada.");
+    } catch (rectifyError) {
+      setError(rectifyError instanceof Error ? rectifyError.message : "Error al crear rectificativa");
+    } finally {
+      setUpdatingInvoiceId(null);
+    }
   }
 
   return (
@@ -979,6 +1020,7 @@ export function InvoiceWorkspace({
               <p>Borradores: <strong className="text-[#162944]">{draftCount}</strong></p>
               <p className="mt-1">Emitidas: <strong className="text-[#162944]">{issuedCount}</strong></p>
               <p className="mt-1">Pagadas: <strong className="text-[#162944]">{paidCount}</strong></p>
+              <p className="mt-1">Rectificativas: <strong className="text-[#162944]">{rectificativeCount}</strong></p>
             </div>
             <div className="advisor-card-muted p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Volumen total</p>
@@ -1104,6 +1146,17 @@ export function InvoiceWorkspace({
                   <option key={status} value={status}>{status}</option>
                 ))}
               </select>
+              <select
+                id="invoiceTypeFilter"
+                className="advisor-input min-w-32"
+                value={filters.invoiceType}
+                onChange={(event) => setFilters((current) => ({ ...current, invoiceType: event.target.value as InvoiceFilterType }))}
+              >
+                <option value="all">Todas</option>
+                {invoiceTypeValues.map((invoiceType) => (
+                  <option key={invoiceType} value={invoiceType}>{getInvoiceTypeLabel(invoiceType)}</option>
+                ))}
+              </select>
               <div className="flex gap-2 lg:col-span-5">
                 <button type="button" className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => void refreshInvoices()}>
                   Aplicar filtros
@@ -1142,6 +1195,16 @@ export function InvoiceWorkspace({
                         {invoice.status}
                       </span>
                     </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">
+                        {getInvoiceTypeLabel(invoice.invoice_type)}
+                      </span>
+                      {invoice.rectifies_invoice_id && (
+                        <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">
+                          Rectifica {invoice.rectifies_invoice_id.slice(0, 8)}
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-2 grid gap-2 text-xs text-[#3a4f67] sm:grid-cols-4">
                       <p>Base: <strong>{formatAmount(Number(invoice.amount_base))}</strong></p>
                       <p>IVA: <strong>{invoice.iva_rate}%</strong></p>
@@ -1171,6 +1234,11 @@ export function InvoiceWorkspace({
                         Cobro: <strong>{invoice.payment_notes}</strong>
                       </p>
                     )}
+                    {invoice.rectification_reason && (
+                      <p className="mt-1 text-xs text-[#3a4f67]">
+                        Rectificacion: <strong>{invoice.rectification_reason}</strong>
+                      </p>
+                    )}
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -1194,6 +1262,16 @@ export function InvoiceWorkspace({
                       >
                         Vista PDF
                       </button>
+                      {invoice.invoice_type !== "rectificative" && (
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
+                          onClick={() => void handleRectify(invoice.id)}
+                        >
+                          Rectificar
+                        </button>
+                      )}
                       <button
                         type="button"
                         disabled={isBusy}

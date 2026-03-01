@@ -61,6 +61,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (patch.dueDate !== undefined) updatePayload.due_date = patch.dueDate;
   if (patch.priority !== undefined) updatePayload.priority = patch.priority;
   if (patch.status !== undefined) updatePayload.status = patch.status;
+  if (patch.taxRegime !== undefined) updatePayload.tax_regime = patch.taxRegime;
+  if (patch.taxModel !== undefined) updatePayload.tax_model = patch.taxModel;
   if (patch.workflowStatus !== undefined) {
     updatePayload.workflow_status = patch.workflowStatus;
     if (patch.workflowStatus === "presented" || patch.workflowStatus === "closed") {
@@ -78,7 +80,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     .from("fiscal_alerts")
     .update(updatePayload)
     .eq("id", alertId)
-    .select("id, alert_type, description, due_date, priority, status, workflow_status, presented_at, template_id, period_key, source, created_at")
+    .select("id, alert_type, description, due_date, priority, status, workflow_status, presented_at, template_id, period_key, source, tax_regime, tax_model, created_at")
     .single();
 
   if (error) {

@@ -76,6 +76,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (patch.paymentReference !== undefined) updatePayload.payment_reference = patch.paymentReference;
   if (patch.paymentNotes !== undefined) updatePayload.payment_notes = patch.paymentNotes;
   if (patch.paidAt !== undefined) updatePayload.paid_at = patch.paidAt;
+  if (patch.invoiceType !== undefined) updatePayload.invoice_type = patch.invoiceType;
+  if (patch.rectifiesInvoiceId !== undefined) updatePayload.rectifies_invoice_id = patch.rectifiesInvoiceId;
+  if (patch.rectificationReason !== undefined) updatePayload.rectification_reason = patch.rectificationReason;
 
   const needsRecalculation =
     patch.amountBase !== undefined || patch.ivaRate !== undefined || patch.irpfRetention !== undefined;

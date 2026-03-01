@@ -4,6 +4,7 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
 import { createFiscalTemplateSchema } from "@/lib/fiscal/templates";
+import { getDefaultFiscalModel, getDefaultFiscalRegime } from "@/lib/fiscal/alerts";
 import { resolveLocale, t } from "@/lib/i18n/messages";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
   const { data, error } = await supabase
     .from("fiscal_alert_templates")
-    .select("id, alert_type, description, priority, recurrence, due_day, due_month, start_date, is_active, created_at, updated_at")
+    .select("id, alert_type, description, priority, recurrence, due_day, due_month, start_date, is_active, tax_regime, tax_model, created_at, updated_at")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -85,8 +86,10 @@ export async function POST(request: NextRequest) {
       due_month: payload.data.dueMonth ?? null,
       start_date: payload.data.startDate,
       is_active: payload.data.isActive ?? true,
+      tax_regime: payload.data.taxRegime ?? getDefaultFiscalRegime(payload.data.alertType),
+      tax_model: payload.data.taxModel ?? getDefaultFiscalModel(payload.data.alertType),
     })
-    .select("id, alert_type, description, priority, recurrence, due_day, due_month, start_date, is_active, created_at, updated_at")
+    .select("id, alert_type, description, priority, recurrence, due_day, due_month, start_date, is_active, tax_regime, tax_model, created_at, updated_at")
     .single();
 
   if (error) {
@@ -109,6 +112,8 @@ export async function POST(request: NextRequest) {
       metadata: {
         recurrence: payload.data.recurrence,
         dueDay: payload.data.dueDay,
+        taxRegime: payload.data.taxRegime ?? getDefaultFiscalRegime(payload.data.alertType),
+        taxModel: payload.data.taxModel ?? getDefaultFiscalModel(payload.data.alertType),
       },
     });
   } catch (auditError) {

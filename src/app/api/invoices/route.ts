@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
   const filters = normalizeInvoiceQueryParams({
     q: searchParams.get("q") ?? undefined,
     status: searchParams.get("status") ?? undefined,
+    invoiceType: searchParams.get("invoiceType") ?? undefined,
     series: searchParams.get("series") ?? undefined,
     dateFrom: searchParams.get("dateFrom") ?? undefined,
     dateTo: searchParams.get("dateTo") ?? undefined,
@@ -145,6 +146,9 @@ export async function POST(request: NextRequest) {
       payment_method: invoice.paymentMethod ?? null,
       payment_reference: invoice.paymentReference ?? null,
       payment_notes: invoice.paymentNotes ?? null,
+      invoice_type: invoice.invoiceType ?? "standard",
+      rectifies_invoice_id: invoice.rectifiesInvoiceId ?? null,
+      rectification_reason: invoice.rectificationReason ?? null,
     })
     .select(INVOICE_SELECT_FIELDS)
     .single();

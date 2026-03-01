@@ -7,14 +7,22 @@ import type { AuditLogRecord } from "@/lib/audit/logs";
 import {
   fiscalAlertPriorityValues,
   fiscalAlertStatusValues,
+  fiscalTaxModelValues,
+  fiscalTaxRegimeValues,
   fiscalAlertTypeValues,
   fiscalAlertWorkflowStatusValues,
+  getDefaultFiscalModel,
+  getDefaultFiscalRegime,
   sortFiscalAlerts,
   type FiscalAlertPriority,
   type FiscalAlertRecord,
   type FiscalAlertStatus,
+  type FiscalTaxModel,
+  type FiscalTaxRegime,
   type FiscalAlertType,
   type FiscalAlertWorkflowStatus,
+  getFiscalTaxModelLabel,
+  getFiscalTaxRegimeLabel,
 } from "@/lib/fiscal/alerts";
 import {
   getFiscalTemplateLabel,
@@ -38,6 +46,8 @@ type FiscalFormState = {
   dueDate: string;
   priority: FiscalAlertPriority;
   workflowStatus: FiscalAlertWorkflowStatus;
+  taxRegime: FiscalTaxRegime;
+  taxModel: FiscalTaxModel;
 };
 
 type TemplateFormState = {
@@ -49,6 +59,8 @@ type TemplateFormState = {
   dueMonth: string;
   startDate: string;
   isActive: boolean;
+  taxRegime: FiscalTaxRegime;
+  taxModel: FiscalTaxModel;
 };
 
 type OperationJobRecord = {
@@ -67,6 +79,8 @@ const INITIAL_ALERT_FORM: FiscalFormState = {
   dueDate: TODAY,
   priority: "medium",
   workflowStatus: "pending",
+  taxRegime: "general",
+  taxModel: "303",
 };
 
 const INITIAL_TEMPLATE_FORM: TemplateFormState = {
@@ -78,6 +92,8 @@ const INITIAL_TEMPLATE_FORM: TemplateFormState = {
   dueMonth: "1",
   startDate: TODAY,
   isActive: true,
+  taxRegime: "general",
+  taxModel: "303",
 };
 
 function formatDate(date: string): string {
@@ -125,6 +141,8 @@ function toAlertForm(alert: FiscalAlertRecord): FiscalFormState {
     dueDate: alert.due_date,
     priority: alert.priority as FiscalAlertPriority,
     workflowStatus: (alert.workflow_status as FiscalAlertWorkflowStatus) ?? "pending",
+    taxRegime: (alert.tax_regime as FiscalTaxRegime) ?? getDefaultFiscalRegime(alert.alert_type as FiscalAlertType),
+    taxModel: (alert.tax_model as FiscalTaxModel) ?? getDefaultFiscalModel(alert.alert_type as FiscalAlertType),
   };
 }
 
@@ -145,6 +163,8 @@ function toTemplateForm(template: FiscalAlertTemplateRecord): TemplateFormState 
     dueMonth: String(template.due_month ?? 1),
     startDate: template.start_date,
     isActive: template.is_active,
+    taxRegime: (template.tax_regime as FiscalTaxRegime) ?? getDefaultFiscalRegime(template.alert_type as FiscalAlertType),
+    taxModel: (template.tax_model as FiscalTaxModel) ?? getDefaultFiscalModel(template.alert_type as FiscalAlertType),
   };
 }
 
@@ -202,6 +222,14 @@ export function FiscalWorkspace({
     presented: alerts.filter((alert) => alert.workflow_status === "presented").length,
     closed: alerts.filter((alert) => alert.workflow_status === "closed").length,
   }), [alerts]);
+  const modelCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const alert of alerts) {
+      const key = getFiscalTaxModelLabel(alert.tax_model);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).sort((left, right) => right[1] - left[1]).slice(0, 6);
+  }, [alerts]);
   const calendarGroups = useMemo(() => {
     const groups = new Map<string, FiscalAlertRecord[]>();
     for (const alert of filteredAlerts) {
@@ -294,6 +322,8 @@ export function FiscalWorkspace({
           dueMonth: templateForm.recurrence === "annual" ? Number.parseInt(templateForm.dueMonth, 10) : null,
           startDate: templateForm.startDate,
           isActive: templateForm.isActive,
+          taxRegime: templateForm.taxRegime,
+          taxModel: templateForm.taxModel,
         }),
       });
       const result = (await response.json()) as { success: boolean; error?: string; template?: FiscalAlertTemplateRecord };
@@ -445,11 +475,33 @@ export function FiscalWorkspace({
           </div>
           <form className="mt-4 space-y-3" onSubmit={saveTemplate}>
             <div className="grid gap-3 sm:grid-cols-2">
-              <select className="advisor-input" value={templateForm.alertType} onChange={(event) => setTemplateForm((current) => ({ ...current, alertType: event.target.value as FiscalAlertType }))}>
+              <select
+                className="advisor-input"
+                value={templateForm.alertType}
+                onChange={(event) =>
+                  setTemplateForm((current) => {
+                    const alertType = event.target.value as FiscalAlertType;
+                    return {
+                      ...current,
+                      alertType,
+                      taxRegime: getDefaultFiscalRegime(alertType),
+                      taxModel: getDefaultFiscalModel(alertType),
+                    };
+                  })
+                }
+              >
                 {fiscalAlertTypeValues.map((type) => <option key={type} value={type}>{getAlertLabel(type)}</option>)}
               </select>
               <select className="advisor-input" value={templateForm.priority} onChange={(event) => setTemplateForm((current) => ({ ...current, priority: event.target.value as FiscalAlertPriority }))}>
                 {fiscalAlertPriorityValues.map((priority) => <option key={priority} value={priority}>{priority}</option>)}
+              </select>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <select className="advisor-input" value={templateForm.taxRegime} onChange={(event) => setTemplateForm((current) => ({ ...current, taxRegime: event.target.value as FiscalTaxRegime }))}>
+                {fiscalTaxRegimeValues.map((regime) => <option key={regime} value={regime}>{getFiscalTaxRegimeLabel(regime)}</option>)}
+              </select>
+              <select className="advisor-input" value={templateForm.taxModel} onChange={(event) => setTemplateForm((current) => ({ ...current, taxModel: event.target.value as FiscalTaxModel }))}>
+                {fiscalTaxModelValues.map((model) => <option key={model} value={model}>{getFiscalTaxModelLabel(model)}</option>)}
               </select>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -510,13 +562,35 @@ export function FiscalWorkspace({
             {editingAlertId && <button type="button" className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => { setAlertForm(INITIAL_ALERT_FORM); setEditingAlertId(null); }}>Cancelar</button>}
           </div>
           <form className="mt-4 space-y-3" onSubmit={saveAlert}>
-            <select className="advisor-input" value={alertForm.alertType} onChange={(event) => setAlertForm((current) => ({ ...current, alertType: event.target.value as FiscalAlertType }))}>
+            <select
+              className="advisor-input"
+              value={alertForm.alertType}
+              onChange={(event) =>
+                setAlertForm((current) => {
+                  const alertType = event.target.value as FiscalAlertType;
+                  return {
+                    ...current,
+                    alertType,
+                    taxRegime: getDefaultFiscalRegime(alertType),
+                    taxModel: getDefaultFiscalModel(alertType),
+                  };
+                })
+              }
+            >
               {fiscalAlertTypeValues.map((type) => <option key={type} value={type}>{getAlertLabel(type)}</option>)}
             </select>
             <div className="grid gap-3 sm:grid-cols-2">
               <input type="date" className="advisor-input" value={alertForm.dueDate} onChange={(event) => setAlertForm((current) => ({ ...current, dueDate: event.target.value }))} required />
               <select className="advisor-input" value={alertForm.priority} onChange={(event) => setAlertForm((current) => ({ ...current, priority: event.target.value as FiscalAlertPriority }))}>
                 {fiscalAlertPriorityValues.map((priority) => <option key={priority} value={priority}>{priority}</option>)}
+              </select>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <select className="advisor-input" value={alertForm.taxRegime} onChange={(event) => setAlertForm((current) => ({ ...current, taxRegime: event.target.value as FiscalTaxRegime }))}>
+                {fiscalTaxRegimeValues.map((regime) => <option key={regime} value={regime}>{getFiscalTaxRegimeLabel(regime)}</option>)}
+              </select>
+              <select className="advisor-input" value={alertForm.taxModel} onChange={(event) => setAlertForm((current) => ({ ...current, taxModel: event.target.value as FiscalTaxModel }))}>
+                {fiscalTaxModelValues.map((model) => <option key={model} value={model}>{getFiscalTaxModelLabel(model)}</option>)}
               </select>
             </div>
             <select className="advisor-input" value={alertForm.workflowStatus} onChange={(event) => setAlertForm((current) => ({ ...current, workflowStatus: event.target.value as FiscalAlertWorkflowStatus }))}>
@@ -593,6 +667,16 @@ export function FiscalWorkspace({
             </div>
 
             <div className="advisor-card-muted p-3">
+              <p className="text-sm font-semibold text-[#162944]">Modelos en seguimiento</p>
+              <div className="mt-2 grid gap-2 text-sm text-[#3a4f67] sm:grid-cols-3">
+                {modelCounts.length === 0 && <p>Sin modelos activos.</p>}
+                {modelCounts.map(([label, count]) => (
+                  <p key={label}>{label}: <strong className="text-[#162944]">{count}</strong></p>
+                ))}
+              </div>
+            </div>
+
+            <div className="advisor-card-muted p-3">
               <p className="text-sm font-semibold text-[#162944]">Plantillas activas</p>
               <div className="mt-2 space-y-2">
                 {templates.length === 0 && <div className="rounded-xl border border-[#d2dceb] bg-white p-3 text-sm text-[#3a4f67]">No hay plantillas configuradas.</div>}
@@ -603,10 +687,12 @@ export function FiscalWorkspace({
                         <p className="text-sm font-semibold text-[#162944]">{getFiscalTemplateLabel(template)}</p>
                         <p className="mt-1 text-xs text-[#3a4f67]">{template.description || "Sin descripcion base."}</p>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getPriorityClass(template.priority)}`}>{template.priority}</span>
-                        <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${template.is_active ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-700 border-slate-200"}`}>{template.is_active ? "activa" : "inactiva"}</span>
-                      </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getPriorityClass(template.priority)}`}>{template.priority}</span>
+                      <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${template.is_active ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-700 border-slate-200"}`}>{template.is_active ? "activa" : "inactiva"}</span>
+                      <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">{getFiscalTaxRegimeLabel(template.tax_regime)}</span>
+                      <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">{getFiscalTaxModelLabel(template.tax_model)}</span>
+                    </div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button type="button" className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => { setTemplateForm(toTemplateForm(template)); setEditingTemplateId(template.id); }}>
@@ -659,6 +745,8 @@ export function FiscalWorkspace({
                     <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getWorkflowClass(alert.workflow_status)}`}>tramite: {alert.workflow_status}</span>
                     <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">periodo: {getFiscalPeriodLabel(alert)}</span>
                     <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">origen: {alert.source}</span>
+                    <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">{getFiscalTaxRegimeLabel(alert.tax_regime)}</span>
+                    <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">{getFiscalTaxModelLabel(alert.tax_model)}</span>
                   </div>
                   {alert.presented_at && (
                     <p className="mt-2 text-xs text-[#3a4f67]">Presentado el {formatDate(alert.presented_at)}</p>

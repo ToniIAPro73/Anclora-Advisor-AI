@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
   const filters = normalizeInvoiceQueryParams({
     q: searchParams.get("q") ?? undefined,
     status: searchParams.get("status") ?? undefined,
+    invoiceType: searchParams.get("invoiceType") ?? undefined,
     series: searchParams.get("series") ?? undefined,
     dateFrom: searchParams.get("dateFrom") ?? undefined,
     dateTo: searchParams.get("dateTo") ?? undefined,
