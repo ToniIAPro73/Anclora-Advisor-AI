@@ -8,6 +8,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { retrieveContext, RAGChunk } from '../../src/lib/rag/retrieval';
 import { runDeterministicFiscalTool } from '../../src/lib/tools/deterministic-fiscal-tools';
+import { buildSuggestedChatActions, type ChatSuggestedAction } from '../../src/lib/chat/action-suggestions';
 import { GROUNDED_CHAT_PROMPT, NO_EVIDENCE_FALLBACK_PROMPT, RESPONSE_GUARD_PROMPT } from './prompts';
 
 // ----------------------------------------------------------------
@@ -54,6 +55,7 @@ export interface OrchestratorResponse {
   recommendations: string[];
   alerts: Array<{ type: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'; message: string }>;
   citations: CitationRef[];
+  suggestedActions: ChatSuggestedAction[];
   groundingConfidence: 'high' | 'medium' | 'low' | 'none';
   performance: {
     routing_ms: number;
@@ -459,6 +461,7 @@ export class Orchestrator {
         recommendations: deterministicTool.recommendations,
         alerts: [],
         citations: [],
+        suggestedActions: [],
         groundingConfidence: 'none',
         performance: {
           routing_ms: Date.now() - tRoutingStart,
@@ -637,6 +640,12 @@ export class Orchestrator {
       ],
       alerts,
       citations,
+      suggestedActions: buildSuggestedChatActions({
+        query,
+        response: primaryResponse,
+        routing,
+        alerts,
+      }),
       groundingConfidence: groundingConf,
       performance: {
         routing_ms: routingMs,

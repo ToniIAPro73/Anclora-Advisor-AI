@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
+import type { ChatSuggestedAction } from "@/lib/chat/action-suggestions";
 
 export type AlertLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
@@ -47,6 +48,7 @@ export interface ChatMessage {
   citations?: ChatCitation[];
   contexts?: ChatContext[];
   alerts?: ChatAlert[];
+  suggestedActions?: ChatSuggestedAction[];
   groundingConfidence?: "high" | "medium" | "low" | "none";
 }
 
@@ -65,6 +67,7 @@ interface ChatApiResponse {
   citations?: ChatCitation[];
   contexts?: ChatContext[];
   alerts?: ChatAlert[];
+  suggestedActions?: ChatSuggestedAction[];
   groundingConfidence?: "high" | "medium" | "low" | "none";
 }
 
@@ -174,6 +177,7 @@ export function useChat(userId: string, conversationId: string, initialMessages:
               citations: complete.citations ?? [],
               contexts: complete.contexts ?? [],
               alerts: complete.alerts ?? [],
+              suggestedActions: complete.suggestedActions ?? [],
               groundingConfidence: complete.groundingConfidence,
             }));
             continue;
@@ -203,6 +207,21 @@ export function useChat(userId: string, conversationId: string, initialMessages:
     setState({ messages: [], loading: false, error: null });
   }, []);
 
+  const appendAssistantMessage = useCallback((message: Omit<ChatMessage, "id" | "role" | "timestamp">) => {
+    setState((prev) => ({
+      ...prev,
+      messages: [
+        ...prev.messages,
+        {
+          id: `msg_local_${Date.now()}`,
+          role: "assistant",
+          timestamp: new Date(),
+          ...message,
+        },
+      ],
+    }));
+  }, []);
+
   return {
     messages: state.messages,
     loading: state.loading,
@@ -210,6 +229,7 @@ export function useChat(userId: string, conversationId: string, initialMessages:
     sendMessageStreaming,
     clearMessages,
     replaceMessages,
+    appendAssistantMessage,
   };
 }
 

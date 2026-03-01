@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
               citations: result.citations,
               contexts: result.contexts,
               alerts: result.alerts,
+              suggestedActions: result.suggestedActions,
               groundingConfidence: result.groundingConfidence,
               performance: result.performance,
             });

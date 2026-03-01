@@ -2,8 +2,10 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useChat, type ChatMessage } from "@/hooks/useChat";
+import type { ChatSuggestedAction } from "@/lib/chat/action-suggestions";
 import type { ChatConversationRecord, ChatPersistedMessageRecord } from "@/lib/chat/contracts";
 import MessageList from "./MessageList";
 
@@ -54,6 +56,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [conversationLoading, setConversationLoading] = useState(false);
   const [conversationError, setConversationError] = useState<string | null>(null);
   const [inputQuery, setInputQuery] = useState("");
+  const [actionStates, setActionStates] = useState<Record<string, { status: "idle" | "loading" | "success" | "error"; message: string | null }>>({});
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
 
@@ -64,11 +67,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const activeConversation = conversations.find((item) => item.id === activeConversationId) ?? null;
 
-  const { messages, loading, error, sendMessageStreaming, replaceMessages } = useChat(
+  const { messages, loading, error, sendMessageStreaming, replaceMessages, appendAssistantMessage } = useChat(
     userId,
     activeConversationId,
     mappedInitialMessages
   );
+
+  function getActionStateKey(messageId: string, actionId: string): string {
+    return `${messageId}:${actionId}`;
+  }
 
   function syncConversationInUrl(conversationId: string) {
     const next = new URLSearchParams(searchParams?.toString());
@@ -207,6 +214,67 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
 
+  async function executeSuggestedAction(messageId: string, action: ChatSuggestedAction) {
+    const stateKey = getActionStateKey(messageId, action.id);
+    setActionStates((prev) => ({
+      ...prev,
+      [stateKey]: { status: "loading", message: "Creando..." },
+    }));
+
+    try {
+      let response: Response;
+      let successSummary = "";
+
+      if (action.kind === "create_fiscal_alert") {
+        response = await fetch("/api/fiscal-alerts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(action.payload),
+        });
+        successSummary = "He creado una alerta fiscal vinculada a esta consulta.";
+      } else if (action.kind === "create_labor_assessment") {
+        response = await fetch("/api/labor-risk-assessments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(action.payload),
+        });
+        successSummary = "He creado una evaluacion laboral a partir de esta conversacion.";
+      } else {
+        response = await fetch("/api/invoices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(action.payload),
+        });
+        successSummary = "He creado un borrador de factura con los importes detectados.";
+      }
+
+      const result = (await response.json()) as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) {
+        throw new Error(result.error ?? "No se pudo ejecutar la accion sugerida");
+      }
+
+      setActionStates((prev) => ({
+        ...prev,
+        [stateKey]: { status: "success", message: "Accion creada correctamente." },
+      }));
+      appendAssistantMessage({
+        content: `${successSummary} Puedes revisarla en el modulo correspondiente.`,
+        suggestedActions: [],
+        alerts: [],
+        citations: [],
+        contexts: [],
+      });
+    } catch (actionError) {
+      setActionStates((prev) => ({
+        ...prev,
+        [stateKey]: {
+          status: "error",
+          message: actionError instanceof Error ? actionError.message : "Error al ejecutar la accion",
+        },
+      }));
+    }
+  }
+
   return (
     <div className="grid h-full min-h-0 gap-3 lg:grid-cols-5">
       <aside className="advisor-card flex min-h-0 flex-col overflow-hidden lg:col-span-2">
@@ -313,7 +381,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <p>Cargando conversacion...</p>
             </div>
           ) : (
-            <MessageList messages={messages} />
+            <MessageList messages={messages} actionStates={actionStates} onExecuteAction={executeSuggestedAction} />
           )}
 
           {loading && (
@@ -350,6 +418,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               Consultar
             </button>
           </form>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#3a4f67]">
+            <span>Acciones rapidas disponibles tras respuestas compatibles.</span>
+            <Link href="/dashboard/fiscal" className="font-semibold text-[#1dab89] hover:underline">Fiscal</Link>
+            <Link href="/dashboard/laboral" className="font-semibold text-[#1dab89] hover:underline">Laboral</Link>
+            <Link href="/dashboard/facturacion" className="font-semibold text-[#1dab89] hover:underline">Facturacion</Link>
+          </div>
         </div>
       </div>
     </div>

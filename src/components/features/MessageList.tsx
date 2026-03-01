@@ -4,9 +4,12 @@ import { ChatMessage } from "@/hooks/useChat";
 
 interface MessageListProps {
   messages: ChatMessage[];
+  actionStates: Record<string, { status: "idle" | "loading" | "success" | "error"; message: string | null }>;
+  // eslint-disable-next-line no-unused-vars
+  onExecuteAction: (...args: [string, NonNullable<ChatMessage["suggestedActions"]>[number]]) => Promise<void>;
 }
 
-export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
+export const MessageList: React.FC<MessageListProps> = ({ messages, actionStates, onExecuteAction }) => {
   const [expandedMessageId, setExpandedMessageId] = React.useState<string | null>(null);
 
   function getGroundingBadgeClass(confidence: ChatMessage["groundingConfidence"]): string {
@@ -48,6 +51,51 @@ export const MessageList: React.FC<MessageListProps> = ({ messages }) => {
             )}
 
             <p className="text-base leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+
+            {msg.role === "assistant" && msg.suggestedActions && msg.suggestedActions.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {msg.suggestedActions.map((action) => {
+                  const state = actionStates[`${msg.id}:${action.id}`] ?? { status: "idle", message: null };
+                  return (
+                    <div key={`${msg.id}_${action.id}`} className="rounded-lg border border-[#d2dceb] bg-[#f7faff] p-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-[#162944]">{action.title}</p>
+                          <p className="mt-1 text-xs text-[#3a4f67]">{action.description}</p>
+                        </div>
+                        <a href={action.navigationHref} className="text-xs font-semibold text-[#1dab89] hover:underline">
+                          Ir al modulo
+                        </a>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void onExecuteAction(msg.id, action)}
+                          disabled={state.status === "loading" || state.status === "success"}
+                          className="rounded-lg bg-[#1DAB89] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#179a7a] disabled:cursor-not-allowed disabled:bg-gray-300"
+                        >
+                          {state.status === "loading" ? "Creando..." : state.status === "success" ? "Creado" : action.ctaLabel}
+                        </button>
+                        {state.message && (
+                          <span
+                            className={
+                              "text-xs " +
+                              (state.status === "error"
+                                ? "text-red-700"
+                                : state.status === "success"
+                                  ? "text-emerald-700"
+                                  : "text-[#3a4f67]")
+                            }
+                          >
+                            {state.message}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {msg.role === "assistant" && (
               <div className="mt-3 pt-3 border-t border-gray-100">

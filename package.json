@@ -34,6 +34,7 @@
     "perf:benchmark:hardware": "tsx scripts/benchmark-hardware.ts",
     "test:admin-status": "tsx tests/unit/test-admin-status-filters.ts",
     "test:admin-status:service": "tsx tests/unit/test-admin-status-service.ts",
+    "test:chat-actions": "tsx tests/unit/test-chat-action-suggestions.ts",
     "test:integration:ops": "tsx tests/integration/test-operational-workflows.ts",
     "test:i18n": "tsx tests/test-i18n-hardening.ts",
     "test:smoke": "tsx tests/test-smoke-hardening.ts"
