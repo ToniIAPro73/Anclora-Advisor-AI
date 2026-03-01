@@ -140,7 +140,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="advisor-input"
+                  className="advisor-input login-auth-input"
                   placeholder="usuario@anclora.es"
                   required
                   style={isLight ? styles.loginInputLight : styles.loginInputDark}
@@ -158,7 +158,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                     autoComplete={mode === "login" ? "current-password" : "new-password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="advisor-input"
+                    className="advisor-input login-auth-input"
                     placeholder={mode === "login" ? "Tu contraseña" : "Mínimo 6 caracteres"}
                     required
                     minLength={6}
