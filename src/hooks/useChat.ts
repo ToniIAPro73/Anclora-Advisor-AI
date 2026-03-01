@@ -96,7 +96,7 @@ export function useChat(userId: string, conversationId: string, initialMessages:
 
   useEffect(() => {
     setState({ messages: initialMessages, loading: false, error: null });
-  }, [conversationId, initialMessages]);
+  }, [initialMessages]);
 
   const replaceMessages = useCallback((messages: ChatMessage[]) => {
     setState({ messages, loading: false, error: null });
