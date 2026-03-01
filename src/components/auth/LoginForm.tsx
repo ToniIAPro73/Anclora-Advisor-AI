@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AuthMode = "login" | "signup";
@@ -13,6 +14,7 @@ interface LoginFormProps {
 
 export function LoginForm({ nextPath }: LoginFormProps) {
   const router = useRouter();
+  const { resolvedTheme } = useAppPreferences();
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -21,6 +23,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const isLight = resolvedTheme === "light";
 
   const syncServerSession = async (accessToken: string) => {
     const response = await fetch("/api/auth/session", {
@@ -64,17 +67,17 @@ export function LoginForm({ nextPath }: LoginFormProps) {
   };
 
   return (
-    <main style={styles.main}>
+    <main style={{ ...styles.main, ...(isLight ? styles.mainLight : styles.mainDark) }}>
       {/* Background decorative blobs */}
-      <div style={styles.blobTop} aria-hidden="true" />
-      <div style={styles.blobBottom} aria-hidden="true" />
+      <div style={{ ...styles.blobTop, ...(isLight ? styles.blobTopLight : styles.blobTopDark) }} aria-hidden="true" />
+      <div style={{ ...styles.blobBottom, ...(isLight ? styles.blobBottomLight : styles.blobBottomDark) }} aria-hidden="true" />
 
       <div style={styles.wrapper}>
         {/* Brand header */}
         <header style={styles.brandHeader}>
-          <div style={styles.logoWrap}>
+          <div style={{ ...styles.logoWrap, ...(isLight ? styles.logoWrapLight : styles.logoWrapDark) }}>
             <Image
-              src="/brand/Logo-Advisor_1.png"
+              src={isLight ? "/brand/logo-Advisor.png" : "/brand/Logo-Advisor_1.png"}
               alt="Logo de Anclora Advisor"
               width={84}
               height={84}
@@ -82,14 +85,14 @@ export function LoginForm({ nextPath }: LoginFormProps) {
               style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", objectPosition: "center" }}
             />
           </div>
-          <span style={styles.logoText}>Anclora Advisor AI</span>
+          <span style={{ ...styles.logoText, ...(isLight ? styles.logoTextLight : styles.logoTextDark) }}>Anclora Advisor AI</span>
         </header>
 
         <div style={styles.contentWrap}>
           {/* Card */}
-          <section style={styles.card} aria-label="Formulario de acceso">
+          <section style={{ ...styles.card, ...(isLight ? styles.cardLight : styles.cardDark) }} aria-label="Formulario de acceso">
             <div style={styles.cardHeader}>
-              <h1 style={styles.cardTitle}>
+              <h1 style={{ ...styles.cardTitle, ...(isLight ? styles.cardTitleLight : styles.cardTitleDark) }}>
                 {mode === "login" ? "Bienvenido de nuevo" : "Crear cuenta"}
               </h1>
               <p style={styles.cardSubtitle}>
@@ -100,7 +103,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             </div>
 
             {/* Mode tabs */}
-            <div style={styles.tabs} role="tablist">
+            <div style={{ ...styles.tabs, ...(isLight ? styles.tabsLight : styles.tabsDark) }} role="tablist">
               <button
                 id="tab-login"
                 role="tab"
@@ -108,7 +111,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 aria-selected={mode === "login"}
                 aria-controls="panel-form"
                 onClick={() => { setMode("login"); setError(null); setMessage(null); }}
-                style={{ ...styles.tab, ...(mode === "login" ? styles.tabActive : {}) }}
+                style={{ ...styles.tab, ...(mode === "login" ? (isLight ? styles.tabActiveLight : styles.tabActiveDark) : {}) }}
               >
                 Iniciar sesión
               </button>
@@ -119,7 +122,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 aria-selected={mode === "signup"}
                 aria-controls="panel-form"
                 onClick={() => { setMode("signup"); setError(null); setMessage(null); }}
-                style={{ ...styles.tab, ...(mode === "signup" ? styles.tabActive : {}) }}
+                style={{ ...styles.tab, ...(mode === "signup" ? (isLight ? styles.tabActiveLight : styles.tabActiveDark) : {}) }}
               >
                 Crear cuenta
               </button>
@@ -140,6 +143,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                   className="advisor-input"
                   placeholder="usuario@anclora.es"
                   required
+                  style={isLight ? styles.loginInputLight : styles.loginInputDark}
                 />
               </div>
 
@@ -158,14 +162,14 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                     placeholder={mode === "login" ? "Tu contraseña" : "Mínimo 6 caracteres"}
                     required
                     minLength={6}
-                    style={styles.passwordInput}
+                    style={{ ...styles.passwordInput, ...(isLight ? styles.loginInputLight : styles.loginInputDark) }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
                     aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                     title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                    style={styles.passwordToggle}
+                    style={{ ...styles.passwordToggle, ...(isLight ? styles.passwordToggleLight : styles.passwordToggleDark) }}
                   >
                     {showPassword ? (
                       <svg
@@ -267,10 +271,18 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "32px 16px",
     position: "relative",
     overflow: "hidden",
+  },
+  mainDark: {
     background:
       "radial-gradient(1400px 700px at 15% -10%, rgba(29,171,137,0.10), transparent 65%)," +
       "radial-gradient(1200px 600px at 95% 100%, rgba(22,41,68,0.12), transparent 65%)," +
       "var(--advisor-canvas)",
+  },
+  mainLight: {
+    background:
+      "radial-gradient(1200px 640px at 10% -10%, rgba(29,171,137,0.12), transparent 68%)," +
+      "radial-gradient(980px 520px at 100% 0%, rgba(22,41,68,0.10), transparent 70%)," +
+      "linear-gradient(180deg, #eef4fb 0%, #f8fbff 46%, #e8eef8 100%)",
   },
 
   blobTop: {
@@ -280,8 +292,13 @@ const styles: Record<string, React.CSSProperties> = {
     width: "480px",
     height: "480px",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(29,171,137,0.12) 0%, transparent 70%)",
     pointerEvents: "none",
+  },
+  blobTopDark: {
+    background: "radial-gradient(circle, rgba(29,171,137,0.12) 0%, transparent 70%)",
+  },
+  blobTopLight: {
+    background: "radial-gradient(circle, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0) 72%)",
   },
 
   blobBottom: {
@@ -291,8 +308,13 @@ const styles: Record<string, React.CSSProperties> = {
     width: "560px",
     height: "560px",
     borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(22,41,68,0.10) 0%, transparent 70%)",
     pointerEvents: "none",
+  },
+  blobBottomDark: {
+    background: "radial-gradient(circle, rgba(22,41,68,0.10) 0%, transparent 70%)",
+  },
+  blobBottomLight: {
+    background: "radial-gradient(circle, rgba(22,41,68,0.14) 0%, transparent 72%)",
   },
 
   wrapper: {
@@ -325,22 +347,42 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
     lineHeight: 0,
   },
+  logoWrapDark: {
+    filter: "drop-shadow(0 14px 26px rgba(3, 8, 18, 0.28))",
+  },
+  logoWrapLight: {
+    filter: "drop-shadow(0 16px 28px rgba(20, 40, 65, 0.12))",
+  },
   logoText: {
     fontSize: "42px",
     fontWeight: "700",
-    color: "var(--advisor-primary)",
     fontFamily: "'Playfair Display', Georgia, serif",
     letterSpacing: "0.01em",
     lineHeight: "1.1",
+  },
+  logoTextDark: {
+    color: "#e8eef8",
+    textShadow: "0 12px 26px rgba(3, 8, 18, 0.24)",
+  },
+  logoTextLight: {
+    color: "#162944",
+    textShadow: "0 10px 22px rgba(255,255,255,0.58)",
   },
   /* Card */
   card: {
     width: "100%",
     borderRadius: "20px",
-    background: "#ffffff",
-    border: "1px solid var(--advisor-border)",
-    boxShadow: "0 20px 60px rgba(16,32,51,0.12), 0 4px 16px rgba(16,32,51,0.06), inset 0 1px 0 rgba(255,255,255,0.9)",
     overflow: "hidden",
+  },
+  cardDark: {
+    background: "linear-gradient(180deg, rgba(19, 33, 51, 0.96) 0%, rgba(15, 27, 43, 0.98) 100%)",
+    border: "1px solid rgba(161, 219, 198, 0.18)",
+    boxShadow: "0 24px 64px rgba(3, 8, 18, 0.34), inset 0 1px 0 rgba(255,255,255,0.04)",
+  },
+  cardLight: {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,250,255,0.98) 100%)",
+    border: "1px solid rgba(22, 41, 68, 0.10)",
+    boxShadow: "0 20px 60px rgba(16,32,51,0.12), 0 4px 16px rgba(16,32,51,0.06), inset 0 1px 0 rgba(255,255,255,0.9)",
   },
 
   cardHeader: {
@@ -351,10 +393,15 @@ const styles: Record<string, React.CSSProperties> = {
   cardTitle: {
     fontSize: "22px",
     fontWeight: "700",
-    color: "var(--advisor-primary)",
     fontFamily: "'Playfair Display', Georgia, serif",
     letterSpacing: "0.01em",
     marginBottom: "6px",
+  },
+  cardTitleDark: {
+    color: "#f3f7fd",
+  },
+  cardTitleLight: {
+    color: "var(--advisor-primary)",
   },
 
   cardSubtitle: {
@@ -370,8 +417,14 @@ const styles: Record<string, React.CSSProperties> = {
     gap: "4px",
     margin: "24px 28px 0",
     padding: "4px",
-    background: "rgba(22,41,68,0.05)",
     borderRadius: "12px",
+  },
+  tabsDark: {
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(161, 219, 198, 0.14)",
+  },
+  tabsLight: {
+    background: "rgba(22,41,68,0.05)",
     border: "1px solid var(--advisor-border)",
   },
 
@@ -388,7 +441,14 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "all 0.18s ease",
   } as React.CSSProperties,
 
-  tabActive: {
+  tabActiveDark: {
+    background: "linear-gradient(135deg, rgba(255,255,255,0.14), rgba(161,219,198,0.10))",
+    color: "#f4f8fd",
+    fontWeight: "600",
+    boxShadow: "0 8px 18px rgba(3, 8, 18, 0.22)",
+  } as React.CSSProperties,
+
+  tabActiveLight: {
     background: "#ffffff",
     color: "var(--advisor-primary)",
     fontWeight: "600",
@@ -414,6 +474,15 @@ const styles: Record<string, React.CSSProperties> = {
   passwordInput: {
     paddingRight: "86px",
   },
+  loginInputDark: {
+    background: "linear-gradient(180deg, rgba(35, 51, 72, 0.96) 0%, rgba(29, 44, 63, 0.98) 100%)",
+    borderColor: "rgba(161, 219, 198, 0.12)",
+    color: "#f3f7fd",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 10px 22px rgba(3, 8, 18, 0.16)",
+  },
+  loginInputLight: {
+    background: "color-mix(in srgb, var(--advisor-panel) 92%, #ffffff)",
+  },
   passwordToggle: {
     position: "absolute" as const,
     top: "50%",
@@ -421,11 +490,17 @@ const styles: Record<string, React.CSSProperties> = {
     transform: "translateY(-50%)",
     border: "none",
     background: "transparent",
-    color: "var(--advisor-primary)",
     fontSize: "0",
     lineHeight: 1,
     cursor: "pointer",
     padding: "4px",
+  },
+  passwordToggleDark: {
+    color: "#bfd0e7",
+    opacity: 0.9,
+  },
+  passwordToggleLight: {
+    color: "var(--advisor-primary)",
     opacity: 0.8,
   },
 

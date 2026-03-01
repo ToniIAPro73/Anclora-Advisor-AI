@@ -1,8 +1,11 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { AuditLogRecord } from "@/lib/audit/logs";
 import { AdminKnowledgeWorkspace, type AdminDocumentRecord } from "@/components/features/AdminKnowledgeWorkspace";
 import { getCurrentAppUserFromCookies } from "@/lib/auth/app-user";
 import { isAdminRole } from "@/lib/auth/roles";
+import { resolveLocale } from "@/lib/i18n/messages";
+import { uiText } from "@/lib/i18n/ui";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-admin";
 
 export default async function DashboardAdminPage() {
@@ -12,6 +15,8 @@ export default async function DashboardAdminPage() {
     redirect("/dashboard/chat");
   }
 
+  const cookieStore = await cookies();
+  const locale = resolveLocale(cookieStore.get("anclora.locale")?.value);
   const supabase = createServiceSupabaseClient();
 
   const [
@@ -41,7 +46,7 @@ export default async function DashboardAdminPage() {
       <div className="min-h-0 min-w-0 flex-1">
         {recentError ? (
           <div className="advisor-card p-6 text-sm text-red-700">
-            No se pudo cargar el inventario RAG inicial: {recentError.message}
+            {uiText(locale, "page.admin.error")} {recentError.message}
           </div>
         ) : (
           <AdminKnowledgeWorkspace

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AuditTimeline } from "@/components/features/AuditTimeline";
+import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
 import type { AuditLogRecord } from "@/lib/audit/logs";
 import {
   clampRiskScore,
@@ -80,8 +81,8 @@ const INITIAL_FILTERS: AssessmentFilters = {
   slaState: "all",
 };
 
-function formatDate(date: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+function formatDate(date: string, locale: "es" | "en"): string {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-ES", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -90,17 +91,17 @@ function formatDate(date: string): string {
   }).format(new Date(date));
 }
 
-function formatDateOnly(date: string | null): string {
-  if (!date) return "Sin fecha";
-  return new Intl.DateTimeFormat("es-ES", {
+function formatDateOnly(date: string | null, locale: "es" | "en"): string {
+  if (!date) return locale === "en" ? "No date" : "Sin fecha";
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-ES", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   }).format(new Date(date));
 }
 
-function formatBytes(sizeBytes: number | null | undefined): string {
-  if (!sizeBytes || sizeBytes <= 0) return "N/D";
+function formatBytes(sizeBytes: number | null | undefined, locale: "es" | "en"): string {
+  if (!sizeBytes || sizeBytes <= 0) return locale === "en" ? "N/A" : "N/D";
   if (sizeBytes < 1024) return `${sizeBytes} B`;
   if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -125,6 +126,20 @@ function getMitigationStatusClass(status: string): string {
   if (status === "in_progress") return "bg-blue-100 text-blue-700 border-blue-200";
   if (status === "blocked") return "bg-red-100 text-red-700 border-red-200";
   return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
+function getRiskLabel(level: LaborRiskLevel | string, locale: "es" | "en"): string {
+  if (level === "critical") return locale === "en" ? "Critical" : "Critico";
+  if (level === "high") return locale === "en" ? "High" : "Alto";
+  if (level === "medium") return locale === "en" ? "Medium" : "Medio";
+  return locale === "en" ? "Low" : "Bajo";
+}
+
+function getMitigationStatusLabel(status: LaborMitigationStatus | string, locale: "es" | "en"): string {
+  if (status === "in_progress") return locale === "en" ? "In progress" : "En curso";
+  if (status === "completed") return locale === "en" ? "Completed" : "Completada";
+  if (status === "blocked") return locale === "en" ? "Blocked" : "Bloqueada";
+  return locale === "en" ? "Pending" : "Pendiente";
 }
 
 function toPercentage(score: number): number {
@@ -223,6 +238,8 @@ export function LaborWorkspace({
   initialFilters,
   initialSelectedAssessmentId,
 }: LaborWorkspaceProps) {
+  const { locale } = useAppPreferences();
+  const isEn = locale === "en";
   const [assessments, setAssessments] = useState<LaborRiskAssessmentRecord[]>(initialAssessments);
   const [mitigationActions, setMitigationActions] = useState<LaborMitigationActionRecord[]>(initialMitigationActions);
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
@@ -295,7 +312,7 @@ export function LaborWorkspace({
   const ownerStats = useMemo(() => {
     const stats = new Map<string, { owner: string; total: number; breached: number; warning: number; completed: number }>();
     for (const action of mitigationActions) {
-      const owner = action.owner_name?.trim() || action.owner_email?.trim() || "Sin asignar";
+      const owner = action.owner_name?.trim() || action.owner_email?.trim() || (locale === "en" ? "Unassigned" : "Sin asignar");
       const current = stats.get(owner) ?? { owner, total: 0, breached: 0, warning: 0, completed: 0 };
       current.total += 1;
       const slaState = getSlaState(action);
@@ -671,15 +688,17 @@ export function LaborWorkspace({
 
   return (
     <div className="grid h-full min-h-0 gap-3 lg:grid-cols-5">
-      <div className="flex min-h-0 flex-col gap-3 lg:col-span-2">
+      <div className="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto pr-1 lg:col-span-2">
         <article className="advisor-card shrink-0 p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="advisor-heading text-2xl text-[#162944]">
-                {editingAssessmentId ? "Editar evaluacion laboral" : "Nueva evaluacion laboral"}
+                {isEn ? (editingAssessmentId ? "Edit labor assessment" : "New labor assessment") : (editingAssessmentId ? "Editar evaluacion laboral" : "Nueva evaluacion laboral")}
               </h2>
               <p className="mt-1 text-sm text-[#3a4f67]">
-                Registra escenarios de pluriactividad, estima riesgo y fija mitigaciones seguibles.
+                {isEn
+                  ? "Register multi-activity scenarios, estimate risk, and define trackable mitigations."
+                  : "Registra escenarios de pluriactividad, estima riesgo y fija mitigaciones seguibles."}
               </p>
             </div>
             {editingAssessmentId && (
@@ -688,25 +707,25 @@ export function LaborWorkspace({
                 className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
                 onClick={resetForm}
               >
-                Cancelar
+                      {isEn ? "Cancel" : "Cancelar"}
               </button>
             )}
           </div>
           <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
             <div>
-              <label className="advisor-label" htmlFor="laborScenarioDescription">Escenario</label>
+              <label className="advisor-label" htmlFor="laborScenarioDescription">{isEn ? "Scenario" : "Escenario"}</label>
               <textarea
                 id="laborScenarioDescription"
                 className="advisor-input min-h-28 resize-y"
                 value={form.scenarioDescription}
                 onChange={(event) => setForm((current) => ({ ...current, scenarioDescription: event.target.value }))}
-                placeholder="Ej. Mantengo empleo por cuenta ajena mientras inicio actividad como autonomo y publico contenido sectorial."
+                placeholder={isEn ? "E.g. I keep salaried employment while starting a self-employed activity and publishing sector content." : "Ej. Mantengo empleo por cuenta ajena mientras inicio actividad como autonomo y publico contenido sectorial."}
                 required
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="advisor-label" htmlFor="laborRiskScore">Risk score (0-1)</label>
+                <label className="advisor-label" htmlFor="laborRiskScore">{isEn ? "Risk score (0-1)" : "Nivel de riesgo (0-1)"}</label>
                 <input
                   id="laborRiskScore"
                   type="number"
@@ -720,7 +739,7 @@ export function LaborWorkspace({
                 />
               </div>
               <div>
-                <label className="advisor-label" htmlFor="laborRiskLevel">Nivel</label>
+                <label className="advisor-label" htmlFor="laborRiskLevel">{isEn ? "Level" : "Nivel"}</label>
                 <select
                   id="laborRiskLevel"
                   className="advisor-input"
@@ -728,13 +747,13 @@ export function LaborWorkspace({
                   onChange={(event) => setForm((current) => ({ ...current, riskLevel: event.target.value as LaborRiskLevel }))}
                 >
                   {laborRiskLevelValues.map((level) => (
-                    <option key={level} value={level}>{level}</option>
+                    <option key={level} value={level}>{getRiskLabel(level, locale)}</option>
                   ))}
                 </select>
               </div>
             </div>
             <div className="advisor-card-muted p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Preview</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Preview" : "Preview"}</p>
               <div className="mt-2 flex items-center gap-2">
                 <p className="text-xl font-semibold text-[#162944]">{previewScore}%</p>
                 <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getRiskClass(previewLevel)}`}>{previewLevel}</span>
@@ -744,98 +763,98 @@ export function LaborWorkspace({
               </div>
             </div>
             <div>
-              <label className="advisor-label" htmlFor="laborRecommendations">Recomendaciones (una por linea)</label>
+              <label className="advisor-label" htmlFor="laborRecommendations">{isEn ? "Recommendations (one per line)" : "Recomendaciones (una por linea)"}</label>
               <textarea
                 id="laborRecommendations"
                 className="advisor-input min-h-32 resize-y"
                 value={form.recommendationsText}
                 onChange={(event) => setForm((current) => ({ ...current, recommendationsText: event.target.value }))}
-                placeholder="Separar actividad comercial de la marca personal&#10;Revisar clausulas de exclusividad&#10;Documentar compatibilidad horaria"
+                placeholder={isEn ? "Separate commercial activity from the personal brand&#10;Review exclusivity clauses&#10;Document schedule compatibility" : "Separar actividad comercial de la marca personal&#10;Revisar clausulas de exclusividad&#10;Documentar compatibilidad horaria"}
               />
             </div>
             {error && <div className="advisor-alert advisor-alert-error">{error}</div>}
             {okMessage && <div className="advisor-alert advisor-alert-success">{okMessage}</div>}
             <button type="submit" disabled={submitting} className="advisor-btn advisor-btn-primary advisor-btn-full">
-              {submitting ? "Guardando..." : editingAssessmentId ? "Actualizar evaluacion" : "Registrar evaluacion"}
+              {submitting ? (isEn ? "Saving..." : "Guardando...") : editingAssessmentId ? (isEn ? "Update assessment" : "Actualizar evaluacion") : (isEn ? "Register assessment" : "Registrar evaluacion")}
             </button>
           </form>
         </article>
 
         <article className="advisor-card p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Resumen de riesgo</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Risk summary" : "Resumen de riesgo"}</p>
           {!latest ? (
-            <div className="mt-3 advisor-card-muted p-3 text-sm text-[#3a4f67]">No hay evaluaciones laborales registradas.</div>
+            <div className="mt-3 advisor-card-muted p-3 text-sm text-[#3a4f67]">{isEn ? "No labor assessments recorded." : "No hay evaluaciones laborales registradas."}</div>
           ) : (
             <>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <div className="advisor-card-muted p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Ultima evaluacion</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Latest assessment" : "Ultima evaluacion"}</p>
                   <div className="mt-2 flex items-center gap-2">
                     <p className="text-2xl font-semibold text-[#162944]">{latestScore}%</p>
-                    <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getRiskClass(latestLevel)}`}>{latestLevel}</span>
+                    <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getRiskClass(latestLevel)}`}>{getRiskLabel(latestLevel, locale)}</span>
                   </div>
-                  <p className="mt-2 text-sm text-[#3a4f67]">{formatDate(latest.created_at)}</p>
+                  <p className="mt-2 text-sm text-[#3a4f67]">{formatDate(latest.created_at, locale)}</p>
                 </div>
                 <div className="advisor-card-muted p-3 text-sm text-[#3a4f67]">
-                  <p>Evaluaciones totales: <strong className="text-[#162944]">{assessments.length}</strong></p>
-                  <p className="mt-1">Riesgo medio/alto/critico: <strong className="text-[#162944]">{highRiskCount}</strong></p>
-                  <p className="mt-1">Criticas: <strong className="text-[#162944]">{criticalCount}</strong></p>
+                  <p>{isEn ? "Total assessments" : "Evaluaciones totales"}: <strong className="text-[#162944]">{assessments.length}</strong></p>
+                  <p className="mt-1">{isEn ? "Medium/high/critical risk" : "Riesgo medio/alto/critico"}: <strong className="text-[#162944]">{highRiskCount}</strong></p>
+                  <p className="mt-1">{isEn ? "Critical" : "Criticas"}: <strong className="text-[#162944]">{criticalCount}</strong></p>
                 </div>
               </div>
               <div className="mt-4 advisor-card-muted p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Escenario actual</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Current scenario" : "Escenario actual"}</p>
                 <p className="mt-2 text-sm text-[#162944]">{latest.scenario_description}</p>
               </div>
             </>
           )}
         </article>
 
-        <AuditTimeline title="Auditoria laboral" logs={auditLogs} />
+        <AuditTimeline title={isEn ? "Labor audit" : "Auditoria laboral"} logs={auditLogs} />
       </div>
 
       <article className="advisor-card flex min-h-0 flex-col overflow-hidden lg:col-span-3">
         <div className="shrink-0 border-b border-[#d2dceb] px-4 py-3">
-          <h3 className="advisor-heading text-2xl text-[#162944]">Seguimiento laboral</h3>
-          <p className="mt-1 text-sm text-[#3a4f67]">Selecciona una evaluacion y gestiona sus mitigaciones.</p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <h3 className="advisor-heading text-2xl text-[#162944]">{isEn ? "Labor tracking" : "Seguimiento laboral"}</h3>
+          <p className="mt-1 text-sm text-[#3a4f67]">{isEn ? "Select an assessment and manage its mitigations." : "Selecciona una evaluacion y gestiona sus mitigaciones."}</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-4">
             <input
-              className="advisor-input"
-              placeholder="Buscar escenario"
+              className="advisor-input min-w-0 w-full"
+              placeholder={isEn ? "Scenario" : "Escenario"}
               value={filters.scenarioQuery}
               onChange={(event) => setFilters((current) => ({ ...current, scenarioQuery: event.target.value }))}
             />
             <input
-              className="advisor-input"
-              placeholder="Responsable o email"
+              className="advisor-input min-w-0 w-full"
+              placeholder={isEn ? "Owner/email" : "Resp./email"}
               value={filters.ownerQuery}
               onChange={(event) => setFilters((current) => ({ ...current, ownerQuery: event.target.value }))}
             />
             <select
-              className="advisor-input"
+              className="advisor-input min-w-0 w-full"
               value={filters.actionStatus}
               onChange={(event) => setFilters((current) => ({ ...current, actionStatus: event.target.value as AssessmentFilters["actionStatus"] }))}
             >
-              <option value="all">Todos los estados</option>
+              <option value="all">{isEn ? "Status" : "Estado"}</option>
               {laborMitigationStatusValues.map((status) => (
-                <option key={status} value={status}>{status}</option>
+                <option key={status} value={status}>{getMitigationStatusLabel(status, locale)}</option>
               ))}
             </select>
             <select
-              className="advisor-input"
+              className="advisor-input min-w-0 w-full"
               value={filters.slaState}
               onChange={(event) => setFilters((current) => ({ ...current, slaState: event.target.value as AssessmentFilters["slaState"] }))}
             >
-              <option value="all">Todos los SLA</option>
+              <option value="all">SLA</option>
               <option value="ok">OK</option>
               <option value="warning">Warning</option>
-              <option value="breached">SLA roto</option>
+              <option value="breached">{isEn ? "Breached" : "SLA roto"}</option>
             </select>
           </div>
         </div>
         <div className="grid min-h-0 flex-1 gap-3 p-3 lg:grid-cols-[1.2fr_1fr]">
           <div className="min-h-0 overflow-y-auto space-y-3 pr-1">
             {filteredAssessments.length === 0 ? (
-              <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">Sin historial laboral disponible.</div>
+              <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">{isEn ? "No labor history available." : "Sin historial laboral disponible."}</div>
             ) : (
               filteredAssessments.map((assessment) => {
                 const level = deriveRiskLevel(assessment.risk_score, assessment.risk_level);
@@ -852,23 +871,23 @@ export function LaborWorkspace({
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-[#162944]">{assessment.scenario_description}</p>
-                        <p className="mt-1 text-xs text-[#3a4f67]">{formatDate(assessment.created_at)}</p>
+                        <p className="mt-1 text-xs text-[#3a4f67]">{formatDate(assessment.created_at, locale)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-semibold text-[#162944]">{score}%</p>
-                        <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${getRiskClass(level)}`}>{level}</span>
+                        <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${getRiskClass(level)}`}>{getRiskLabel(level, locale)}</span>
                       </div>
                     </div>
                     <div className="mt-3 h-2 w-full rounded-full bg-[#dce4f4]">
                       <div className={`h-2 rounded-full ${getRiskBarClass(level)}`} style={{ width: `${score}%` }} />
                     </div>
-                    <p className="mt-3 text-xs text-[#3a4f67]">Mitigaciones: {actionCount}</p>
+                    <p className="mt-3 text-xs text-[#3a4f67]">{isEn ? "Mitigations" : "Mitigaciones"}: {actionCount}</p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button type="button" className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={(event) => { event.stopPropagation(); startEditing(assessment); }}>
-                        Editar
+                        {isEn ? "Edit" : "Editar"}
                       </button>
                       <button type="button" disabled={isBusy} className="advisor-btn bg-red-600 px-3 py-2 text-sm font-semibold text-white" onClick={(event) => { event.stopPropagation(); handleDeleteAssessment(assessment.id); }}>
-                        Eliminar
+                        {isEn ? "Delete" : "Eliminar"}
                       </button>
                     </div>
                   </div>
@@ -879,18 +898,18 @@ export function LaborWorkspace({
 
           <div className="min-h-0 overflow-y-auto space-y-3">
             {!selectedAssessment ? (
-              <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">Selecciona una evaluacion para gestionar mitigaciones.</div>
+              <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">{isEn ? "Select an assessment to manage mitigations." : "Selecciona una evaluacion para gestionar mitigaciones."}</div>
             ) : (
               <>
                 <article className="advisor-card-muted p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Mitigacion activa</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Active mitigation" : "Mitigacion activa"}</p>
                   <p className="mt-2 text-sm font-semibold text-[#162944]">{selectedAssessment.scenario_description}</p>
                   <div className="mt-3 grid gap-2 text-sm text-[#3a4f67] sm:grid-cols-3">
-                    <p>Pendientes: <strong className="text-[#162944]">{pendingActions}</strong></p>
-                    <p>En curso: <strong className="text-[#162944]">{inProgressActions}</strong></p>
-                    <p>Completadas: <strong className="text-[#162944]">{completedActions}</strong></p>
-                    <p>Vencidas: <strong className="text-[#162944]">{overdueActions}</strong></p>
-                    <p>SLA roto: <strong className="text-[#162944]">{slaBreachedActions}</strong></p>
+                    <p>{isEn ? "Pending" : "Pendientes"}: <strong className="text-[#162944]">{pendingActions}</strong></p>
+                    <p>{isEn ? "In progress" : "En curso"}: <strong className="text-[#162944]">{inProgressActions}</strong></p>
+                    <p>{isEn ? "Completed" : "Completadas"}: <strong className="text-[#162944]">{completedActions}</strong></p>
+                    <p>{isEn ? "Overdue" : "Vencidas"}: <strong className="text-[#162944]">{overdueActions}</strong></p>
+                    <p>{isEn ? "Breached SLA" : "SLA roto"}: <strong className="text-[#162944]">{slaBreachedActions}</strong></p>
                   </div>
                   <p className="mt-2 text-xs text-[#3a4f67]">
                     Filtros activos: {filteredActions.length} accion(es) visible(s) de {selectedActions.length}.
@@ -900,8 +919,8 @@ export function LaborWorkspace({
                 <article className="advisor-card-muted p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Responsables y SLA</p>
-                      <p className="mt-1 text-sm text-[#162944]">Carga operativa agregada por responsable.</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Owners and SLA" : "Responsables y SLA"}</p>
+                      <p className="mt-1 text-sm text-[#162944]">{isEn ? "Aggregated operational load by owner." : "Carga operativa agregada por responsable."}</p>
                     </div>
                     <button
                       type="button"
@@ -914,7 +933,7 @@ export function LaborWorkspace({
                   <div className="mt-3 space-y-2">
                     {ownerStats.length === 0 ? (
                       <div className="rounded-xl border border-[#d2dceb] bg-white p-3 text-sm text-[#3a4f67]">
-                        Sin responsables asignados todavia.
+                        {isEn ? "No owners assigned yet." : "Sin responsables asignados todavia."}
                       </div>
                     ) : (
                       ownerStats.map((owner) => (
@@ -925,13 +944,13 @@ export function LaborWorkspace({
                           onClick={() => setFilters((current) => ({ ...current, ownerQuery: owner.owner }))}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold text-[#162944]">{owner.owner}</p>
-                            <span className="text-xs text-[#3a4f67]">{owner.total} accion(es)</span>
+                            <p className="break-words text-sm font-semibold text-[#162944]">{owner.owner}</p>
+                            <span className="text-xs text-[#3a4f67]">{owner.total} {isEn ? "action(s)" : "accion(es)"}</span>
                           </div>
                           <div className="mt-2 grid gap-2 text-xs text-[#3a4f67] sm:grid-cols-3">
-                            <p>Completadas: <strong className="text-[#162944]">{owner.completed}</strong></p>
-                            <p>SLA warning: <strong className="text-[#162944]">{owner.warning}</strong></p>
-                            <p>SLA roto: <strong className="text-[#162944]">{owner.breached}</strong></p>
+                            <p>{isEn ? "Completed" : "Completadas"}: <strong className="text-[#162944]">{owner.completed}</strong></p>
+                            <p>SLA {isEn ? "warning" : "warning"}: <strong className="text-[#162944]">{owner.warning}</strong></p>
+                            <p>{isEn ? "Breached SLA" : "SLA roto"}: <strong className="text-[#162944]">{owner.breached}</strong></p>
                           </div>
                         </button>
                       ))
@@ -943,10 +962,10 @@ export function LaborWorkspace({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h4 className="advisor-heading text-xl text-[#162944]">
-                        {editingActionId ? "Seguimiento de mitigacion" : "Nueva mitigacion"}
+                        {isEn ? (editingActionId ? "Mitigation follow-up" : "New mitigation") : (editingActionId ? "Seguimiento de mitigacion" : "Nueva mitigacion")}
                       </h4>
                       <p className="mt-1 text-sm text-[#3a4f67]">
-                        Asigna responsable, documenta seguimiento y registra el cierre operativo.
+                        {isEn ? "Assign an owner, document follow-up, and record operational closure." : "Asigna responsable, documenta seguimiento y registra el cierre operativo."}
                       </p>
                     </div>
                     {editingActionId && (
@@ -955,72 +974,72 @@ export function LaborWorkspace({
                         className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
                         onClick={resetMitigationForm}
                       >
-                        Cancelar
+                        {isEn ? "Cancel" : "Cancelar"}
                       </button>
                     )}
                   </div>
                   <form className="mt-3 space-y-3" onSubmit={handleCreateMitigation}>
                     <div>
-                      <label className="advisor-label" htmlFor="mitigationTitle">Titulo</label>
+                      <label className="advisor-label" htmlFor="mitigationTitle">{isEn ? "Title" : "Titulo"}</label>
                       <input id="mitigationTitle" className="advisor-input" value={mitigationForm.title} onChange={(event) => setMitigationForm((current) => ({ ...current, title: event.target.value }))} required />
                     </div>
                     <div>
-                      <label className="advisor-label" htmlFor="mitigationDescription">Descripcion</label>
+                      <label className="advisor-label" htmlFor="mitigationDescription">{isEn ? "Description" : "Descripcion"}</label>
                       <textarea id="mitigationDescription" className="advisor-input min-h-24 resize-y" value={mitigationForm.description} onChange={(event) => setMitigationForm((current) => ({ ...current, description: event.target.value }))} />
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="advisor-label" htmlFor="mitigationOwnerName">Responsable</label>
-                        <input id="mitigationOwnerName" className="advisor-input" value={mitigationForm.ownerName} onChange={(event) => setMitigationForm((current) => ({ ...current, ownerName: event.target.value }))} placeholder="Nombre del responsable" />
+                        <label className="advisor-label" htmlFor="mitigationOwnerName">{isEn ? "Owner" : "Responsable"}</label>
+                        <input id="mitigationOwnerName" className="advisor-input" value={mitigationForm.ownerName} onChange={(event) => setMitigationForm((current) => ({ ...current, ownerName: event.target.value }))} placeholder={isEn ? "Owner name" : "Nombre del responsable"} />
                       </div>
                       <div>
-                        <label className="advisor-label" htmlFor="mitigationOwnerEmail">Email responsable</label>
+                        <label className="advisor-label" htmlFor="mitigationOwnerEmail">{isEn ? "Owner email" : "Email responsable"}</label>
                         <input id="mitigationOwnerEmail" type="email" className="advisor-input" value={mitigationForm.ownerEmail} onChange={(event) => setMitigationForm((current) => ({ ...current, ownerEmail: event.target.value }))} placeholder="responsable@empresa.com" />
                       </div>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="advisor-label" htmlFor="mitigationDueDate">Fecha objetivo</label>
+                        <label className="advisor-label" htmlFor="mitigationDueDate">{isEn ? "Target date" : "Fecha objetivo"}</label>
                         <input id="mitigationDueDate" type="date" className="advisor-input" value={mitigationForm.dueDate} onChange={(event) => setMitigationForm((current) => ({ ...current, dueDate: event.target.value }))} />
                       </div>
                       <div>
-                        <label className="advisor-label" htmlFor="mitigationSlaDueAt">SLA compromiso</label>
+                        <label className="advisor-label" htmlFor="mitigationSlaDueAt">{isEn ? "SLA due date" : "SLA compromiso"}</label>
                         <input id="mitigationSlaDueAt" type="date" className="advisor-input" value={mitigationForm.slaDueAt} onChange={(event) => setMitigationForm((current) => ({ ...current, slaDueAt: event.target.value }))} />
                       </div>
                     </div>
                     <div>
-                      <label className="advisor-label" htmlFor="mitigationStatus">Estado</label>
+                      <label className="advisor-label" htmlFor="mitigationStatus">{isEn ? "Status" : "Estado"}</label>
                       <select id="mitigationStatus" className="advisor-input" value={mitigationForm.status} onChange={(event) => setMitigationForm((current) => ({ ...current, status: event.target.value as LaborMitigationStatus }))}>
                         {laborMitigationStatusValues.map((status) => (
-                          <option key={status} value={status}>{status}</option>
+                          <option key={status} value={status}>{getMitigationStatusLabel(status, locale)}</option>
                         ))}
                       </select>
                     </div>
                     <div>
-                      <label className="advisor-label" htmlFor="mitigationEvidenceNotes">Seguimiento / evidencias</label>
-                      <textarea id="mitigationEvidenceNotes" className="advisor-input min-h-24 resize-y" value={mitigationForm.evidenceNotes} onChange={(event) => setMitigationForm((current) => ({ ...current, evidenceNotes: event.target.value }))} placeholder="Acciones ejecutadas, bloqueos, evidencias o notas de seguimiento." />
+                      <label className="advisor-label" htmlFor="mitigationEvidenceNotes">{isEn ? "Follow-up / evidence" : "Seguimiento / evidencias"}</label>
+                      <textarea id="mitigationEvidenceNotes" className="advisor-input min-h-24 resize-y" value={mitigationForm.evidenceNotes} onChange={(event) => setMitigationForm((current) => ({ ...current, evidenceNotes: event.target.value }))} placeholder={isEn ? "Executed actions, blockers, evidence, or follow-up notes." : "Acciones ejecutadas, bloqueos, evidencias o notas de seguimiento."} />
                     </div>
                     <div>
-                      <label className="advisor-label" htmlFor="mitigationClosureNotes">Notas de cierre</label>
-                      <textarea id="mitigationClosureNotes" className="advisor-input min-h-20 resize-y" value={mitigationForm.closureNotes} onChange={(event) => setMitigationForm((current) => ({ ...current, closureNotes: event.target.value }))} placeholder="Motivo de cierre, validacion final o decision tomada." />
+                      <label className="advisor-label" htmlFor="mitigationClosureNotes">{isEn ? "Closure notes" : "Notas de cierre"}</label>
+                      <textarea id="mitigationClosureNotes" className="advisor-input min-h-20 resize-y" value={mitigationForm.closureNotes} onChange={(event) => setMitigationForm((current) => ({ ...current, closureNotes: event.target.value }))} placeholder={isEn ? "Closure reason, final validation, or decision taken." : "Motivo de cierre, validacion final o decision tomada."} />
                     </div>
                     <div>
-                      <label className="advisor-label" htmlFor="mitigationChecklist">Checklist (una tarea por linea)</label>
-                      <textarea id="mitigationChecklist" className="advisor-input min-h-24 resize-y" value={mitigationForm.checklistText} onChange={(event) => setMitigationForm((current) => ({ ...current, checklistText: event.target.value }))} placeholder="Revisar clausula de exclusividad&#10;Solicitar criterio legal&#10;Documentar compatibilidad horaria" />
+                      <label className="advisor-label" htmlFor="mitigationChecklist">{isEn ? "Checklist (one task per line)" : "Checklist (una tarea por linea)"}</label>
+                      <textarea id="mitigationChecklist" className="advisor-input min-h-24 resize-y" value={mitigationForm.checklistText} onChange={(event) => setMitigationForm((current) => ({ ...current, checklistText: event.target.value }))} placeholder={isEn ? "Review exclusivity clause&#10;Request legal opinion&#10;Document schedule compatibility" : "Revisar clausula de exclusividad&#10;Solicitar criterio legal&#10;Documentar compatibilidad horaria"} />
                     </div>
                     <div>
-                      <label className="advisor-label" htmlFor="mitigationEvidenceLinks">Evidencias enlazadas (Etiqueta | URL)</label>
-                      <textarea id="mitigationEvidenceLinks" className="advisor-input min-h-20 resize-y" value={mitigationForm.evidenceLinksText} onChange={(event) => setMitigationForm((current) => ({ ...current, evidenceLinksText: event.target.value }))} placeholder="Contrato firmado | https://...&#10;Dictamen externo | https://..." />
+                      <label className="advisor-label" htmlFor="mitigationEvidenceLinks">{isEn ? "Linked evidence (Label | URL)" : "Evidencias enlazadas (Etiqueta | URL)"}</label>
+                      <textarea id="mitigationEvidenceLinks" className="advisor-input min-h-20 resize-y" value={mitigationForm.evidenceLinksText} onChange={(event) => setMitigationForm((current) => ({ ...current, evidenceLinksText: event.target.value }))} placeholder={isEn ? "Signed contract | https://...&#10;External opinion | https://..." : "Contrato firmado | https://...&#10;Dictamen externo | https://..."} />
                     </div>
                     {editingActionId && (
                       <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Subir evidencia a storage</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Upload evidence to storage" : "Subir evidencia a storage"}</p>
                         <div className="mt-3 grid gap-3 sm:grid-cols-2">
                           <input
                             className="advisor-input"
                             value={evidenceLabel}
                             onChange={(event) => setEvidenceLabel(event.target.value)}
-                            placeholder="Etiqueta de la evidencia"
+                            placeholder={isEn ? "Evidence label" : "Etiqueta de la evidencia"}
                           />
                           <input
                             type="file"
@@ -1029,21 +1048,21 @@ export function LaborWorkspace({
                           />
                         </div>
                         <button type="button" disabled={!evidenceFile || updatingActionId === editingActionId} className="advisor-btn mt-3 border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => void handleEvidenceUpload()}>
-                          {updatingActionId === editingActionId ? "Subiendo..." : "Subir evidencia"}
+                          {updatingActionId === editingActionId ? (isEn ? "Uploading..." : "Subiendo...") : (isEn ? "Upload evidence" : "Subir evidencia")}
                         </button>
                       </div>
                     )}
                     <button type="submit" disabled={mitigationSubmitting} className="advisor-btn advisor-btn-primary advisor-btn-full">
-                      {mitigationSubmitting ? "Guardando..." : editingActionId ? "Actualizar mitigacion" : "Crear mitigacion"}
+                      {mitigationSubmitting ? (isEn ? "Saving..." : "Guardando...") : editingActionId ? (isEn ? "Update mitigation" : "Actualizar mitigacion") : (isEn ? "Create mitigation" : "Crear mitigacion")}
                     </button>
                   </form>
                 </article>
 
                 <article className="advisor-card p-4">
-                  <h4 className="advisor-heading text-xl text-[#162944]">Acciones</h4>
+                  <h4 className="advisor-heading text-xl text-[#162944]">{isEn ? "Actions" : "Acciones"}</h4>
                   <div className="mt-3 space-y-3">
                     {filteredActions.length === 0 ? (
-                      <div className="advisor-card-muted p-3 text-sm text-[#3a4f67]">No hay mitigaciones registradas para esta evaluacion.</div>
+                      <div className="advisor-card-muted p-3 text-sm text-[#3a4f67]">{isEn ? "No mitigations recorded for this assessment." : "No hay mitigaciones registradas para esta evaluacion."}</div>
                     ) : (
                       filteredActions.map((action) => {
                         const isBusy = updatingActionId === action.id;
@@ -1055,31 +1074,31 @@ export function LaborWorkspace({
                           <div key={action.id} className="advisor-card-muted p-3">
                             <div className="flex flex-wrap items-start justify-between gap-2">
                               <div>
-                                <p className="text-sm font-semibold text-[#162944]">{action.title}</p>
-                                <p className="mt-1 text-sm text-[#3a4f67]">{action.description || "Sin descripcion operativa."}</p>
+                                <p className="break-words text-sm font-semibold text-[#162944]">{action.title}</p>
+                                <p className="mt-1 break-words text-sm text-[#3a4f67]">{action.description || (isEn ? "No operational description." : "Sin descripcion operativa.")}</p>
                               </div>
                               <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getMitigationStatusClass(action.status)}`}>
-                                {action.status}
+                                {getMitigationStatusLabel(action.status, locale)}
                               </span>
                             </div>
-                            <p className="mt-2 text-xs text-[#3a4f67]">Objetivo: {formatDateOnly(action.due_date)}</p>
+                            <p className="mt-2 text-xs text-[#3a4f67]">{isEn ? "Target" : "Objetivo"}: {formatDateOnly(action.due_date, locale)}</p>
                             <p className="mt-1 text-xs text-[#3a4f67]">
                               SLA:{" "}
                               <span className={`rounded-full border px-2 py-0.5 font-semibold ${getSlaClass(slaState)}`}>
-                                {action.sla_due_at ? formatDateOnly(action.sla_due_at) : "Sin SLA"}
+                                {action.sla_due_at ? formatDateOnly(action.sla_due_at, locale) : (isEn ? "No SLA" : "Sin SLA")}
                               </span>
                             </p>
                             <p className="mt-1 text-xs text-[#3a4f67]">
-                              Responsable: <strong className="text-[#162944]">{action.owner_name || "Sin asignar"}</strong>
+                              {isEn ? "Owner" : "Responsable"}: <strong className="text-[#162944]">{action.owner_name || (isEn ? "Unassigned" : "Sin asignar")}</strong>
                               {action.owner_email ? ` (${action.owner_email})` : ""}
                             </p>
                             <p className="mt-1 text-xs text-[#3a4f67]">
-                              Inicio: {formatDateOnly(action.started_at)} · Ultimo seguimiento: {formatDateOnly(action.last_follow_up_at)} · Cierre: {formatDateOnly(action.completed_at)}
+                              {isEn ? "Start" : "Inicio"}: {formatDateOnly(action.started_at, locale)} · {isEn ? "Last follow-up" : "Ultimo seguimiento"}: {formatDateOnly(action.last_follow_up_at, locale)} · {isEn ? "Closure" : "Cierre"}: {formatDateOnly(action.completed_at, locale)}
                             </p>
                             {checklist.length > 0 && (
                               <div className="mt-3">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">
-                                  Checklist {checklistProgress.done}/{checklistProgress.total}
+                                  {isEn ? "Checklist" : "Checklist"} {checklistProgress.done}/{checklistProgress.total}
                                 </p>
                                 <div className="mt-2 space-y-2">
                                   {checklist.map((item) => (
@@ -1092,7 +1111,7 @@ export function LaborWorkspace({
                                         className="mt-1 h-4 w-4 rounded border-[#b8c8de] text-[#1dab89] focus:ring-[#1dab89]"
                                       />
                                       <span className={item.completed ? "line-through text-[#6b7f94]" : ""}>
-                                        {item.label}
+                                        <span className="break-words">{item.label}</span>
                                       </span>
                                     </label>
                                   ))}
@@ -1103,37 +1122,37 @@ export function LaborWorkspace({
                               <div className="mt-3 space-y-2 text-sm text-[#3a4f67]">
                                 {action.evidence_notes && (
                                   <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Seguimiento</p>
-                                    <p className="mt-1">{action.evidence_notes}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Follow-up" : "Seguimiento"}</p>
+                                    <p className="mt-1 break-words">{action.evidence_notes}</p>
                                   </div>
                                 )}
                                 {action.closure_notes && (
                                   <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Cierre</p>
-                                    <p className="mt-1">{action.closure_notes}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Closure" : "Cierre"}</p>
+                                    <p className="mt-1 break-words">{action.closure_notes}</p>
                                   </div>
                                 )}
                               </div>
                             )}
                             {evidenceLinks.length > 0 && (
                               <div className="mt-3">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Evidencias enlazadas</p>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Linked evidence" : "Evidencias enlazadas"}</p>
                                 <div className="mt-2 space-y-1">
                                   {evidenceLinks.map((item) => (
                                     <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#d2dceb] bg-white px-3 py-2">
                                       <div className="min-w-0">
                                         <a href={item.url} target="_blank" rel="noreferrer" className="block text-sm font-semibold text-[#1dab89] hover:underline">
-                                          {item.label}
+                                          <span className="break-words">{item.label}</span>
                                         </a>
                                         <p className="mt-1 text-xs text-[#3a4f67]">
-                                          {item.fileName ?? "Sin nombre"} · {item.mimeType ?? "tipo desconocido"} · {formatBytes(item.sizeBytes)}
+                                          {item.fileName ?? (isEn ? "No name" : "Sin nombre")} · {item.mimeType ?? (isEn ? "unknown type" : "tipo desconocido")} · {formatBytes(item.sizeBytes, locale)}
                                         </p>
-                                        <p className="mt-1 text-[11px] text-[#6b7f94]">
-                                          {item.addedAt ? `Subida ${formatDate(item.addedAt)}` : "Sin fecha"}{item.storagePath ? ` · ${item.storagePath}` : ""}
+                                        <p className="mt-1 break-all text-[11px] text-[#6b7f94]">
+                                          {item.addedAt ? `${isEn ? "Uploaded" : "Subida"} ${formatDate(item.addedAt, locale)}` : (isEn ? "No date" : "Sin fecha")}{item.storagePath ? ` · ${item.storagePath}` : ""}
                                         </p>
                                       </div>
                                       <button type="button" disabled={isBusy} className="text-xs font-semibold text-red-700 hover:underline" onClick={() => void handleEvidenceDelete(action, item.url)}>
-                                        Eliminar
+                                        {isEn ? "Delete" : "Eliminar"}
                                       </button>
                                     </div>
                                   ))}
@@ -1142,30 +1161,30 @@ export function LaborWorkspace({
                             )}
                             <div className="mt-3 flex flex-wrap gap-2">
                               <button type="button" disabled={isBusy} className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => startMitigationEditing(action)}>
-                                Gestionar
+                                {isEn ? "Manage" : "Gestionar"}
                               </button>
                               {action.status !== "in_progress" && (
                                 <button type="button" disabled={isBusy} className="advisor-btn bg-blue-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => handleMitigationStatusChange(action.id, "in_progress")}>
-                                  En curso
+                                  {isEn ? "In progress" : "En curso"}
                                 </button>
                               )}
                               {action.status !== "completed" && (
                                 <button type="button" disabled={isBusy} className="advisor-btn bg-emerald-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => handleMitigationStatusChange(action.id, "completed")}>
-                                  Completar
+                                  {isEn ? "Complete" : "Completar"}
                                 </button>
                               )}
                               {action.status !== "blocked" && (
                                 <button type="button" disabled={isBusy} className="advisor-btn bg-red-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => handleMitigationStatusChange(action.id, "blocked")}>
-                                  Bloquear
+                                  {isEn ? "Block" : "Bloquear"}
                                 </button>
                               )}
                               {action.status !== "pending" && (
                                 <button type="button" disabled={isBusy} className="advisor-btn bg-slate-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => handleMitigationStatusChange(action.id, "pending")}>
-                                  Reabrir
+                                  {isEn ? "Reopen" : "Reabrir"}
                                 </button>
                               )}
                               <button type="button" disabled={isBusy} className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => handleDeleteMitigation(action.id)}>
-                                Eliminar
+                                {isEn ? "Delete" : "Eliminar"}
                               </button>
                             </div>
                           </div>

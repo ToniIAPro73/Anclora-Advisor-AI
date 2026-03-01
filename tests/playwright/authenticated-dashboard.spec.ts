@@ -13,7 +13,7 @@ async function login(page: Page): Promise<void> {
   await page.getByLabel("Correo electrónico").fill(tempEmail);
   await page.locator("#password").fill(tempPassword);
   await page.getByRole("button", { name: "Entrar al dashboard" }).click();
-  await page.waitForURL("**/dashboard/chat");
+  await page.waitForURL("**/dashboard/chat", { timeout: 90_000 });
   await expect(page.getByRole("heading", { name: "Workspace Conversacional", exact: true })).toBeVisible();
 }
 
@@ -21,6 +21,20 @@ async function navigateFromSidebar(page: Page, linkName: RegExp, heading: string
   const sidebar = page.locator("aside");
   await sidebar.getByRole("link", { name: linkName }).click();
   await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+}
+
+async function submitAdminIngest(page: Page, params: {
+  domain: "Fiscal" | "Laboral" | "Mercado";
+  title: string;
+  reasonForFit: string;
+  content: string;
+}): Promise<void> {
+  await page.getByLabel("Dominio").selectOption({ label: params.domain });
+  await page.getByLabel("Titulo").fill(params.title);
+  await page.getByLabel("Reason for fit").fill(params.reasonForFit);
+  await page.getByLabel("Contenido").fill(params.content);
+  await page.getByRole("button", { name: "Ejecutar ingesta" }).click();
+  await expect(page.getByText(/Ingesta completada:/)).toBeVisible();
 }
 
 test.beforeAll(async () => {
@@ -71,7 +85,7 @@ test("login flow and dashboard navigation create a real invoice", async ({ page 
   await expect(page.getByText("Factura guardada en borrador.")).toBeVisible();
   await expect(page.getByText(clientName, { exact: true })).toBeVisible();
 
-  await page.getByPlaceholder("Cliente o NIF").fill(clientName);
+  await page.getByPlaceholder("Cliente/NIF").fill(clientName);
   await page.getByRole("button", { name: "Aplicar filtros" }).click();
   await expect(page.getByText(clientName, { exact: true })).toBeVisible();
 
@@ -208,4 +222,78 @@ test("admin UI keeps ingest panel in its own column without overlapping the work
   expect(Math.abs(ingestBox.y - workspaceBox.y)).toBeLessThan(40);
   expect(ingestBox.width).toBeLessThan(workspaceBox.width);
   expect(ingestBox.height).toBeGreaterThan(300);
+});
+
+test("admin UI supports ingest diff rollback and bulk delete flows", async ({ page }) => {
+  await login(page);
+  await navigateFromSidebar(page, /Admin/i, "Knowledge Base Admin");
+
+  const batchPrefix = `PW Admin ${Date.now()}`;
+  const firstTitle = `${batchPrefix} IVA autonomo modelo 303 Documento A`;
+  const secondTitle = `${batchPrefix} IVA autonomo modelo 303 Documento B`;
+  const baseReason =
+    "Fuente de prueba sobre IVA e IRPF del autonomo en Espana para validar snapshots, diff, rollback y borrado masivo en el notebook fiscal.";
+  const contentV1 =
+    "Guia fiscal para autonomos en Espana sobre IVA trimestral, modelo 303, base imponible, cuota repercutida, cuota soportada y deducciones habituales en actividad profesional. " +
+    "Tambien resume obligaciones de facturacion, gastos afectos y calendario trimestral del impuesto para trabajadores por cuenta propia. " +
+    "UNIQUE_ALPHA Playwright admin version uno.";
+  const contentV2 =
+    "Actualizacion fiscal para autonomos sobre IVA trimestral, modelo 303, cuotas repercutidas, soportadas, devengo y ajuste de gastos vinculados a la actividad. " +
+    "Incluye criterio practico sobre registro de facturas, justificantes deducibles y preparacion documental antes de presentar la autoliquidacion. " +
+    "UNIQUE_BETA Playwright admin version dos.";
+  const contentV3 =
+    "Revision final fiscal para autonomos sobre IVA, modelo 303, regularizacion, obligaciones trimestrales y control documental previo a la presentacion del impuesto. " +
+    "Recoge tambien conciliacion de ingresos y gastos, soporte de deducciones y comprobaciones internas antes del cierre trimestral. " +
+    "UNIQUE_GAMMA Playwright admin version tres.";
+  const contentB =
+    "Documento fiscal adicional para autonomos sobre IVA, modelo 303, obligaciones trimestrales, facturas emitidas y facturas recibidas aplicables en Espana. " +
+    "Resume control de libros registro, justificantes de gasto y revisiones previas necesarias para una presentacion correcta. " +
+    "UNIQUE_DELTA Playwright admin doc dos.";
+
+  await submitAdminIngest(page, {
+    domain: "Fiscal",
+    title: firstTitle,
+    reasonForFit: baseReason,
+    content: contentV1,
+  });
+  await submitAdminIngest(page, {
+    domain: "Fiscal",
+    title: firstTitle,
+    reasonForFit: `${baseReason} Segunda revision.`,
+    content: contentV2,
+  });
+  await submitAdminIngest(page, {
+    domain: "Fiscal",
+    title: firstTitle,
+    reasonForFit: `${baseReason} Tercera revision.`,
+    content: contentV3,
+  });
+  await submitAdminIngest(page, {
+    domain: "Fiscal",
+    title: secondTitle,
+    reasonForFit: `${baseReason} Segundo documento.`,
+    content: contentB,
+  });
+
+  await page.getByPlaceholder("Buscar por titulo, notebook o reason_for_fit").fill(batchPrefix);
+  await expect(page.getByText(firstTitle, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(secondTitle, { exact: true }).first()).toBeVisible();
+
+  const firstDocumentButton = page.locator("button").filter({ hasText: firstTitle }).first();
+  await firstDocumentButton.scrollIntoViewIfNeeded();
+  await firstDocumentButton.click({ force: true });
+  await expect(page.getByText("comparando snapshots")).toBeVisible();
+  await expect(page.getByText("UNIQUE_BETA", { exact: false })).toBeVisible();
+  await expect(page.getByText("UNIQUE_ALPHA", { exact: false })).toBeVisible();
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Rollback" }).nth(1).click();
+  await expect(page.getByText(/Documento restaurado a la version/)).toBeVisible();
+
+  await page.getByRole("button", { name: "Seleccionar visibles" }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Borrado masivo" }).click();
+  await expect(page.getByText(/Operacion masiva completada:/)).toBeVisible();
+  await expect(page.getByText(firstTitle, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(secondTitle, { exact: true })).toHaveCount(0);
 });

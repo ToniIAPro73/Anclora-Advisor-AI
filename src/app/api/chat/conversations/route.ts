@@ -90,11 +90,41 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
+  const defaultTitle = payload.data.title?.trim() || (locale === "en" ? "NEW CONVERSATION" : "Nueva conversacion");
+  const placeholderTitles = new Set(["Nueva conversacion", "Nueva conversación", "NEW CONVERSATION", "New conversation"]);
+
+  const { data: recentConversations, error: recentConversationsError } = await supabase
+    .from("conversations")
+    .select("id, title, created_at, updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(5);
+
+  if (!recentConversationsError) {
+    for (const conversation of recentConversations ?? []) {
+      const title = conversation.title?.trim() ?? "";
+      if (!placeholderTitles.has(title)) {
+        continue;
+      }
+
+      const { data: existingMessages, error: existingMessagesError } = await supabase
+        .from("messages")
+        .select("id")
+        .eq("conversation_id", conversation.id)
+        .limit(1);
+
+      if (!existingMessagesError && (existingMessages?.length ?? 0) === 0) {
+        const response = NextResponse.json({ success: true, conversation });
+        response.headers.set("x-request-id", requestId);
+        return response;
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from("conversations")
     .insert({
       user_id: auth.userId,
-      title: payload.data.title?.trim() || "Nueva conversacion",
+      title: defaultTitle,
     })
     .select("id, title, created_at, updated_at")
     .single();

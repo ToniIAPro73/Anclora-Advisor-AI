@@ -1,8 +1,11 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { AuditLogRecord } from "@/lib/audit/logs";
 import { InvoiceWorkspace } from "@/components/features/InvoiceWorkspace";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
 import type { InvoicePaymentRecord, InvoiceRecord } from "@/lib/invoices/contracts";
+import { resolveLocale } from "@/lib/i18n/messages";
+import { uiText } from "@/lib/i18n/ui";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
 interface DashboardFacturacionPageProps {
@@ -24,6 +27,8 @@ export default async function DashboardFacturacionPage({ searchParams }: Dashboa
     redirect("/login");
   }
 
+  const cookieStore = await cookies();
+  const locale = resolveLocale(cookieStore.get("anclora.locale")?.value);
   const params = (await searchParams) ?? {};
   const supabase = createUserScopedSupabaseClient(accessToken);
   const { data } = await supabase
@@ -54,9 +59,9 @@ export default async function DashboardFacturacionPage({ searchParams }: Dashboa
   return (
     <section className="flex h-full min-h-0 flex-col gap-3">
       <article className="advisor-card shrink-0 p-4">
-        <h1 className="advisor-heading text-3xl text-[#162944]">Facturacion</h1>
-        <p className="mt-2 text-sm text-[#3a4f67]">
-          Workspace operativo para alta, edicion, numeracion por serie, vista imprimible y envio asistido.
+        <h1 className="advisor-heading text-3xl" style={{ color: "var(--text-primary)" }}>{uiText(locale, "page.invoice.title")}</h1>
+        <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+          {uiText(locale, "page.invoice.subtitle")}
         </p>
       </article>
       <InvoiceWorkspace

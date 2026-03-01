@@ -1,7 +1,10 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ChatInterface } from "@/components/features/ChatInterface";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
 import type { ChatConversationRecord, ChatPersistedMessageRecord } from "@/lib/chat/contracts";
+import { resolveLocale } from "@/lib/i18n/messages";
+import { uiText } from "@/lib/i18n/ui";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
 interface DashboardChatPageProps {
@@ -15,6 +18,8 @@ export default async function DashboardChatPage({ searchParams }: DashboardChatP
     redirect("/login");
   }
 
+  const cookieStore = await cookies();
+  const locale = resolveLocale(cookieStore.get("anclora.locale")?.value);
   const params = (await searchParams) ?? {};
   const supabase = createUserScopedSupabaseClient(accessToken);
 
@@ -42,14 +47,14 @@ export default async function DashboardChatPage({ searchParams }: DashboardChatP
   return (
     <section className="flex h-full min-h-0 flex-col gap-3">
       <article className="advisor-card shrink-0 p-4">
-        <h1 className="advisor-heading text-3xl" style={{ color: "var(--text-primary)" }}>Workspace Conversacional</h1>
+        <h1 className="advisor-heading text-3xl" style={{ color: "var(--text-primary)" }}>{uiText(locale, "page.chat.title")}</h1>
         <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Consulta normativa y reanuda conversaciones persistidas con trazabilidad de fuentes y alertas de riesgo.
+          {uiText(locale, "page.chat.subtitle")}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <span className="advisor-chip">Historial persistido</span>
-          <span className="advisor-chip">Fuentes desplegables</span>
-          <span className="advisor-chip">Alertas integradas</span>
+          <span className="advisor-chip">{uiText(locale, "page.chat.chip.history")}</span>
+          <span className="advisor-chip">{uiText(locale, "page.chat.chip.sources")}</span>
+          <span className="advisor-chip">{uiText(locale, "page.chat.chip.alerts")}</span>
         </div>
       </article>
       <ChatInterface

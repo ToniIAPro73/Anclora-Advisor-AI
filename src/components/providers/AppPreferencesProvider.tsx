@@ -48,6 +48,7 @@ function applyDocumentPreferences(locale: LocaleCode, themeMode: ThemeMode, side
   document.documentElement.dataset.theme = resolvedTheme;
   document.documentElement.dataset.themeMode = themeMode;
   document.documentElement.dataset.sidebar = sidebarCollapsed ? "collapsed" : "expanded";
+  document.cookie = `anclora.locale=${locale}; path=/; max-age=31536000; samesite=lax`;
 }
 
 export function AppPreferencesProvider({ children }: { children: ReactNode }) {

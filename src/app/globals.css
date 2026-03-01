@@ -39,6 +39,12 @@
   --sidebar-subtitle: #9eb3cc;
   --sidebar-dot-inactive: rgba(255, 255, 255, 0.2);
   --sidebar-control-bg: rgba(255, 255, 255, 0.05);
+  --chat-hero-bg: linear-gradient(135deg, rgba(22, 41, 68, 0.98) 0%, rgba(28, 43, 60, 0.98) 100%);
+  --chat-hero-border: rgba(161, 219, 198, 0.16);
+  --chat-hero-text: #f5f8fd;
+  --chat-hero-muted: #d7e2f2;
+  --chat-hero-badge-bg: #1dab89;
+  --chat-hero-badge-text: #ffffff;
 }
 
 html[data-theme="light"] {
@@ -64,16 +70,22 @@ html[data-theme="light"] {
   --sidebar-text: #223a57;
   --sidebar-text-muted: #607892;
   --sidebar-text-strong: #162944;
-  --sidebar-active-bg: linear-gradient(135deg, rgba(22, 41, 68, 0.97) 0%, rgba(28, 43, 60, 0.94) 78%, rgba(29, 171, 137, 0.9) 100%);
-  --sidebar-active-border: rgba(29, 171, 137, 0.36);
-  --sidebar-active-shadow: 0 18px 34px rgba(20, 40, 65, 0.2);
+  --sidebar-active-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(232, 239, 248, 0.98) 58%, rgba(220, 244, 237, 0.96) 100%);
+  --sidebar-active-border: rgba(29, 171, 137, 0.42);
+  --sidebar-active-shadow: 0 16px 32px rgba(20, 40, 65, 0.14);
   --sidebar-item-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(233, 240, 249, 0.88));
   --sidebar-hover-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(223, 232, 244, 0.96));
   --sidebar-hover-border: rgba(22, 41, 68, 0.14);
-  --sidebar-subtitle-active: rgba(220, 228, 244, 0.92);
+  --sidebar-subtitle-active: #4b657f;
   --sidebar-subtitle: #607892;
   --sidebar-dot-inactive: rgba(22, 41, 68, 0.22);
   --sidebar-control-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(226, 234, 245, 0.98));
+  --chat-hero-bg: linear-gradient(135deg, #fbfdff 0%, #eef4fb 52%, #dce4f4 100%);
+  --chat-hero-border: rgba(22, 41, 68, 0.1);
+  --chat-hero-text: #162944;
+  --chat-hero-muted: #4f6782;
+  --chat-hero-badge-bg: linear-gradient(135deg, #1dab89 0%, #17987a 100%);
+  --chat-hero-badge-text: #ffffff;
 }
 
 html[data-sidebar="collapsed"] {
@@ -390,4 +402,7 @@ html[data-theme="dark"] .shadow-md {
     transform: rotate(360deg);
   }
 }
+
+
+
 

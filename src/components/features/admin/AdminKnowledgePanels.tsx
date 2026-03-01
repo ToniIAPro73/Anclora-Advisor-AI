@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 "use client";
 
+import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
 import type {
   AdminDocumentRecord,
   AdminDocumentVersionDiffRecord,
@@ -14,8 +15,8 @@ import type {
   ObservabilityTraceRecord,
 } from "./admin-knowledge-types";
 
-function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+function formatDateTime(value: string, locale: "es" | "en"): string {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-ES", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
@@ -28,11 +29,18 @@ function getJobStatusClass(status: string): string {
   return "bg-slate-100 text-slate-700";
 }
 
+function adminJobStatusLabel(status: string, locale: "es" | "en"): string {
+  if (status === "completed") return locale === "en" ? "completed" : "completado";
+  if (status === "failed") return locale === "en" ? "failed" : "fallido";
+  if (status === "running") return locale === "en" ? "running" : "ejecutando";
+  return locale === "en" ? "pending" : "pendiente";
+}
+
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="advisor-card-muted p-4">
+    <div className="advisor-card-muted min-w-0 p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-[#162944]">{value}</p>
+      <p className="mt-1 break-words text-xl font-semibold text-[#162944]">{value}</p>
     </div>
   );
 }
@@ -58,13 +66,15 @@ export function AdminHeaderPanel({
   onAutoRefreshIntervalChange: (...args: [15 | 30 | 60]) => void;
   onRefresh: () => void;
 }) {
+  const { locale } = useAppPreferences();
+  const isEn = locale === "en";
   return (
     <article className="advisor-card shrink-0 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="advisor-heading text-3xl text-[#162944]">Knowledge Base Admin</h1>
+          <h1 className="advisor-heading text-3xl text-[#162944]">{isEn ? "Knowledge Base Admin" : "Admin de base de conocimiento"}</h1>
           <p className="mt-2 max-w-3xl text-sm text-[#3a4f67]">
-            Ingesta controlada por notebook, validacion de scope y estado operativo del inventario RAG.
+            {isEn ? "Notebook-scoped ingestion, scope validation, and operational status of the RAG inventory." : "Ingesta controlada por notebook, validacion de scope y estado operativo del inventario RAG."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -74,7 +84,7 @@ export function AdminHeaderPanel({
               checked={autoRefreshEnabled}
               onChange={(event) => onAutoRefreshEnabledChange(event.target.checked)}
             />
-            auto-refresh
+            {isEn ? "auto-refresh" : "auto-refresh"}
           </label>
           <select
             className="rounded-xl border border-[#d2dceb] bg-white px-3 py-2 text-xs font-semibold text-[#162944]"
@@ -92,27 +102,27 @@ export function AdminHeaderPanel({
             disabled={refreshing}
             className="advisor-btn border border-[#b8c8de] bg-white px-4 py-2 text-sm font-semibold text-[#162944] transition hover:bg-[#f3f7fd] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {refreshing ? "Refrescando..." : "Refrescar estado"}
+            {refreshing ? (isEn ? "Refreshing..." : "Refrescando...") : (isEn ? "Refresh status" : "Refrescar estado")}
           </button>
         </div>
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <div className="advisor-card-muted p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Documentos</p>
+        <div className="advisor-card-muted min-w-0 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Documents" : "Documentos"}</p>
           <p className="mt-1 text-2xl font-semibold text-[#162944]">{documentCount}</p>
         </div>
-        <div className="advisor-card-muted p-4">
+        <div className="advisor-card-muted min-w-0 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Chunks</p>
           <p className="mt-1 text-2xl font-semibold text-[#162944]">{chunkCount}</p>
         </div>
-        <div className="advisor-card-muted p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Notebook activo</p>
-          <p className="mt-1 text-sm font-semibold text-[#162944]">{notebookTitle}</p>
+        <div className="advisor-card-muted min-w-0 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Active notebook" : "Notebook activo"}</p>
+          <p className="mt-1 break-words text-sm font-semibold text-[#162944]">{notebookTitle}</p>
         </div>
-        <div className="advisor-card-muted p-4">
+        <div className="advisor-card-muted min-w-0 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Project ref</p>
-          <p className="mt-1 text-sm font-semibold text-[#162944]">lvpplnqbyvscpuljnzqf</p>
+          <p className="mt-1 break-all text-sm font-semibold text-[#162944]">lvpplnqbyvscpuljnzqf</p>
         </div>
       </div>
     </article>
@@ -126,12 +136,14 @@ export function AdminObservabilityPanel({
   summary?: ObservabilityResponse["summary"];
   traces: ObservabilityTraceRecord[];
 }) {
+  const { locale } = useAppPreferences();
+  const isEn = locale === "en";
   return (
     <article className="advisor-card shrink-0 p-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="advisor-heading text-2xl text-[#162944]">Observabilidad RAG</h2>
-          <p className="mt-1 text-sm text-[#3a4f67]">Trazas recientes de `/api/chat` y agregados de latencia.</p>
+          <h2 className="advisor-heading text-2xl text-[#162944]">{isEn ? "RAG observability" : "Observabilidad RAG"}</h2>
+          <p className="mt-1 text-sm text-[#3a4f67]">{isEn ? "Recent traces from `/api/chat` and latency aggregates." : "Trazas recientes de `/api/chat` y agregados de latencia."}</p>
         </div>
         <span className="advisor-chip">{summary?.total ?? 0} trace(s)</span>
       </div>
@@ -147,7 +159,7 @@ export function AdminObservabilityPanel({
       <div className="mt-4 max-h-64 space-y-3 overflow-y-auto pr-1">
         {traces.length === 0 && (
           <div className="advisor-card-muted p-3 text-sm text-[#3a4f67]">
-            Aun no hay trazas en memoria. Ejecuta consultas en el chat y pulsa "Refrescar estado".
+            {isEn ? 'There are no traces in memory yet. Run queries in chat and press "Refresh status".' : 'Aun no hay trazas en memoria. Ejecuta consultas en el chat y pulsa "Refrescar estado".'}
           </div>
         )}
 
@@ -155,9 +167,9 @@ export function AdminObservabilityPanel({
           <div key={trace.requestId} className="advisor-card-muted p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-[#162944]">{trace.primarySpecialist ?? "sin routing"}</p>
+                <p className="text-sm font-semibold text-[#162944]">{trace.primarySpecialist ?? (isEn ? "no routing" : "sin routing")}</p>
                 <p className="mt-1 text-xs text-[#3a4f67]">
-                  {formatDateTime(trace.timestamp)} | query {trace.queryLength} chars
+                  {formatDateTime(trace.timestamp, locale)} | {isEn ? "query" : "query"} {trace.queryLength} chars
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -166,7 +178,7 @@ export function AdminObservabilityPanel({
                     trace.success ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
                   }`}
                 >
-                  {trace.success ? "success" : "failed"}
+                  {trace.success ? (isEn ? "success" : "ok") : (isEn ? "failed" : "fallido")}
                 </span>
                 {trace.groundingConfidence && (
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
@@ -221,19 +233,19 @@ export function AdminHardwarePanel({
       </div>
 
       <div className="mt-5 grid gap-3 xl:grid-cols-4">
-        <div className="advisor-card-muted p-4">
+        <div className="advisor-card-muted min-w-0 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Runtime gate</p>
           <p className="mt-1 text-lg font-semibold text-[#162944]">{runtimeGate?.decision ?? "sin datos"}</p>
-          <p className="mt-2 text-sm text-[#3a4f67]">{runtimeGate?.recommended_profile ?? "sin perfil recomendado"}</p>
-          <p className="mt-2 text-xs text-[#3a4f67]">{runtimeGate?.reason ?? "Ejecuta los benchmarks para poblar esta vista."}</p>
+          <p className="mt-2 break-words text-sm text-[#3a4f67]">{runtimeGate?.recommended_profile ?? "sin perfil recomendado"}</p>
+          <p className="mt-2 break-words text-xs text-[#3a4f67]">{runtimeGate?.reason ?? "Ejecuta los benchmarks para poblar esta vista."}</p>
         </div>
 
-        <div className="advisor-card-muted p-4">
+        <div className="advisor-card-muted min-w-0 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Baseline models</p>
           <p className="mt-1 text-lg font-semibold text-[#162944]">{baseline?.decision ?? "sin datos"}</p>
           <div className="mt-3 space-y-2 text-xs text-[#3a4f67]">
             {(baseline?.checks ?? []).slice(0, 4).map((check) => (
-              <p key={`${check.role}-${check.model}`}>
+              <p key={`${check.role}-${check.model}`} className="break-words">
                 {check.role}: <strong>{check.model}</strong>
                 {check.quantization_level ? <> ({check.quantization_level})</> : null}
               </p>
@@ -242,29 +254,29 @@ export function AdminHardwarePanel({
           </div>
         </div>
 
-        <div className="advisor-card-muted p-4">
+        <div className="advisor-card-muted min-w-0 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Benchmark summary</p>
           <div className="mt-3 space-y-2 text-xs text-[#3a4f67]">
             {(benchmark?.profiles ?? []).slice(0, 3).map((profile) => (
-              <div key={profile.profile}>
-                <p className="font-semibold text-[#162944]">{profile.profile}</p>
+              <div key={profile.profile} className="min-w-0">
+                <p className="break-words font-semibold text-[#162944]">{profile.profile}</p>
                 <p>chat avg: {profile.avg_chat_latency_ms !== null ? `${Math.round(profile.avg_chat_latency_ms)} ms` : "n/a"}</p>
                 <p>embed avg: {profile.avg_embedding_latency_ms !== null ? `${Math.round(profile.avg_embedding_latency_ms)} ms` : "n/a"}</p>
-                <p className="truncate">models: {profile.configured_chat_models.join(", ")}</p>
+                <p className="break-words">models: {profile.configured_chat_models.join(", ")}</p>
               </div>
             ))}
             {(benchmark?.profiles ?? []).length === 0 && <p>Sin benchmark ejecutado.</p>}
           </div>
         </div>
 
-        <div className="advisor-card-muted p-4">
+        <div className="advisor-card-muted min-w-0 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Cron queue</p>
           <p className="mt-1 text-lg font-semibold text-[#162944]">
             {cron?.configured ? "configurado" : "sin secreto"}
           </p>
-          <p className="mt-2 text-sm text-[#3a4f67]">secret: {cron?.secret_source ?? "missing"}</p>
-          <p className="mt-1 text-xs text-[#3a4f67]">schedule: {cron?.schedule ?? "sin vercel.json"}</p>
-          <p className="mt-1 text-xs text-[#3a4f67]">path: {cron?.path ?? "sin path"}</p>
+          <p className="mt-2 break-words text-sm text-[#3a4f67]">secret: {cron?.secret_source ?? "missing"}</p>
+          <p className="mt-1 break-words text-xs text-[#3a4f67]">schedule: {cron?.schedule ?? "sin vercel.json"}</p>
+          <p className="mt-1 break-all text-xs text-[#3a4f67]">path: {cron?.path ?? "sin path"}</p>
         </div>
       </div>
     </article>
@@ -334,6 +346,8 @@ export function AdminInventoryPanel({
   onRightVersionChange: (...args: [string | null]) => void;
   onRollbackDocument: (...args: [string, string]) => void;
 }) {
+  const { locale } = useAppPreferences();
+  const isEn = locale === "en";
   const currentStart = totalDocuments === 0 ? 0 : page * pageSize + 1;
   const currentEnd = totalDocuments === 0 ? 0 : page * pageSize + documents.length;
   const canGoPrev = page > 0;
@@ -346,8 +360,8 @@ export function AdminInventoryPanel({
     <article className="advisor-card min-h-0 flex-1 overflow-hidden">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[#d2dceb] px-5 py-4">
         <div>
-          <h2 className="advisor-heading text-2xl text-[#162944]">Inventario indexado</h2>
-          <p className="mt-1 text-sm text-[#3a4f67]">Ultimos documentos disponibles para retrieval y verificacion.</p>
+          <h2 className="advisor-heading text-2xl text-[#162944]">{isEn ? "Indexed inventory" : "Inventario indexado"}</h2>
+          <p className="mt-1 text-sm text-[#3a4f67]">{isEn ? "Latest documents available for retrieval and verification." : "Ultimos documentos disponibles para retrieval y verificacion."}</p>
         </div>
         <span className="advisor-chip">
           {currentStart}-{currentEnd} / {totalDocuments}
@@ -362,7 +376,7 @@ export function AdminInventoryPanel({
               value={domainFilter}
               onChange={(event) => onDomainFilterChange(event.target.value as "all" | "fiscal" | "laboral" | "mercado")}
             >
-              <option value="all">Todos los dominios</option>
+              <option value="all">{isEn ? "All domains" : "Todos los dominios"}</option>
               <option value="fiscal">Fiscal</option>
               <option value="laboral">Laboral</option>
               <option value="mercado">Mercado</option>
@@ -371,22 +385,22 @@ export function AdminInventoryPanel({
               className="advisor-input"
               value={topicFilter}
               onChange={(event) => onTopicFilterChange(event.target.value)}
-              placeholder="Filtrar por topic"
+              placeholder={isEn ? "Filter by topic" : "Filtrar por topic"}
             />
             <input
               className="advisor-input"
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Buscar por titulo, notebook o reason_for_fit"
+              placeholder={isEn ? "Search by title, notebook, or reason_for_fit" : "Buscar por titulo, notebook o reason_for_fit"}
             />
             <select
               className="advisor-input"
               value={pageSize}
               onChange={(event) => onPageSizeChange(Number(event.target.value) as 25 | 50 | 100)}
             >
-              <option value={25}>25 por pagina</option>
-              <option value={50}>50 por pagina</option>
-              <option value={100}>100 por pagina</option>
+              <option value={25}>{isEn ? "25 per page" : "25 por pagina"}</option>
+              <option value={50}>{isEn ? "50 per page" : "50 por pagina"}</option>
+              <option value={100}>{isEn ? "100 per page" : "100 por pagina"}</option>
             </select>
             <div className="flex items-center justify-between gap-2">
               <button
@@ -395,22 +409,22 @@ export function AdminInventoryPanel({
                 disabled={!canGoPrev}
                 onClick={() => onPageChange(page - 1)}
               >
-                Anterior
+                {isEn ? "Previous" : "Anterior"}
               </button>
-              <span className="text-xs font-semibold text-[#3a4f67]">Pagina {page + 1}</span>
+              <span className="text-xs font-semibold text-[#3a4f67]">{isEn ? "Page" : "Pagina"} {page + 1}</span>
               <button
                 type="button"
                 className="rounded-xl border border-[#d2dceb] bg-white px-3 py-2 text-xs font-semibold text-[#162944] disabled:opacity-50"
                 disabled={!canGoNext}
                 onClick={() => onPageChange(page + 1)}
               >
-                Siguiente
+                {isEn ? "Next" : "Siguiente"}
               </button>
             </div>
             <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">
-                  Seleccionados: {selectedDocumentIds.length}
+                  {isEn ? "Selected" : "Seleccionados"}: {selectedDocumentIds.length}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -418,7 +432,7 @@ export function AdminInventoryPanel({
                     className="rounded-xl border border-[#d2dceb] bg-white px-3 py-2 text-xs font-semibold text-[#162944]"
                     onClick={() => onSelectVisibleDocuments(allVisibleSelected ? [] : visibleDocumentIds)}
                   >
-                    {allVisibleSelected ? "Deseleccionar visibles" : "Seleccionar visibles"}
+                    {allVisibleSelected ? (isEn ? "Unselect visible" : "Deseleccionar visibles") : (isEn ? "Select visible" : "Seleccionar visibles")}
                   </button>
                   <button
                     type="button"
@@ -426,7 +440,7 @@ export function AdminInventoryPanel({
                     onClick={onClearDocumentSelection}
                     disabled={selectedDocumentIds.length === 0}
                   >
-                    Limpiar
+                    {isEn ? "Clear" : "Limpiar"}
                   </button>
                   <button
                     type="button"
@@ -434,14 +448,14 @@ export function AdminInventoryPanel({
                     onClick={() => onBulkDeleteDocuments(selectedDocumentIds)}
                     disabled={selectedDocumentIds.length === 0 || bulkDeleting}
                   >
-                    {bulkDeleting ? "Eliminando..." : "Borrado masivo"}
+                    {bulkDeleting ? (isEn ? "Deleting..." : "Eliminando...") : (isEn ? "Bulk delete" : "Borrado masivo")}
                   </button>
                 </div>
               </div>
             </div>
           </div>
           {documents.length === 0 ? (
-            <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">No hay documentos que coincidan con los filtros actuales.</div>
+            <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">{isEn ? "No documents match the current filters." : "No hay documentos que coincidan con los filtros actuales."}</div>
           ) : (
             <div className="space-y-3">
               {documents.map((document) => {
@@ -450,7 +464,7 @@ export function AdminInventoryPanel({
                 return (
                   <div
                     key={document.id}
-                    className={`w-full rounded-2xl border p-4 transition ${
+                    className={`w-full min-w-0 rounded-2xl border p-4 transition ${
                       isSelected
                         ? "border-[#1dab89]/40 bg-[#effaf6] shadow-sm"
                         : "border-[#d2dceb] bg-white hover:border-[#9eb6d5] hover:bg-[#f8fbff]"
@@ -464,14 +478,14 @@ export function AdminInventoryPanel({
                           onChange={() => onToggleDocumentSelection(document.id)}
                           className="mt-1"
                         />
-                        <button type="button" onClick={() => onSelectDocument(document.id)} className="text-left">
-                          <p className="text-sm font-semibold text-[#162944]">{document.title}</p>
+                        <button type="button" onClick={() => onSelectDocument(document.id)} className="min-w-0 text-left">
+                          <p className="break-words text-sm font-semibold text-[#162944]">{document.title}</p>
                           <p className="mt-1 text-xs text-[#3a4f67]">
                             {document.category ?? "sin categoria"} | {document.doc_metadata?.topic ?? "sin topic"}
                           </p>
                         </button>
                       </div>
-                      <span className="text-xs font-semibold text-[#3a4f67]">{formatDateTime(document.created_at)}</span>
+                      <span className="text-xs font-semibold text-[#3a4f67]">{formatDateTime(document.created_at, locale)}</span>
                     </div>
                   </div>
                 );
@@ -485,7 +499,7 @@ export function AdminInventoryPanel({
             <div className="advisor-card-muted p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-lg font-semibold text-[#162944]">{selectedDocument.title}</p>
+                  <p className="break-words text-lg font-semibold text-[#162944]">{selectedDocument.title}</p>
                   <p className="mt-1 text-sm text-[#3a4f67]">categoria: {selectedDocument.category ?? "sin categoria"}</p>
                 </div>
                 <button
@@ -500,16 +514,16 @@ export function AdminInventoryPanel({
               <div className="mt-4 grid gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Metadata</p>
                 <div className="rounded-xl border border-[#d2dceb] bg-white p-3 text-sm text-[#162944]">
-                  <p>Notebook ID: {selectedDocument.doc_metadata?.notebook_id ?? "sin notebook"}</p>
-                  <p>Notebook title: {selectedDocument.doc_metadata?.notebook_title ?? "sin notebook_title"}</p>
-                  <p>Jurisdiccion: {selectedDocument.doc_metadata?.jurisdiction ?? "sin jurisdiccion"}</p>
-                  <p>Topic: {selectedDocument.doc_metadata?.topic ?? "sin topic"}</p>
+                  <p className="break-all">Notebook ID: {selectedDocument.doc_metadata?.notebook_id ?? "sin notebook"}</p>
+                  <p className="break-words">Notebook title: {selectedDocument.doc_metadata?.notebook_title ?? "sin notebook_title"}</p>
+                  <p className="break-words">Jurisdiccion: {selectedDocument.doc_metadata?.jurisdiction ?? "sin jurisdiccion"}</p>
+                  <p className="break-words">Topic: {selectedDocument.doc_metadata?.topic ?? "sin topic"}</p>
                 </div>
               </div>
 
               <div className="mt-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Reason for fit</p>
-                <div className="mt-2 rounded-xl border border-[#d2dceb] bg-white p-3 text-sm text-[#3a4f67]">
+                <div className="mt-2 rounded-xl border border-[#d2dceb] bg-white p-3 text-sm text-[#3a4f67] break-words">
                   {selectedDocument.doc_metadata?.reason_for_fit ?? "No disponible en este documento."}
                 </div>
               </div>
@@ -530,7 +544,7 @@ export function AdminInventoryPanel({
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-sm font-semibold text-[#162944]">v{version.version_number}</p>
-                            <p className="mt-1 text-xs text-[#3a4f67]">{version.snapshot_reason} · {formatDateTime(version.created_at)}</p>
+                            <p className="mt-1 break-words text-xs text-[#3a4f67]">{version.snapshot_reason} · {formatDateTime(version.created_at, locale)}</p>
                           </div>
                           <button
                             type="button"
@@ -612,7 +626,7 @@ export function AdminInventoryPanel({
                             v{versionDiff.leftVersion.version_number}
                           </p>
                           <p className="mt-1 text-xs text-[#3a4f67]">
-                            {versionDiff.leftVersion.snapshot_reason} · {formatDateTime(versionDiff.leftVersion.created_at)}
+                            {versionDiff.leftVersion.snapshot_reason} · {formatDateTime(versionDiff.leftVersion.created_at, locale)}
                           </p>
                         </div>
                         <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3">
@@ -621,7 +635,7 @@ export function AdminInventoryPanel({
                             v{versionDiff.rightVersion.version_number}
                           </p>
                           <p className="mt-1 text-xs text-[#3a4f67]">
-                            {versionDiff.rightVersion.snapshot_reason} · {formatDateTime(versionDiff.rightVersion.created_at)}
+                            {versionDiff.rightVersion.snapshot_reason} · {formatDateTime(versionDiff.rightVersion.created_at, locale)}
                           </p>
                         </div>
                       </div>
@@ -682,7 +696,7 @@ export function AdminInventoryPanel({
                             ) : (
                               versionDiff.chunkChanges.addedSamples.map((sample) => (
                                 <div key={`added-${sample}`} className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3 text-xs text-[#3a4f67]">
-                                  {sample}
+                                  <span className="break-words">{sample}</span>
                                 </div>
                               ))
                             )}
@@ -698,7 +712,7 @@ export function AdminInventoryPanel({
                             ) : (
                               versionDiff.chunkChanges.removedSamples.map((sample) => (
                                 <div key={`removed-${sample}`} className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3 text-xs text-[#3a4f67]">
-                                  {sample}
+                                  <span className="break-words">{sample}</span>
                                 </div>
                               ))
                             )}
@@ -758,17 +772,19 @@ export function AdminIngestSidebar({
   onDryRun: (...args: [React.FormEvent<HTMLFormElement>]) => void;
   onSubmit: (...args: [React.FormEvent<HTMLFormElement>]) => void;
 }) {
+  const { locale } = useAppPreferences();
+  const isEn = locale === "en";
   return (
-    <aside className="advisor-card flex min-h-0 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-[#d2dceb] px-5 py-4">
-        <h2 className="advisor-heading text-2xl text-[#162944]">Nueva ingesta</h2>
-        <p className="mt-1 text-sm text-[#3a4f67]">Valida scope primero y ejecuta solo cuando el dry-run sea GO.</p>
+    <aside className="advisor-card flex h-full min-h-0 w-full flex-col overflow-hidden">
+      <div className="shrink-0 border-b px-5 py-4" style={{ borderColor: "var(--advisor-border)" }}>
+        <h2 className="advisor-heading text-2xl" style={{ color: "var(--text-primary)" }}>{isEn ? "New ingestion" : "Nueva ingesta"}</h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>{isEn ? "Validate scope first and only run when dry-run is GO." : "Valida scope primero y ejecuta solo cuando el dry-run sea GO."}</p>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
         <form className="space-y-4" onSubmit={onSubmit}>
           <div>
-            <label className="advisor-label" htmlFor="admin-domain">Dominio</label>
+            <label className="advisor-label" htmlFor="admin-domain">{isEn ? "Domain" : "Dominio"}</label>
             <select
               id="admin-domain"
               className="advisor-input"
@@ -782,19 +798,19 @@ export function AdminIngestSidebar({
           </div>
 
           <div className="advisor-card-muted p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Notebook destino</p>
-            <p className="mt-1 text-sm font-semibold text-[#162944]">{notebookPreset.notebookTitle}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Target notebook" : "Notebook destino"}</p>
+            <p className="mt-1 break-words text-sm font-semibold text-[#162944]">{notebookPreset.notebookTitle}</p>
             <p className="mt-1 break-all text-xs text-[#3a4f67]">{notebookPreset.notebookId}</p>
           </div>
 
           <div>
-            <label className="advisor-label" htmlFor="admin-title">Titulo</label>
+            <label className="advisor-label" htmlFor="admin-title">{isEn ? "Title" : "Titulo"}</label>
             <input
               id="admin-title"
               className="advisor-input"
               value={title}
               onChange={(event) => onTitleChange(event.target.value)}
-              placeholder="Titulo de la fuente"
+              placeholder={isEn ? "Source title" : "Titulo de la fuente"}
               required
             />
           </div>
@@ -811,25 +827,25 @@ export function AdminIngestSidebar({
           </div>
 
           <div>
-            <label className="advisor-label" htmlFor="admin-reason">Reason for fit</label>
+            <label className="advisor-label" htmlFor="admin-reason">{isEn ? "Reason for fit" : "Motivo de encaje"}</label>
             <textarea
               id="admin-reason"
               className="advisor-input min-h-28 resize-y"
               value={reasonForFit}
               onChange={(event) => onReasonForFitChange(event.target.value)}
-              placeholder="Explica por que esta fuente encaja exactamente en el notebook."
+              placeholder={isEn ? "Explain why this source fits exactly in the notebook." : "Explica por que esta fuente encaja exactamente en el notebook."}
               required
             />
           </div>
 
           <div>
-            <label className="advisor-label" htmlFor="admin-content">Contenido</label>
+            <label className="advisor-label" htmlFor="admin-content">{isEn ? "Content" : "Contenido"}</label>
             <textarea
               id="admin-content"
               className="advisor-input min-h-56 resize-y"
               value={content}
               onChange={(event) => onContentChange(event.target.value)}
-              placeholder="Pega aqui el contenido completo de la fuente..."
+              placeholder={isEn ? "Paste the full source content here..." : "Pega aqui el contenido completo de la fuente..."}
               required
             />
           </div>
@@ -844,14 +860,14 @@ export function AdminIngestSidebar({
               onClick={(event) => onDryRun(event as unknown as React.FormEvent<HTMLFormElement>)}
               className="rounded-xl border border-[#b8c8de] bg-white px-4 py-3 text-sm font-semibold text-[#162944] transition hover:bg-[#f3f7fd] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? "Procesando..." : "Dry-run"}
+              {submitting ? (isEn ? "Processing..." : "Procesando...") : "Dry-run"}
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="rounded-xl bg-[#1dab89] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#169271] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {submitting ? "Procesando..." : "Ejecutar ingesta"}
+              {submitting ? (isEn ? "Processing..." : "Procesando...") : (isEn ? "Run ingestion" : "Ejecutar ingesta")}
             </button>
           </div>
         </form>
@@ -859,28 +875,28 @@ export function AdminIngestSidebar({
         <div className="mt-6 border-t border-[#d2dceb] pt-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h3 className="advisor-heading text-xl text-[#162944]">Jobs recientes</h3>
-              <p className="mt-1 text-sm text-[#3a4f67]">Historial de validaciones e ingestas admin.</p>
+              <h3 className="advisor-heading text-xl text-[#162944]">{isEn ? "Recent jobs" : "Jobs recientes"}</h3>
+              <p className="mt-1 text-sm text-[#3a4f67]">{isEn ? "History of admin validations and ingestions." : "Historial de validaciones e ingestas admin."}</p>
             </div>
             <span className="advisor-chip">{jobs.length} job(s)</span>
           </div>
 
           <div className="mt-4 space-y-3">
             {jobs.length === 0 && (
-              <div className="advisor-card-muted p-3 text-sm text-[#3a4f67]">No hay jobs registrados todavia.</div>
+              <div className="advisor-card-muted p-3 text-sm text-[#3a4f67]">{isEn ? "No jobs recorded yet." : "No hay jobs registrados todavia."}</div>
             )}
 
             {jobs.map((job) => (
               <div key={job.id} className="advisor-card-muted p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-[#162944]">{job.notebook_title}</p>
+                    <p className="break-words text-sm font-semibold text-[#162944]">{job.notebook_title}</p>
                     <p className="mt-1 text-xs text-[#3a4f67]">
-                      {job.domain} | {job.source_count} source(s) | {formatDateTime(job.created_at)}
+                      {job.domain} | {job.source_count} source(s) | {formatDateTime(job.created_at, locale)}
                     </p>
                   </div>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${getJobStatusClass(job.status)}`}>
-                    {job.status}
+                    {adminJobStatusLabel(job.status, locale)}
                   </span>
                 </div>
                 <div className="mt-2 grid gap-2 text-xs text-[#3a4f67] sm:grid-cols-3">

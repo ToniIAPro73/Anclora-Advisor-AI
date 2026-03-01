@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { AuditLogRecord } from "@/lib/audit/logs";
 import { LaborWorkspace } from "@/components/features/LaborWorkspace";
@@ -7,6 +8,8 @@ import {
   type LaborMitigationActionRecord,
   type LaborRiskAssessmentRecord,
 } from "@/lib/labor/assessments";
+import { resolveLocale } from "@/lib/i18n/messages";
+import { uiText } from "@/lib/i18n/ui";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
 interface DashboardLaboralPageProps {
@@ -27,6 +30,8 @@ export default async function DashboardLaboralPage({ searchParams }: DashboardLa
     redirect("/login");
   }
 
+  const cookieStore = await cookies();
+  const locale = resolveLocale(cookieStore.get("anclora.locale")?.value);
   const params = (await searchParams) ?? {};
   const supabase = createUserScopedSupabaseClient(accessToken);
   const { data, error } = await supabase
@@ -56,13 +61,13 @@ export default async function DashboardLaboralPage({ searchParams }: DashboardLa
   return (
     <section className="flex h-full min-h-0 flex-col gap-3">
       <article className="advisor-card shrink-0 p-4">
-        <h1 className="advisor-heading text-3xl text-[#162944]">Monitor Laboral</h1>
-        <p className="mt-2 text-sm text-[#3a4f67]">
-          Workspace operativo para registrar escenarios de pluriactividad, estimar riesgo y seguir mitigaciones con SLA, checklist y evidencias.
+        <h1 className="advisor-heading text-3xl" style={{ color: "var(--text-primary)" }}>{uiText(locale, "page.labor.title")}</h1>
+        <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+          {uiText(locale, "page.labor.subtitle")}
         </p>
         {combinedError && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            No se pudieron cargar datos laborales: {combinedError}
+            {uiText(locale, "page.labor.load_error")} {combinedError}
           </div>
         )}
       </article>

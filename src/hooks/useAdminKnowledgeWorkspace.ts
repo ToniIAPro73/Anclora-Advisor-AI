@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AuditLogRecord } from "@/lib/audit/logs";
 import type {
   AdminAuditLogsResponse,
@@ -85,6 +85,7 @@ export function useAdminKnowledgeWorkspace({
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [rollingBackDocumentId, setRollingBackDocumentId] = useState<string | null>(null);
+  const didBootstrapInitialRefresh = useRef(false);
 
   const notebookPreset = useMemo(() => NOTEBOOK_PRESETS[domain], [domain]);
   const filteredDocuments = useMemo(() => {
@@ -237,6 +238,10 @@ export function useAdminKnowledgeWorkspace({
   }, [inventoryDomainFilter, inventoryPage, inventoryPageSize, inventorySearch, inventoryTopicFilter, refreshDocumentVersions, selectedDocumentId]);
 
   useEffect(() => {
+    if (!didBootstrapInitialRefresh.current) {
+      didBootstrapInitialRefresh.current = true;
+      return;
+    }
     void refreshStatus();
   }, [refreshStatus]);
 

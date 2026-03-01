@@ -81,7 +81,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
               </p>
               <p
                 className="mt-1 text-[11px] font-semibold uppercase"
-                style={{ color: "var(--sidebar-text-strong)", letterSpacing: "0.42em" }}
+                style={{ color: "var(--sidebar-text-strong)", letterSpacing: "0.92em" }}
               >
                 ADVISOR AI
               </p>
@@ -160,3 +160,4 @@ export function DashboardNav({ role }: DashboardNavProps) {
     </aside>
   );
 }
+

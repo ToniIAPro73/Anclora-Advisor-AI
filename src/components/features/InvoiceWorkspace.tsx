@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AuditTimeline } from "@/components/features/AuditTimeline";
+import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
 import type { AuditLogRecord } from "@/lib/audit/logs";
 import {
   type InvoicePaymentRecord,
@@ -136,24 +137,24 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function formatDate(date: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+function formatDate(date: string, locale: "es" | "en"): string {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-ES", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   }).format(new Date(date));
 }
 
-function formatAmount(value: number): string {
-  return new Intl.NumberFormat("es-ES", {
+function formatAmount(value: number, locale: "es" | "en"): string {
+  return new Intl.NumberFormat(locale === "en" ? "en-US" : "es-ES", {
     style: "currency",
     currency: "EUR",
     minimumFractionDigits: 2,
   }).format(value);
 }
 
-function formatDateTime(value: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+function formatDateTime(value: string, locale: "es" | "en"): string {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-ES", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -162,8 +163,8 @@ function formatDateTime(value: string): string {
   }).format(new Date(value));
 }
 
-function getInvoicePeriod(date: string): string {
-  return new Intl.DateTimeFormat("es-ES", {
+function getInvoicePeriod(date: string, locale: "es" | "en"): string {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "es-ES", {
     month: "short",
     year: "numeric",
   }).format(new Date(date));
@@ -173,6 +174,26 @@ function getStatusClass(status: string): string {
   if (status === "paid") return "bg-emerald-100 text-emerald-700 border-emerald-200";
   if (status === "issued") return "bg-blue-100 text-blue-700 border-blue-200";
   return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
+function getInvoiceStatusLabel(status: InvoiceStatus | string, locale: "es" | "en"): string {
+  if (status === "issued") return locale === "en" ? "Issued" : "Emitida";
+  if (status === "paid") return locale === "en" ? "Paid" : "Pagada";
+  return locale === "en" ? "Draft" : "Borrador";
+}
+
+function getOperationJobStatusLabel(status: string, locale: "es" | "en"): string {
+  if (status === "completed") return locale === "en" ? "Completed" : "Completado";
+  if (status === "failed") return locale === "en" ? "Failed" : "Fallido";
+  if (status === "running") return locale === "en" ? "Running" : "En ejecucion";
+  if (status === "queued") return locale === "en" ? "Queued" : "En cola";
+  return status;
+}
+
+function getInvoiceTypeLabelLocalized(invoiceType: InvoiceType | string | null | undefined, locale: "es" | "en"): string {
+  if (invoiceType === "rectificative") return locale === "en" ? "Rectificative" : "Rectificativa";
+  if (invoiceType === "standard") return locale === "en" ? "Standard" : "Ordinaria";
+  return invoiceType ? getInvoiceTypeLabel(invoiceType as InvoiceType) : (locale === "en" ? "Undefined" : "Sin definir");
 }
 
 function toFormState(invoice: InvoiceRecord): InvoiceFormState {
@@ -199,11 +220,16 @@ export function InvoiceWorkspace({
   initialSelectedInvoiceId,
   initialPayments = [],
 }: InvoiceWorkspaceProps) {
+  const { locale } = useAppPreferences();
+  const isEn = locale === "en";
   const [invoices, setInvoices] = useState<InvoiceRecord[]>(initialInvoices);
   const [payments, setPayments] = useState<InvoicePaymentRecord[]>(initialPayments);
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
   const [form, setForm] = useState<InvoiceFormState>(INITIAL_FORM);
-  const [paymentForm, setPaymentForm] = useState<PaymentFormState>(INITIAL_PAYMENT_FORM);
+  const [paymentForm, setPaymentForm] = useState<PaymentFormState>({
+    ...INITIAL_PAYMENT_FORM,
+    paymentMethod: isEn ? "wire transfer" : INITIAL_PAYMENT_FORM.paymentMethod,
+  });
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const [filters, setFilters] = useState<InvoiceFilters>({ ...INITIAL_FILTERS, ...initialFilters });
   const [submitting, setSubmitting] = useState(false);
@@ -248,7 +274,7 @@ export function InvoiceWorkspace({
   const invoiceBook = useMemo<InvoiceBookRow[]>(() => {
     const groups = new Map<string, InvoiceBookRow>();
     for (const invoice of invoices) {
-      const period = getInvoicePeriod(invoice.issue_date);
+      const period = getInvoicePeriod(invoice.issue_date, locale);
       const current = groups.get(period) ?? {
         period,
         total: 0,
@@ -315,13 +341,13 @@ export function InvoiceWorkspace({
       };
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error ?? "No se pudo cargar la cola operativa");
+        throw new Error(result.error ?? (isEn ? "Could not load the operations queue" : "No se pudo cargar la cola operativa"));
       }
 
       setOperationJobs(result.jobs ?? []);
       setEmailOutbox(result.emailOutbox ?? []);
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : "Error al cargar la cola operativa");
+      setError(refreshError instanceof Error ? refreshError.message : (isEn ? "Error loading the operations queue" : "Error al cargar la cola operativa"));
     }
   }
 
@@ -356,17 +382,20 @@ export function InvoiceWorkspace({
         invoices?: InvoiceRecord[];
       };
       if (!response.ok || !result.success || !result.invoices) {
-        throw new Error(result.error ?? "No se pudieron cargar las facturas");
+        throw new Error(result.error ?? (isEn ? "Could not load invoices" : "No se pudieron cargar las facturas"));
       }
       setInvoices(result.invoices);
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : "Error al cargar facturas");
+      setError(refreshError instanceof Error ? refreshError.message : (isEn ? "Error loading invoices" : "Error al cargar facturas"));
     }
   }
 
   function resetForm() {
     setForm(INITIAL_FORM);
-    setPaymentForm(INITIAL_PAYMENT_FORM);
+    setPaymentForm({
+      ...INITIAL_PAYMENT_FORM,
+      paymentMethod: isEn ? "wire transfer" : INITIAL_PAYMENT_FORM.paymentMethod,
+    });
     setEditingInvoiceId(null);
   }
 
@@ -375,7 +404,7 @@ export function InvoiceWorkspace({
     setPaymentForm({
       amount: getOutstandingAmount(invoice).toFixed(2),
       paidAt: TODAY,
-      paymentMethod: invoice.payment_method ?? "transferencia",
+      paymentMethod: invoice.payment_method ?? (isEn ? "wire transfer" : "transferencia"),
       paymentReference: invoice.payment_reference ?? "",
       notes: "",
     });
@@ -427,16 +456,16 @@ export function InvoiceWorkspace({
       };
 
       if (!response.ok || !result.success || !result.invoice) {
-        throw new Error(result.error ?? "No se pudo guardar la factura");
+        throw new Error(result.error ?? (isEn ? "Could not save the invoice" : "No se pudo guardar la factura"));
       }
 
       upsertInvoice(result.invoice);
-      setOkMessage(isEditing ? "Factura actualizada." : "Factura guardada en borrador.");
+      setOkMessage(isEditing ? (isEn ? "Invoice updated." : "Factura actualizada.") : (isEn ? "Invoice saved as draft." : "Factura guardada en borrador."));
       resetForm();
       await refreshInvoices();
       await refreshAuditLogs();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Error al guardar factura");
+      setError(submitError instanceof Error ? submitError.message : (isEn ? "Error saving invoice" : "Error al guardar factura"));
     } finally {
       setSubmitting(false);
     }
@@ -460,15 +489,15 @@ export function InvoiceWorkspace({
       };
 
       if (!response.ok || !result.success || !result.invoice) {
-        throw new Error(result.error ?? "No se pudo actualizar el estado");
+        throw new Error(result.error ?? (isEn ? "Could not update the status" : "No se pudo actualizar el estado"));
       }
 
       upsertInvoice(result.invoice);
-      setOkMessage(`Factura marcada como ${status}.`);
+      setOkMessage(isEn ? `Invoice marked as ${getInvoiceStatusLabel(status, locale).toLowerCase()}.` : `Factura marcada como ${status}.`);
       await refreshInvoices();
       await refreshAuditLogs();
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "Error al actualizar factura");
+      setError(updateError instanceof Error ? updateError.message : (isEn ? "Error updating invoice" : "Error al actualizar factura"));
     } finally {
       setUpdatingInvoiceId(null);
     }
@@ -499,7 +528,7 @@ export function InvoiceWorkspace({
       };
 
       if (!response.ok || !result.success || !result.invoice || !result.payment) {
-        throw new Error(result.error ?? "No se pudo registrar el cobro");
+        throw new Error(result.error ?? (isEn ? "Could not register the payment" : "No se pudo registrar el cobro"));
       }
 
       upsertInvoice(result.invoice);
@@ -512,10 +541,10 @@ export function InvoiceWorkspace({
         paymentReference: "",
         notes: "",
       }));
-      setOkMessage("Cobro registrado correctamente.");
+      setOkMessage(isEn ? "Payment registered successfully." : "Cobro registrado correctamente.");
       await refreshAuditLogs();
     } catch (paymentError) {
-      setError(paymentError instanceof Error ? paymentError.message : "Error al registrar cobro");
+      setError(paymentError instanceof Error ? paymentError.message : (isEn ? "Error registering payment" : "Error al registrar cobro"));
     } finally {
       setSubmittingPaymentInvoiceId(null);
     }
@@ -532,20 +561,20 @@ export function InvoiceWorkspace({
         invoice?: InvoiceRecord;
       };
       if (!response.ok || !result.success || !result.invoice) {
-        throw new Error(result.error ?? "No se pudo eliminar el cobro");
+        throw new Error(result.error ?? (isEn ? "Could not delete the payment" : "No se pudo eliminar el cobro"));
       }
 
       setPayments((current) => current.filter((payment) => payment.id !== paymentId));
       upsertInvoice(result.invoice);
-      setOkMessage("Cobro eliminado.");
+      setOkMessage(isEn ? "Payment deleted." : "Cobro eliminado.");
       await refreshAuditLogs();
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Error al eliminar cobro");
+      setError(deleteError instanceof Error ? deleteError.message : (isEn ? "Error deleting payment" : "Error al eliminar cobro"));
     }
   }
 
   async function handleDelete(invoiceId: string) {
-    if (!window.confirm("Se eliminara la factura. Esta accion no se puede deshacer.")) {
+    if (!window.confirm(isEn ? "The invoice will be deleted. This action cannot be undone." : "Se eliminara la factura. Esta accion no se puede deshacer.")) {
       return;
     }
 
@@ -557,18 +586,18 @@ export function InvoiceWorkspace({
       const response = await fetch(`/api/invoices/${invoiceId}`, { method: "DELETE" });
       const result = (await response.json()) as { success: boolean; error?: string };
       if (!response.ok || !result.success) {
-        throw new Error(result.error ?? "No se pudo eliminar la factura");
+        throw new Error(result.error ?? (isEn ? "Could not delete the invoice" : "No se pudo eliminar la factura"));
       }
 
       setInvoices((previous) => previous.filter((invoice) => invoice.id !== invoiceId));
       if (editingInvoiceId === invoiceId) {
         resetForm();
       }
-      setOkMessage("Factura eliminada.");
+      setOkMessage(isEn ? "Invoice deleted." : "Factura eliminada.");
       await refreshInvoices();
       await refreshAuditLogs();
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Error al eliminar factura");
+      setError(deleteError instanceof Error ? deleteError.message : (isEn ? "Error deleting invoice" : "Error al eliminar factura"));
     } finally {
       setUpdatingInvoiceId(null);
     }
@@ -577,7 +606,7 @@ export function InvoiceWorkspace({
   async function handleSend(invoice: InvoiceRecord) {
     const fallbackEmail = invoice.recipient_email ?? form.recipientEmail;
     const recipientEmail = window.prompt(
-      "Introduce el email de destino para preparar el envio:",
+      isEn ? "Enter the destination email to prepare the delivery:" : "Introduce el email de destino para preparar el envio:",
       fallbackEmail
     );
 
@@ -598,16 +627,16 @@ export function InvoiceWorkspace({
       const result = (await response.json()) as SendInvoiceResponse;
 
       if (!response.ok || !result.success || !result.invoice || !result.delivery) {
-        throw new Error(result.error ?? "No se pudo preparar el envio");
+        throw new Error(result.error ?? (isEn ? "Could not prepare the delivery" : "No se pudo preparar el envio"));
       }
 
       upsertInvoice(result.invoice);
       await refreshInvoices();
       await refreshOperations();
-      setOkMessage(`Factura encolada para envio. Job ${result.delivery.jobId}.`);
+      setOkMessage(isEn ? `Invoice queued for delivery. Job ${result.delivery.jobId}.` : `Factura encolada para envio. Job ${result.delivery.jobId}.`);
       await refreshAuditLogs();
     } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : "Error al preparar el envio");
+      setError(sendError instanceof Error ? sendError.message : (isEn ? "Error preparing the delivery" : "Error al preparar el envio"));
     } finally {
       setUpdatingInvoiceId(null);
     }
@@ -635,15 +664,17 @@ export function InvoiceWorkspace({
       };
 
       if (!response.ok || !result.success || !result.result) {
-        throw new Error(result.error ?? "No se pudo procesar la cola");
+        throw new Error(result.error ?? (isEn ? "Could not process the queue" : "No se pudo procesar la cola"));
       }
 
       await Promise.all([refreshOperations()]);
       setOkMessage(
-        `Cola procesada: ${result.result.claimed} job(s), ${result.result.completed} completado(s), ${result.result.failed} fallido(s).`
+        isEn
+          ? `Queue processed: ${result.result.claimed} job(s), ${result.result.completed} completed, ${result.result.failed} failed.`
+          : `Cola procesada: ${result.result.claimed} job(s), ${result.result.completed} completado(s), ${result.result.failed} fallido(s).`
       );
     } catch (processError) {
-      setError(processError instanceof Error ? processError.message : "Error al procesar la cola");
+      setError(processError instanceof Error ? processError.message : (isEn ? "Error processing the queue" : "Error al procesar la cola"));
     } finally {
       setProcessingQueue(false);
     }
@@ -663,14 +694,14 @@ export function InvoiceWorkspace({
         invoice?: InvoiceRecord;
       };
       if (!response.ok || !result.success || !result.invoice) {
-        throw new Error(result.error ?? "No se pudo duplicar la factura");
+        throw new Error(result.error ?? (isEn ? "Could not duplicate the invoice" : "No se pudo duplicar la factura"));
       }
       upsertInvoice(result.invoice);
       await refreshInvoices();
       await refreshAuditLogs();
-      setOkMessage("Factura duplicada como nuevo borrador.");
+      setOkMessage(isEn ? "Invoice duplicated as a new draft." : "Factura duplicada como nuevo borrador.");
     } catch (duplicateError) {
-      setError(duplicateError instanceof Error ? duplicateError.message : "Error al duplicar factura");
+      setError(duplicateError instanceof Error ? duplicateError.message : (isEn ? "Error duplicating invoice" : "Error al duplicar factura"));
     } finally {
       setUpdatingInvoiceId(null);
     }
@@ -692,21 +723,21 @@ export function InvoiceWorkspace({
 
       const response = await fetch(`/api/invoices/export?${params.toString()}`);
       if (!response.ok) {
-        throw new Error("No se pudo exportar el libro de facturas");
+        throw new Error(isEn ? "Could not export the invoice book" : "No se pudo exportar el libro de facturas");
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `facturas-${new Date().toISOString().slice(0, 10)}.${format}`;
+      link.download = `${isEn ? "invoices" : "facturas"}-${new Date().toISOString().slice(0, 10)}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      setOkMessage(`Libro exportado en formato ${format.toUpperCase()}.`);
+      setOkMessage(isEn ? `Invoice book exported as ${format.toUpperCase()}.` : `Libro exportado en formato ${format.toUpperCase()}.`);
     } catch (exportError) {
-      setError(exportError instanceof Error ? exportError.message : "Error al exportar facturas");
+      setError(exportError instanceof Error ? exportError.message : (isEn ? "Error exporting invoices" : "Error al exportar facturas"));
     }
   }
 
@@ -715,7 +746,10 @@ export function InvoiceWorkspace({
   }
 
   async function handleRectify(invoiceId: string) {
-    const reason = window.prompt("Motivo de la rectificativa:", "Rectificacion operativa");
+    const reason = window.prompt(
+      isEn ? "Reason for the rectificative invoice:" : "Motivo de la rectificativa:",
+      isEn ? "Operational rectification" : "Rectificacion operativa"
+    );
     if (!reason) {
       return;
     }
@@ -731,14 +765,14 @@ export function InvoiceWorkspace({
       });
       const result = (await response.json()) as { success: boolean; error?: string; invoice?: InvoiceRecord };
       if (!response.ok || !result.success || !result.invoice) {
-        throw new Error(result.error ?? "No se pudo crear la rectificativa");
+        throw new Error(result.error ?? (isEn ? "Could not create the rectificative invoice" : "No se pudo crear la rectificativa"));
       }
       upsertInvoice(result.invoice);
       await refreshInvoices();
       await refreshAuditLogs();
-      setOkMessage("Factura rectificativa creada.");
+      setOkMessage(isEn ? "Rectificative invoice created." : "Factura rectificativa creada.");
     } catch (rectifyError) {
-      setError(rectifyError instanceof Error ? rectifyError.message : "Error al crear rectificativa");
+      setError(rectifyError instanceof Error ? rectifyError.message : (isEn ? "Error creating rectificative invoice" : "Error al crear rectificativa"));
     } finally {
       setUpdatingInvoiceId(null);
     }
@@ -746,15 +780,17 @@ export function InvoiceWorkspace({
 
   return (
     <div className="grid h-full min-h-0 gap-3 lg:grid-cols-5">
-      <div className="flex min-h-0 flex-col gap-3 lg:col-span-2">
+      <div className="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto pr-1 lg:col-span-2">
         <article className="advisor-card shrink-0 p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="advisor-heading text-2xl text-[#162944]">
-                {editingInvoiceId ? "Editar factura" : "Nueva factura"}
+                {isEn ? (editingInvoiceId ? "Edit invoice" : "New invoice") : (editingInvoiceId ? "Editar factura" : "Nueva factura")}
               </h2>
               <p className="mt-1 text-sm text-[#3a4f67]">
-                Alta, edicion, numeracion por serie y envio sin salir del dashboard.
+                {isEn
+                  ? "Create, edit, number by series, and send invoices without leaving the dashboard."
+                  : "Alta, edicion, numeracion por serie y envio sin salir del dashboard."}
               </p>
             </div>
             {editingInvoiceId && (
@@ -763,13 +799,13 @@ export function InvoiceWorkspace({
                 className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
                 onClick={resetForm}
               >
-                Cancelar
+                {isEn ? "Cancel" : "Cancelar"}
               </button>
             )}
           </div>
           <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
             <div>
-              <label className="advisor-label" htmlFor="clientName">Cliente</label>
+              <label className="advisor-label" htmlFor="clientName">{isEn ? "Client" : "Cliente"}</label>
               <input
                 id="clientName"
                 className="advisor-input"
@@ -779,7 +815,7 @@ export function InvoiceWorkspace({
               />
             </div>
             <div>
-              <label className="advisor-label" htmlFor="clientNif">NIF/CIF</label>
+              <label className="advisor-label" htmlFor="clientNif">{isEn ? "Tax ID" : "NIF/CIF"}</label>
               <input
                 id="clientNif"
                 className="advisor-input"
@@ -790,7 +826,7 @@ export function InvoiceWorkspace({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="advisor-label" htmlFor="series">Serie</label>
+                <label className="advisor-label" htmlFor="series">{isEn ? "Series" : "Serie"}</label>
                 <input
                   id="series"
                   className="advisor-input"
@@ -801,7 +837,7 @@ export function InvoiceWorkspace({
                 />
               </div>
               <div>
-                <label className="advisor-label" htmlFor="issueDate">Fecha de emision</label>
+                <label className="advisor-label" htmlFor="issueDate">{isEn ? "Issue date" : "Fecha de emision"}</label>
                 <input
                   id="issueDate"
                   type="date"
@@ -819,29 +855,29 @@ export function InvoiceWorkspace({
               </div>
             </div>
             <div>
-              <label className="advisor-label" htmlFor="recipientEmail">Email destinatario</label>
+              <label className="advisor-label" htmlFor="recipientEmail">{isEn ? "Recipient email" : "Email destinatario"}</label>
               <input
                 id="recipientEmail"
                 type="email"
                 className="advisor-input"
                 value={form.recipientEmail}
                 onChange={(event) => setForm((current) => ({ ...current, recipientEmail: event.target.value }))}
-                placeholder="cliente@empresa.com"
+                placeholder={isEn ? "client@company.com" : "cliente@empresa.com"}
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="advisor-label" htmlFor="paymentMethod">Metodo de cobro</label>
+                <label className="advisor-label" htmlFor="paymentMethod">{isEn ? "Payment method" : "Metodo de cobro"}</label>
                 <input
                   id="paymentMethod"
                   className="advisor-input"
                   value={form.paymentMethod}
                   onChange={(event) => setForm((current) => ({ ...current, paymentMethod: event.target.value }))}
-                  placeholder="transferencia, bizum..."
+                  placeholder={isEn ? "wire transfer, bizum..." : "transferencia, bizum..."}
                 />
               </div>
               <div>
-                <label className="advisor-label" htmlFor="paidAt">Fecha de cobro</label>
+                <label className="advisor-label" htmlFor="paidAt">{isEn ? "Payment date" : "Fecha de cobro"}</label>
                 <input
                   id="paidAt"
                   type="date"
@@ -852,28 +888,28 @@ export function InvoiceWorkspace({
               </div>
             </div>
             <div>
-              <label className="advisor-label" htmlFor="paymentReference">Referencia de cobro</label>
+              <label className="advisor-label" htmlFor="paymentReference">{isEn ? "Payment reference" : "Referencia de cobro"}</label>
               <input
                 id="paymentReference"
                 className="advisor-input"
                 value={form.paymentReference}
                 onChange={(event) => setForm((current) => ({ ...current, paymentReference: event.target.value }))}
-                placeholder="Operacion bancaria o referencia interna"
+                placeholder={isEn ? "Bank operation or internal reference" : "Operacion bancaria o referencia interna"}
               />
             </div>
             <div>
-              <label className="advisor-label" htmlFor="paymentNotes">Notas de cobro</label>
+              <label className="advisor-label" htmlFor="paymentNotes">{isEn ? "Payment notes" : "Notas de cobro"}</label>
               <textarea
                 id="paymentNotes"
                 className="advisor-input min-h-20 resize-y"
                 value={form.paymentNotes}
                 onChange={(event) => setForm((current) => ({ ...current, paymentNotes: event.target.value }))}
-                placeholder="Incidencias, fraccionamiento o detalle de conciliacion"
+                placeholder={isEn ? "Issues, installments, or reconciliation detail" : "Incidencias, fraccionamiento o detalle de conciliacion"}
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="advisor-label" htmlFor="amountBase">Base imponible</label>
+                <label className="advisor-label" htmlFor="amountBase">{isEn ? "Tax base" : "Base imponible"}</label>
                 <input
                   id="amountBase"
                   type="number"
@@ -886,7 +922,7 @@ export function InvoiceWorkspace({
                 />
               </div>
               <div>
-                <label className="advisor-label" htmlFor="ivaRate">IVA %</label>
+                <label className="advisor-label" htmlFor="ivaRate">{isEn ? "VAT %" : "IVA %"}</label>
                 <input
                   id="ivaRate"
                   type="number"
@@ -901,7 +937,7 @@ export function InvoiceWorkspace({
               </div>
             </div>
             <div>
-              <label className="advisor-label" htmlFor="irpfRetention">Retencion IRPF %</label>
+              <label className="advisor-label" htmlFor="irpfRetention">{isEn ? "Income tax withholding %" : "Retencion IRPF %"}</label>
               <input
                 id="irpfRetention"
                 type="number"
@@ -916,15 +952,15 @@ export function InvoiceWorkspace({
             </div>
 
             <div className="advisor-card-muted p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Total estimado</p>
-              <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(previewTotal)}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Estimated total" : "Total estimado"}</p>
+              <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(previewTotal, locale)}</p>
             </div>
 
             {error && <div className="advisor-alert advisor-alert-error">{error}</div>}
             {okMessage && <div className="advisor-alert advisor-alert-success">{okMessage}</div>}
 
             <button type="submit" disabled={submitting} className="advisor-btn advisor-btn-primary advisor-btn-full">
-              {submitting ? "Guardando..." : editingInvoiceId ? "Actualizar factura" : "Guardar borrador"}
+              {submitting ? (isEn ? "Saving..." : "Guardando...") : editingInvoiceId ? (isEn ? "Update invoice" : "Actualizar factura") : (isEn ? "Save draft" : "Guardar borrador")}
             </button>
           </form>
 
@@ -932,12 +968,12 @@ export function InvoiceWorkspace({
             <div className="mt-4 rounded-2xl border border-[#d2dceb] bg-white p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Cobros parciales</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Partial payments" : "Cobros parciales"}</p>
                   <p className="mt-1 text-sm font-semibold text-[#162944]">
                     {buildInvoiceReference(selectedInvoice.series, selectedInvoice.invoice_number)}
                   </p>
                   <p className="mt-1 text-xs text-[#3a4f67]">
-                    Cobrado {formatAmount(getCollectedAmount(selectedInvoice.id))} · Pendiente {formatAmount(getOutstandingAmount(selectedInvoice))}
+                    {isEn ? "Collected" : "Cobrado"} {formatAmount(getCollectedAmount(selectedInvoice.id), locale)} · {isEn ? "Outstanding" : "Pendiente"} {formatAmount(getOutstandingAmount(selectedInvoice), locale)}
                   </p>
                 </div>
               </div>
@@ -949,7 +985,7 @@ export function InvoiceWorkspace({
                   min="0.01"
                   value={paymentForm.amount}
                   onChange={(event) => setPaymentForm((current) => ({ ...current, amount: event.target.value }))}
-                  placeholder="Importe cobrado"
+                  placeholder={isEn ? "Collected amount" : "Importe cobrado"}
                 />
                 <input
                   className="advisor-input"
@@ -961,20 +997,20 @@ export function InvoiceWorkspace({
                   className="advisor-input"
                   value={paymentForm.paymentMethod}
                   onChange={(event) => setPaymentForm((current) => ({ ...current, paymentMethod: event.target.value }))}
-                  placeholder="Metodo de cobro"
+                  placeholder={isEn ? "Payment method" : "Metodo de cobro"}
                 />
                 <input
                   className="advisor-input"
                   value={paymentForm.paymentReference}
                   onChange={(event) => setPaymentForm((current) => ({ ...current, paymentReference: event.target.value }))}
-                  placeholder="Referencia"
+                  placeholder={isEn ? "Reference" : "Referencia"}
                 />
               </div>
               <textarea
                 className="advisor-input mt-3 min-h-20 resize-y"
                 value={paymentForm.notes}
                 onChange={(event) => setPaymentForm((current) => ({ ...current, notes: event.target.value }))}
-                placeholder="Notas del cobro"
+                placeholder={isEn ? "Payment notes" : "Notas del cobro"}
               />
               <button
                 type="button"
@@ -982,27 +1018,27 @@ export function InvoiceWorkspace({
                 className="advisor-btn mt-3 advisor-btn-primary advisor-btn-full"
                 onClick={() => void handleCreatePayment(selectedInvoice)}
               >
-                {submittingPaymentInvoiceId === selectedInvoice.id ? "Registrando cobro..." : "Registrar cobro parcial"}
+                {submittingPaymentInvoiceId === selectedInvoice.id ? (isEn ? "Registering payment..." : "Registrando cobro...") : (isEn ? "Register partial payment" : "Registrar cobro parcial")}
               </button>
               <div className="mt-3 space-y-2">
                 {selectedInvoicePayments.length === 0 ? (
                   <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-2 text-xs text-[#3a4f67]">
-                    Sin cobros registrados para esta factura.
+                    {isEn ? "No payments recorded for this invoice." : "Sin cobros registrados para esta factura."}
                   </div>
                 ) : (
                   selectedInvoicePayments.map((payment) => (
                     <div key={payment.id} className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3 text-xs text-[#3a4f67]">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="font-semibold text-[#162944]">{formatAmount(Number(payment.amount))}</p>
+                        <p className="font-semibold text-[#162944]">{formatAmount(Number(payment.amount), locale)}</p>
                         <button
                           type="button"
                           className="text-red-700 hover:underline"
                           onClick={() => void handleDeletePayment(payment.id)}
                         >
-                          Eliminar
+                          {isEn ? "Delete" : "Eliminar"}
                         </button>
                       </div>
-                      <p className="mt-1">{formatDateTime(payment.paid_at)} · {payment.payment_method ?? "sin metodo"}</p>
+                      <p className="mt-1">{formatDateTime(payment.paid_at, locale)} · {payment.payment_method ?? (isEn ? "no method" : "sin metodo")}</p>
                       {payment.payment_reference && <p className="mt-1">Ref {payment.payment_reference}</p>}
                       {payment.notes && <p className="mt-1">{payment.notes}</p>}
                     </div>
@@ -1014,35 +1050,35 @@ export function InvoiceWorkspace({
         </article>
 
         <article className="advisor-card p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Resumen de facturacion</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Invoicing summary" : "Resumen de facturacion"}</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div className="advisor-card-muted p-3 text-sm text-[#3a4f67]">
-              <p>Borradores: <strong className="text-[#162944]">{draftCount}</strong></p>
-              <p className="mt-1">Emitidas: <strong className="text-[#162944]">{issuedCount}</strong></p>
-              <p className="mt-1">Pagadas: <strong className="text-[#162944]">{paidCount}</strong></p>
-              <p className="mt-1">Rectificativas: <strong className="text-[#162944]">{rectificativeCount}</strong></p>
+              <p>{isEn ? "Drafts" : "Borradores"}: <strong className="text-[#162944]">{draftCount}</strong></p>
+              <p className="mt-1">{isEn ? "Issued" : "Emitidas"}: <strong className="text-[#162944]">{issuedCount}</strong></p>
+              <p className="mt-1">{isEn ? "Paid" : "Pagadas"}: <strong className="text-[#162944]">{paidCount}</strong></p>
+              <p className="mt-1">{isEn ? "Rectificative" : "Rectificativas"}: <strong className="text-[#162944]">{rectificativeCount}</strong></p>
             </div>
             <div className="advisor-card-muted p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Volumen total</p>
-              <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(totalVolume)}</p>
-              <p className="mt-1 text-sm text-[#3a4f67]">Suma de importes totales del historial visible.</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Total volume" : "Volumen total"}</p>
+              <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(totalVolume, locale)}</p>
+              <p className="mt-1 text-sm text-[#3a4f67]">{isEn ? "Sum of total amounts in the visible history." : "Suma de importes totales del historial visible."}</p>
             </div>
             <div className="advisor-card-muted p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Cobrado</p>
-              <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(paidVolume)}</p>
-              <p className="mt-1 text-sm text-[#3a4f67]">Importe conciliado como pagado.</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Collected" : "Cobrado"}</p>
+              <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(paidVolume, locale)}</p>
+              <p className="mt-1 text-sm text-[#3a4f67]">{isEn ? "Amount reconciled as paid." : "Importe conciliado como pagado."}</p>
             </div>
             <div className="advisor-card-muted p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Pendiente de cobro</p>
-              <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(pendingCollectionVolume)}</p>
-              <p className="mt-1 text-sm text-[#3a4f67]">Importe aun no conciliado.</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Outstanding" : "Pendiente de cobro"}</p>
+              <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(pendingCollectionVolume, locale)}</p>
+              <p className="mt-1 text-sm text-[#3a4f67]">{isEn ? "Amount not yet reconciled." : "Importe aun no conciliado."}</p>
             </div>
           </div>
           <div className="mt-4 rounded-2xl border border-[#d2dceb] bg-white p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Libro de facturas</p>
-                <p className="mt-1 text-sm text-[#162944]">{invoiceBook.length} periodo(s) visibles</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Invoice book" : "Libro de facturas"}</p>
+                <p className="mt-1 text-sm text-[#162944]">{invoiceBook.length} {isEn ? "visible period(s)" : "periodo(s) visibles"}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -1050,34 +1086,34 @@ export function InvoiceWorkspace({
                   className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
                   onClick={() => void handleExport("csv")}
                 >
-                  Exportar CSV
+                  {isEn ? "Export CSV" : "Exportar CSV"}
                 </button>
                 <button
                   type="button"
                   className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
                   onClick={() => void handleExport("json")}
                 >
-                  Exportar JSON
+                  {isEn ? "Export JSON" : "Exportar JSON"}
                 </button>
               </div>
             </div>
             <div className="mt-3 space-y-2">
               {invoiceBook.length === 0 ? (
                 <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-2 text-xs text-[#3a4f67]">
-                  No hay periodos visibles para el filtro actual.
+                  {isEn ? "No visible periods for the current filter." : "No hay periodos visibles para el filtro actual."}
                 </div>
               ) : (
                 invoiceBook.map((row) => (
                   <div key={row.period} className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3 text-xs text-[#3a4f67]">
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold text-[#162944]">{row.period}</p>
-                      <p className="font-semibold text-[#162944]">{formatAmount(row.total)}</p>
+                      <p className="font-semibold text-[#162944]">{formatAmount(row.total, locale)}</p>
                     </div>
                     <div className="mt-2 grid gap-2 sm:grid-cols-4">
-                      <p>Total: <strong className="text-[#162944]">{row.count}</strong></p>
-                      <p>Borrador: <strong className="text-[#162944]">{row.draft}</strong></p>
-                      <p>Emitida: <strong className="text-[#162944]">{row.issued}</strong></p>
-                      <p>Pagada: <strong className="text-[#162944]">{row.paid}</strong></p>
+                      <p>{isEn ? "Total" : "Total"}: <strong className="text-[#162944]">{row.count}</strong></p>
+                      <p>{isEn ? "Draft" : "Borrador"}: <strong className="text-[#162944]">{row.draft}</strong></p>
+                      <p>{isEn ? "Issued" : "Emitida"}: <strong className="text-[#162944]">{row.issued}</strong></p>
+                      <p>{isEn ? "Paid" : "Pagada"}: <strong className="text-[#162944]">{row.paid}</strong></p>
                     </div>
                   </div>
                 ))
@@ -1087,8 +1123,8 @@ export function InvoiceWorkspace({
           <div className="mt-4 rounded-2xl border border-[#d2dceb] bg-white p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Cola operativa</p>
-                <p className="mt-1 text-sm text-[#162944]">{queuedDeliveries} envio(s) pendiente(s)</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">{isEn ? "Operations queue" : "Cola operativa"}</p>
+                <p className="mt-1 text-sm text-[#162944]">{queuedDeliveries} {isEn ? "pending delivery(ies)" : "envio(s) pendiente(s)"}</p>
               </div>
               <button
                 type="button"
@@ -1096,73 +1132,75 @@ export function InvoiceWorkspace({
                 className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
                 onClick={() => void handleProcessQueue()}
               >
-                {processingQueue ? "Procesando..." : "Procesar cola"}
+                {processingQueue ? (isEn ? "Processing..." : "Procesando...") : (isEn ? "Process queue" : "Procesar cola")}
               </button>
             </div>
             <div className="mt-3 space-y-2">
               {operationJobs.slice(0, 3).map((job) => (
                 <div key={job.id} className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-2 text-xs text-[#3a4f67]">
                   <p>
-                    <strong>{job.job_kind}</strong> · {job.status}
+                    <strong>{job.job_kind}</strong> · {getOperationJobStatusLabel(job.status, locale)}
                   </p>
-                  <p className="mt-1">{formatDate(job.created_at)}</p>
+                  <p className="mt-1">{formatDate(job.created_at, locale)}</p>
                   {job.error_message && <p className="mt-1 text-red-700">{job.error_message}</p>}
                 </div>
               ))}
               {operationJobs.length === 0 && (
                 <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-2 text-xs text-[#3a4f67]">
-                  Sin jobs operativos registrados.
+                  {isEn ? "No operational jobs recorded." : "Sin jobs operativos registrados."}
                 </div>
               )}
             </div>
           </div>
         </article>
 
-        <AuditTimeline title="Auditoria de facturacion" logs={auditLogs} />
+        <AuditTimeline title={isEn ? "Invoicing audit" : "Auditoria de facturacion"} logs={auditLogs} />
       </div>
 
       <article className="advisor-card flex min-h-0 flex-col overflow-hidden lg:col-span-3">
         <div className="shrink-0 border-b border-[#d2dceb] px-4 py-3">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="space-y-3">
             <div>
-              <h3 className="advisor-heading text-2xl text-[#162944]">Facturas recientes</h3>
+              <h3 className="advisor-heading text-2xl text-[#162944]">{isEn ? "Recent invoices" : "Facturas recientes"}</h3>
               <p className="mt-1 text-sm text-[#3a4f67]">
-                {filteredInvoices.length} visible(s) de {invoices.length} registro(s).
+                {isEn
+                  ? `${filteredInvoices.length} visible item(s) out of ${invoices.length} record(s).`
+                  : `${filteredInvoices.length} visible(s) de ${invoices.length} registro(s).`}
               </p>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-              <input className="advisor-input min-w-32" placeholder="Cliente o NIF" value={filters.q} onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))} />
-              <input className="advisor-input min-w-24" placeholder="Serie" value={filters.series} onChange={(event) => setFilters((current) => ({ ...current, series: event.target.value.toUpperCase() }))} />
-              <input type="date" className="advisor-input min-w-28" value={filters.dateFrom} onChange={(event) => setFilters((current) => ({ ...current, dateFrom: event.target.value }))} />
-              <input type="date" className="advisor-input min-w-28" value={filters.dateTo} onChange={(event) => setFilters((current) => ({ ...current, dateTo: event.target.value }))} />
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              <input className="advisor-input min-w-0 w-full" placeholder={isEn ? "Client/Tax ID" : "Cliente/NIF"} value={filters.q} onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))} />
+              <input className="advisor-input min-w-0 w-full" placeholder={isEn ? "Series" : "Serie"} value={filters.series} onChange={(event) => setFilters((current) => ({ ...current, series: event.target.value.toUpperCase() }))} />
+              <input type="date" className="advisor-input min-w-0 w-full" value={filters.dateFrom} onChange={(event) => setFilters((current) => ({ ...current, dateFrom: event.target.value }))} />
+              <input type="date" className="advisor-input min-w-0 w-full" value={filters.dateTo} onChange={(event) => setFilters((current) => ({ ...current, dateTo: event.target.value }))} />
               <select
                 id="invoiceStatusFilter"
-                className="advisor-input min-w-32"
+                className="advisor-input min-w-0 w-full"
                 value={filters.status}
                 onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value as InvoiceFilterStatus }))}
               >
-                <option value="all">Todos</option>
+                <option value="all">{isEn ? "Status" : "Estado"}</option>
                 {invoiceStatusValues.map((status) => (
-                  <option key={status} value={status}>{status}</option>
+                  <option key={status} value={status}>{getInvoiceStatusLabel(status, locale)}</option>
                 ))}
               </select>
               <select
                 id="invoiceTypeFilter"
-                className="advisor-input min-w-32"
+                className="advisor-input min-w-0 w-full"
                 value={filters.invoiceType}
                 onChange={(event) => setFilters((current) => ({ ...current, invoiceType: event.target.value as InvoiceFilterType }))}
               >
-                <option value="all">Todas</option>
+                <option value="all">{isEn ? "Type" : "Tipo"}</option>
                 {invoiceTypeValues.map((invoiceType) => (
-                  <option key={invoiceType} value={invoiceType}>{getInvoiceTypeLabel(invoiceType)}</option>
+                  <option key={invoiceType} value={invoiceType}>{getInvoiceTypeLabelLocalized(invoiceType, locale)}</option>
                 ))}
               </select>
-              <div className="flex gap-2 lg:col-span-5">
+              <div className="flex flex-wrap gap-2 sm:col-span-2 xl:col-span-3">
                 <button type="button" className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => void refreshInvoices()}>
-                  Aplicar filtros
+                  {isEn ? "Apply filters" : "Aplicar filtros"}
                 </button>
                 <button type="button" className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => { setFilters(INITIAL_FILTERS); void refreshInvoices(INITIAL_FILTERS); }}>
-                  Limpiar
+                  {isEn ? "Clear" : "Limpiar"}
                 </button>
               </div>
             </div>
@@ -1171,7 +1209,7 @@ export function InvoiceWorkspace({
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {filteredInvoices.length === 0 ? (
             <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">
-              No hay facturas para el filtro seleccionado.
+              {isEn ? "No invoices for the selected filter." : "No hay facturas para el filtro seleccionado."}
             </div>
           ) : (
             <div className="space-y-2">
@@ -1185,58 +1223,58 @@ export function InvoiceWorkspace({
                   <div key={invoice.id} className={`advisor-card-muted p-3 ${isSelected ? "ring-2 ring-[#1dab89] ring-offset-2 ring-offset-white" : ""}`}>
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="text-sm font-semibold text-[#162944]">{invoice.client_name}</p>
-                        <p className="text-xs text-[#3a4f67]">{invoice.client_nif}</p>
+                        <p className="break-words text-sm font-semibold text-[#162944]">{invoice.client_name}</p>
+                        <p className="break-words text-xs text-[#3a4f67]">{invoice.client_nif}</p>
                         <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">
                           {reference}
                         </p>
                       </div>
                       <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getStatusClass(invoice.status)}`}>
-                        {invoice.status}
+                        {getInvoiceStatusLabel(invoice.status, locale)}
                       </span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">
-                        {getInvoiceTypeLabel(invoice.invoice_type)}
+                        {getInvoiceTypeLabelLocalized(invoice.invoice_type, locale)}
                       </span>
                       {invoice.rectifies_invoice_id && (
                         <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">
-                          Rectifica {invoice.rectifies_invoice_id.slice(0, 8)}
+                          <span className="break-all">{isEn ? "Rectifies" : "Rectifica"} {invoice.rectifies_invoice_id.slice(0, 8)}</span>
                         </span>
                       )}
                     </div>
                     <div className="mt-2 grid gap-2 text-xs text-[#3a4f67] sm:grid-cols-4">
-                      <p>Base: <strong>{formatAmount(Number(invoice.amount_base))}</strong></p>
-                      <p>IVA: <strong>{invoice.iva_rate}%</strong></p>
-                      <p>IRPF: <strong>{invoice.irpf_retention}%</strong></p>
-                      <p>Total: <strong>{formatAmount(Number(invoice.total_amount))}</strong></p>
+                      <p>{isEn ? "Base" : "Base"}: <strong>{formatAmount(Number(invoice.amount_base), locale)}</strong></p>
+                      <p>{isEn ? "VAT" : "IVA"}: <strong>{invoice.iva_rate}%</strong></p>
+                      <p>{isEn ? "Income tax" : "IRPF"}: <strong>{invoice.irpf_retention}%</strong></p>
+                      <p>{isEn ? "Total" : "Total"}: <strong>{formatAmount(Number(invoice.total_amount), locale)}</strong></p>
                     </div>
                     <div className="mt-2 grid gap-2 text-xs text-[#3a4f67] sm:grid-cols-2">
-                      <p>Cobrado: <strong>{formatAmount(collectedAmount)}</strong></p>
-                      <p>Pendiente: <strong>{formatAmount(outstandingAmount)}</strong></p>
+                      <p>{isEn ? "Collected" : "Cobrado"}: <strong>{formatAmount(collectedAmount, locale)}</strong></p>
+                      <p>{isEn ? "Outstanding" : "Pendiente"}: <strong>{formatAmount(outstandingAmount, locale)}</strong></p>
                     </div>
-                    <p className="mt-2 text-xs text-[#3a4f67]">Fecha emision: {formatDate(invoice.issue_date)}</p>
+                    <p className="mt-2 text-xs text-[#3a4f67]">{isEn ? "Issue date" : "Fecha emision"}: {formatDate(invoice.issue_date, locale)}</p>
                     <p className="mt-1 text-xs text-[#3a4f67]">
-                      Email: <strong>{invoice.recipient_email ?? "Sin definir"}</strong>
+                      Email: <strong className="break-words">{invoice.recipient_email ?? (isEn ? "Undefined" : "Sin definir")}</strong>
                     </p>
                     <p className="mt-1 text-xs text-[#3a4f67]">
-                      Enviada: <strong>{invoice.sent_at ? formatDate(invoice.sent_at) : "No"}</strong>
+                      {isEn ? "Sent" : "Enviada"}: <strong>{invoice.sent_at ? formatDate(invoice.sent_at, locale) : (isEn ? "No" : "No")}</strong>
                     </p>
                     <p className="mt-1 text-xs text-[#3a4f67]">
-                      Cobrada: <strong>{invoice.paid_at ? formatDate(invoice.paid_at) : "No"}</strong>
+                      {isEn ? "Paid" : "Cobrada"}: <strong>{invoice.paid_at ? formatDate(invoice.paid_at, locale) : (isEn ? "No" : "No")}</strong>
                     </p>
                     <p className="mt-1 text-xs text-[#3a4f67]">
-                      Metodo: <strong>{invoice.payment_method ?? "Sin registrar"}</strong>
+                      {isEn ? "Method" : "Metodo"}: <strong className="break-words">{invoice.payment_method ?? (isEn ? "Not recorded" : "Sin registrar")}</strong>
                       {invoice.payment_reference ? ` · Ref ${invoice.payment_reference}` : ""}
                     </p>
                     {invoice.payment_notes && (
                       <p className="mt-1 text-xs text-[#3a4f67]">
-                        Cobro: <strong>{invoice.payment_notes}</strong>
+                        {isEn ? "Payment" : "Cobro"}: <strong className="break-words">{invoice.payment_notes}</strong>
                       </p>
                     )}
                     {invoice.rectification_reason && (
                       <p className="mt-1 text-xs text-[#3a4f67]">
-                        Rectificacion: <strong>{invoice.rectification_reason}</strong>
+                        {isEn ? "Rectification" : "Rectificacion"}: <strong className="break-words">{invoice.rectification_reason}</strong>
                       </p>
                     )}
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -1245,7 +1283,7 @@ export function InvoiceWorkspace({
                         className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
                         onClick={() => startEditing(invoice)}
                       >
-                        Editar
+                        {isEn ? "Edit" : "Editar"}
                       </button>
                       <button
                         type="button"
@@ -1253,14 +1291,14 @@ export function InvoiceWorkspace({
                         className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
                         onClick={() => void handleDuplicate(invoice.id)}
                       >
-                        Duplicar
+                        {isEn ? "Duplicate" : "Duplicar"}
                       </button>
                       <button
                         type="button"
                         className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
                         onClick={() => openPrintableView(invoice.id)}
                       >
-                        Vista PDF
+                        {isEn ? "PDF view" : "Vista PDF"}
                       </button>
                       {invoice.invoice_type !== "rectificative" && (
                         <button
@@ -1269,7 +1307,7 @@ export function InvoiceWorkspace({
                           className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
                           onClick={() => void handleRectify(invoice.id)}
                         >
-                          Rectificar
+                          {isEn ? "Rectify" : "Rectificar"}
                         </button>
                       )}
                       <button
@@ -1278,7 +1316,7 @@ export function InvoiceWorkspace({
                         className="advisor-btn bg-indigo-600 px-3 py-2 text-sm font-semibold text-white"
                         onClick={() => handleSend(invoice)}
                       >
-                        Enviar
+                        {isEn ? "Send" : "Enviar"}
                       </button>
                       {invoice.status === "draft" && (
                         <button
@@ -1287,7 +1325,7 @@ export function InvoiceWorkspace({
                           className="advisor-btn bg-blue-600 px-3 py-2 text-sm font-semibold text-white"
                           onClick={() => handleStatusChange(invoice.id, "issued")}
                         >
-                          Emitir
+                          {isEn ? "Issue" : "Emitir"}
                         </button>
                       )}
                       {invoice.status !== "paid" && (
@@ -1297,7 +1335,7 @@ export function InvoiceWorkspace({
                           className="advisor-btn bg-emerald-600 px-3 py-2 text-sm font-semibold text-white"
                           onClick={() => startEditing(invoice)}
                         >
-                          Cobros
+                          {isEn ? "Payments" : "Cobros"}
                         </button>
                       )}
                       {invoice.status !== "draft" && (
@@ -1307,7 +1345,7 @@ export function InvoiceWorkspace({
                           className="advisor-btn bg-slate-600 px-3 py-2 text-sm font-semibold text-white"
                           onClick={() => handleStatusChange(invoice.id, "draft")}
                         >
-                          Volver a borrador
+                          {isEn ? "Back to draft" : "Volver a borrador"}
                         </button>
                       )}
                       <button
@@ -1316,7 +1354,7 @@ export function InvoiceWorkspace({
                         className="advisor-btn bg-red-600 px-3 py-2 text-sm font-semibold text-white"
                         onClick={() => handleDelete(invoice.id)}
                       >
-                        Eliminar
+                        {isEn ? "Delete" : "Eliminar"}
                       </button>
                     </div>
                   </div>

@@ -1,5 +1,8 @@
 "use client";
 
+import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
+import { uiText } from "@/lib/i18n/ui";
+import { useAdminKnowledgeWorkspace } from "@/hooks/useAdminKnowledgeWorkspace";
 import { AuditTimeline } from "./AuditTimeline";
 import {
   AdminHardwarePanel,
@@ -9,7 +12,6 @@ import {
   AdminObservabilityPanel,
 } from "./admin/AdminKnowledgePanels";
 import type { AdminDocumentRecord } from "./admin/admin-knowledge-types";
-import { useAdminKnowledgeWorkspace } from "@/hooks/useAdminKnowledgeWorkspace";
 
 export type { AdminDocumentRecord } from "./admin/admin-knowledge-types";
 
@@ -26,6 +28,7 @@ export function AdminKnowledgeWorkspace({
   initialChunkCount,
   initialAuditLogs,
 }: AdminKnowledgeWorkspaceProps) {
+  const { locale } = useAppPreferences();
   const { state, actions } = useAdminKnowledgeWorkspace({
     initialDocuments,
     initialDocumentCount,
@@ -34,62 +37,64 @@ export function AdminKnowledgeWorkspace({
   });
 
   return (
-    <div className="grid h-full min-h-0 gap-4 lg:grid-cols-5">
-      <section className="flex min-h-0 min-w-0 flex-col gap-4 lg:col-span-3">
-        <AdminHeaderPanel
-          documentCount={state.documentCount}
-          chunkCount={state.chunkCount}
-          notebookTitle={state.notebookPreset.notebookTitle}
-          refreshing={state.refreshing}
-          autoRefreshEnabled={state.autoRefreshEnabled}
-          autoRefreshIntervalSec={state.autoRefreshIntervalSec}
-          onAutoRefreshEnabledChange={actions.setAutoRefreshEnabled}
-          onAutoRefreshIntervalChange={actions.setAutoRefreshIntervalSec}
-          onRefresh={() => void actions.refreshStatus()}
-        />
-        <AdminObservabilityPanel summary={state.traceSummary} traces={state.traces} />
-        <AdminHardwarePanel
-          runtimeGate={state.hardware?.runtimeGate}
-          baseline={state.hardware?.baseline}
-          benchmark={state.hardware?.benchmark}
-          cron={state.cron}
-        />
-        <AuditTimeline title="Auditoria admin RAG" logs={state.auditLogs} />
-        <AdminInventoryPanel
-          documents={state.filteredDocuments}
-          totalDocuments={state.filteredDocumentCount}
-          domainFilter={state.inventoryDomainFilter}
-          topicFilter={state.inventoryTopicFilter}
-          search={state.inventorySearch}
-          page={state.inventoryPage}
-          pageSize={state.inventoryPageSize}
-          selectedDocument={state.selectedDocument}
-          selectedDocumentIds={state.selectedDocumentIds}
-          bulkDeleting={state.bulkDeleting}
-          onDomainFilterChange={actions.setInventoryDomainFilter}
-          onTopicFilterChange={actions.setInventoryTopicFilter}
-          onSearchChange={actions.setInventorySearch}
-          onPageChange={actions.setInventoryPage}
-          onPageSizeChange={actions.setInventoryPageSize}
-          onSelectDocument={actions.setSelectedDocumentId}
-          onToggleDocumentSelection={actions.toggleDocumentSelection}
-          onSelectVisibleDocuments={actions.selectVisibleDocuments}
-          onClearDocumentSelection={actions.clearDocumentSelection}
-          onDeleteDocument={(documentId) => void actions.deleteDocument(documentId)}
-          onBulkDeleteDocuments={(documentIds) => void actions.bulkDeleteDocuments(documentIds)}
-          versions={state.documentVersions}
-          versionDiff={state.documentVersionDiff}
-          selectedLeftVersionId={state.selectedLeftVersionId}
-          selectedRightVersionId={state.selectedRightVersionId}
-          loadingVersionDiff={state.loadingVersionDiff}
-          rollingBackDocumentId={state.rollingBackDocumentId}
-          onLeftVersionChange={actions.setSelectedLeftVersionId}
-          onRightVersionChange={actions.setSelectedRightVersionId}
-          onRollbackDocument={(documentId, versionId) => void actions.rollbackDocument(documentId, versionId)}
-        />
+    <div className="grid h-full min-h-0 overflow-hidden gap-4 lg:grid-cols-5">
+      <section className="flex min-h-0 min-w-0 overflow-hidden lg:col-span-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
+          <AdminHeaderPanel
+            documentCount={state.documentCount}
+            chunkCount={state.chunkCount}
+            notebookTitle={state.notebookPreset.notebookTitle}
+            refreshing={state.refreshing}
+            autoRefreshEnabled={state.autoRefreshEnabled}
+            autoRefreshIntervalSec={state.autoRefreshIntervalSec}
+            onAutoRefreshEnabledChange={actions.setAutoRefreshEnabled}
+            onAutoRefreshIntervalChange={actions.setAutoRefreshIntervalSec}
+            onRefresh={() => void actions.refreshStatus()}
+          />
+          <AdminObservabilityPanel summary={state.traceSummary} traces={state.traces} />
+          <AdminHardwarePanel
+            runtimeGate={state.hardware?.runtimeGate}
+            baseline={state.hardware?.baseline}
+            benchmark={state.hardware?.benchmark}
+            cron={state.cron}
+          />
+          <AuditTimeline title={uiText(locale, "page.admin.audit")} logs={state.auditLogs} />
+          <AdminInventoryPanel
+            documents={state.filteredDocuments}
+            totalDocuments={state.filteredDocumentCount}
+            domainFilter={state.inventoryDomainFilter}
+            topicFilter={state.inventoryTopicFilter}
+            search={state.inventorySearch}
+            page={state.inventoryPage}
+            pageSize={state.inventoryPageSize}
+            selectedDocument={state.selectedDocument}
+            selectedDocumentIds={state.selectedDocumentIds}
+            bulkDeleting={state.bulkDeleting}
+            onDomainFilterChange={actions.setInventoryDomainFilter}
+            onTopicFilterChange={actions.setInventoryTopicFilter}
+            onSearchChange={actions.setInventorySearch}
+            onPageChange={actions.setInventoryPage}
+            onPageSizeChange={actions.setInventoryPageSize}
+            onSelectDocument={actions.setSelectedDocumentId}
+            onToggleDocumentSelection={actions.toggleDocumentSelection}
+            onSelectVisibleDocuments={actions.selectVisibleDocuments}
+            onClearDocumentSelection={actions.clearDocumentSelection}
+            onDeleteDocument={(documentId) => void actions.deleteDocument(documentId)}
+            onBulkDeleteDocuments={(documentIds) => void actions.bulkDeleteDocuments(documentIds)}
+            versions={state.documentVersions}
+            versionDiff={state.documentVersionDiff}
+            selectedLeftVersionId={state.selectedLeftVersionId}
+            selectedRightVersionId={state.selectedRightVersionId}
+            loadingVersionDiff={state.loadingVersionDiff}
+            rollingBackDocumentId={state.rollingBackDocumentId}
+            onLeftVersionChange={actions.setSelectedLeftVersionId}
+            onRightVersionChange={actions.setSelectedRightVersionId}
+            onRollbackDocument={(documentId, versionId) => void actions.rollbackDocument(documentId, versionId)}
+          />
+        </div>
       </section>
 
-      <div className="min-h-0 min-w-0 lg:col-span-2">
+      <div className="flex min-h-0 min-w-0 overflow-hidden lg:col-span-2">
         <AdminIngestSidebar
           domain={state.domain}
           notebookPreset={state.notebookPreset}

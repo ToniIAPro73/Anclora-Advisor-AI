@@ -1,9 +1,12 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { AuditLogRecord } from "@/lib/audit/logs";
 import { FiscalWorkspace } from "@/components/features/FiscalWorkspace";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
 import type { FiscalAlertRecord } from "@/lib/fiscal/alerts";
 import type { FiscalAlertTemplateRecord } from "@/lib/fiscal/templates";
+import { resolveLocale } from "@/lib/i18n/messages";
+import { uiText } from "@/lib/i18n/ui";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
 interface DashboardFiscalPageProps {
@@ -18,6 +21,8 @@ export default async function DashboardFiscalPage({ searchParams }: DashboardFis
     redirect("/login");
   }
 
+  const cookieStore = await cookies();
+  const locale = resolveLocale(cookieStore.get("anclora.locale")?.value);
   const params = (await searchParams) ?? {};
   const supabase = createUserScopedSupabaseClient(accessToken);
   const { data, error } = await supabase
@@ -46,13 +51,13 @@ export default async function DashboardFiscalPage({ searchParams }: DashboardFis
   return (
     <section className="flex h-full min-h-0 flex-col gap-3">
       <article className="advisor-card shrink-0 p-4">
-        <h1 className="advisor-heading text-3xl text-[#162944]">Panel Fiscal</h1>
-        <p className="mt-2 text-sm text-[#3a4f67]">
-          Workspace operativo para crear, priorizar y cerrar alertas fiscales del usuario autenticado.
+        <h1 className="advisor-heading text-3xl" style={{ color: "var(--text-primary)" }}>{uiText(locale, "page.fiscal.title")}</h1>
+        <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+          {uiText(locale, "page.fiscal.subtitle")}
         </p>
         {combinedError && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            No se pudieron cargar datos fiscales: {combinedError}
+            {uiText(locale, "page.fiscal.load_error")} {combinedError}
           </div>
         )}
       </article>
