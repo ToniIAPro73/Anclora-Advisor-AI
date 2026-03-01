@@ -13,6 +13,7 @@ import { buildInvoiceReference } from "@/lib/invoices/service";
 interface InvoiceWorkspaceProps {
   initialInvoices: InvoiceRecord[];
   initialAuditLogs: AuditLogRecord[];
+  initialFilters?: Partial<InvoiceFilters>;
 }
 
 type InvoiceFormState = {
@@ -24,6 +25,10 @@ type InvoiceFormState = {
   issueDate: string;
   series: string;
   recipientEmail: string;
+  paidAt: string;
+  paymentMethod: string;
+  paymentReference: string;
+  paymentNotes: string;
 };
 
 type InvoiceFilterStatus = "all" | InvoiceStatus;
@@ -84,6 +89,10 @@ const INITIAL_FORM: InvoiceFormState = {
   issueDate: TODAY,
   series: TODAY.slice(0, 4),
   recipientEmail: "",
+  paidAt: "",
+  paymentMethod: "",
+  paymentReference: "",
+  paymentNotes: "",
 };
 
 const INITIAL_FILTERS: InvoiceFilters = {
@@ -142,15 +151,19 @@ function toFormState(invoice: InvoiceRecord): InvoiceFormState {
     issueDate: invoice.issue_date,
     series: invoice.series ?? invoice.issue_date.slice(0, 4),
     recipientEmail: invoice.recipient_email ?? "",
+    paidAt: invoice.paid_at ? invoice.paid_at.slice(0, 10) : "",
+    paymentMethod: invoice.payment_method ?? "",
+    paymentReference: invoice.payment_reference ?? "",
+    paymentNotes: invoice.payment_notes ?? "",
   };
 }
 
-export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceWorkspaceProps) {
+export function InvoiceWorkspace({ initialInvoices, initialAuditLogs, initialFilters }: InvoiceWorkspaceProps) {
   const [invoices, setInvoices] = useState<InvoiceRecord[]>(initialInvoices);
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
   const [form, setForm] = useState<InvoiceFormState>(INITIAL_FORM);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
-  const [filters, setFilters] = useState<InvoiceFilters>(INITIAL_FILTERS);
+  const [filters, setFilters] = useState<InvoiceFilters>({ ...INITIAL_FILTERS, ...initialFilters });
   const [submitting, setSubmitting] = useState(false);
   const [updatingInvoiceId, setUpdatingInvoiceId] = useState<string | null>(null);
   const [processingQueue, setProcessingQueue] = useState(false);
@@ -173,6 +186,14 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
   const paidCount = useMemo(() => invoices.filter((invoice) => invoice.status === "paid").length, [invoices]);
   const totalVolume = useMemo(
     () => invoices.reduce((sum, invoice) => sum + Number(invoice.total_amount), 0),
+    [invoices]
+  );
+  const paidVolume = useMemo(
+    () => invoices.filter((invoice) => invoice.status === "paid").reduce((sum, invoice) => sum + Number(invoice.total_amount), 0),
+    [invoices]
+  );
+  const pendingCollectionVolume = useMemo(
+    () => invoices.filter((invoice) => invoice.status !== "paid").reduce((sum, invoice) => sum + Number(invoice.total_amount), 0),
     [invoices]
   );
 
@@ -301,6 +322,10 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
           issueDate: form.issueDate,
           series: form.series.trim().toUpperCase(),
           recipientEmail: form.recipientEmail.trim() || undefined,
+          paidAt: form.paidAt ? new Date(`${form.paidAt}T12:00:00.000Z`).toISOString() : undefined,
+          paymentMethod: form.paymentMethod.trim() || undefined,
+          paymentReference: form.paymentReference.trim() || undefined,
+          paymentNotes: form.paymentNotes.trim() || undefined,
         }),
       });
 
@@ -353,6 +378,58 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
       await refreshAuditLogs();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Error al actualizar factura");
+    } finally {
+      setUpdatingInvoiceId(null);
+    }
+  }
+
+  async function handleRegisterPayment(invoice: InvoiceRecord) {
+    const paymentMethod =
+      invoice.payment_method?.trim() ||
+      window.prompt(
+        "Metodo de cobro (transferencia, tarjeta, bizum, efectivo...)",
+        "transferencia"
+      );
+
+    if (!paymentMethod) {
+      return;
+    }
+
+    const paymentReference =
+      invoice.payment_reference ??
+      (window.prompt("Referencia del cobro (opcional)", "") ?? "");
+
+    setUpdatingInvoiceId(invoice.id);
+    setError(null);
+    setOkMessage(null);
+
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "paid",
+          paidAt: new Date().toISOString(),
+          paymentMethod,
+          paymentReference: paymentReference.trim() || null,
+        }),
+      });
+      const result = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        invoice?: InvoiceRecord;
+      };
+
+      if (!response.ok || !result.success || !result.invoice) {
+        throw new Error(result.error ?? "No se pudo registrar el cobro");
+      }
+
+      upsertInvoice(result.invoice);
+      setOkMessage("Cobro registrado correctamente.");
+      await refreshInvoices();
+      await refreshAuditLogs();
+    } catch (paymentError) {
+      setError(paymentError instanceof Error ? paymentError.message : "Error al registrar cobro");
     } finally {
       setUpdatingInvoiceId(null);
     }
@@ -614,6 +691,48 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
+                <label className="advisor-label" htmlFor="paymentMethod">Metodo de cobro</label>
+                <input
+                  id="paymentMethod"
+                  className="advisor-input"
+                  value={form.paymentMethod}
+                  onChange={(event) => setForm((current) => ({ ...current, paymentMethod: event.target.value }))}
+                  placeholder="transferencia, bizum..."
+                />
+              </div>
+              <div>
+                <label className="advisor-label" htmlFor="paidAt">Fecha de cobro</label>
+                <input
+                  id="paidAt"
+                  type="date"
+                  className="advisor-input"
+                  value={form.paidAt}
+                  onChange={(event) => setForm((current) => ({ ...current, paidAt: event.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="advisor-label" htmlFor="paymentReference">Referencia de cobro</label>
+              <input
+                id="paymentReference"
+                className="advisor-input"
+                value={form.paymentReference}
+                onChange={(event) => setForm((current) => ({ ...current, paymentReference: event.target.value }))}
+                placeholder="Operacion bancaria o referencia interna"
+              />
+            </div>
+            <div>
+              <label className="advisor-label" htmlFor="paymentNotes">Notas de cobro</label>
+              <textarea
+                id="paymentNotes"
+                className="advisor-input min-h-20 resize-y"
+                value={form.paymentNotes}
+                onChange={(event) => setForm((current) => ({ ...current, paymentNotes: event.target.value }))}
+                placeholder="Incidencias, fraccionamiento o detalle de conciliacion"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
                 <label className="advisor-label" htmlFor="amountBase">Base imponible</label>
                 <input
                   id="amountBase"
@@ -682,6 +801,16 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
               <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Volumen total</p>
               <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(totalVolume)}</p>
               <p className="mt-1 text-sm text-[#3a4f67]">Suma de importes totales del historial visible.</p>
+            </div>
+            <div className="advisor-card-muted p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Cobrado</p>
+              <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(paidVolume)}</p>
+              <p className="mt-1 text-sm text-[#3a4f67]">Importe conciliado como pagado.</p>
+            </div>
+            <div className="advisor-card-muted p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Pendiente de cobro</p>
+              <p className="mt-1 text-xl font-semibold text-[#162944]">{formatAmount(pendingCollectionVolume)}</p>
+              <p className="mt-1 text-sm text-[#3a4f67]">Importe aun no conciliado.</p>
             </div>
           </div>
           <div className="mt-4 rounded-2xl border border-[#d2dceb] bg-white p-3">
@@ -840,6 +969,18 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
                     <p className="mt-1 text-xs text-[#3a4f67]">
                       Enviada: <strong>{invoice.sent_at ? formatDate(invoice.sent_at) : "No"}</strong>
                     </p>
+                    <p className="mt-1 text-xs text-[#3a4f67]">
+                      Cobrada: <strong>{invoice.paid_at ? formatDate(invoice.paid_at) : "No"}</strong>
+                    </p>
+                    <p className="mt-1 text-xs text-[#3a4f67]">
+                      Metodo: <strong>{invoice.payment_method ?? "Sin registrar"}</strong>
+                      {invoice.payment_reference ? ` · Ref ${invoice.payment_reference}` : ""}
+                    </p>
+                    {invoice.payment_notes && (
+                      <p className="mt-1 text-xs text-[#3a4f67]">
+                        Cobro: <strong>{invoice.payment_notes}</strong>
+                      </p>
+                    )}
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -886,9 +1027,9 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
                           type="button"
                           disabled={isBusy}
                           className="advisor-btn bg-emerald-600 px-3 py-2 text-sm font-semibold text-white"
-                          onClick={() => handleStatusChange(invoice.id, "paid")}
+                          onClick={() => void handleRegisterPayment(invoice)}
                         >
-                          Marcar pagada
+                          Registrar cobro
                         </button>
                       )}
                       {invoice.status !== "draft" && (

@@ -14,6 +14,10 @@ export const INVOICE_SELECT_FIELDS = [
   "invoice_number",
   "recipient_email",
   "sent_at",
+  "paid_at",
+  "payment_method",
+  "payment_reference",
+  "payment_notes",
   "created_at",
 ].join(", ");
 

@@ -32,6 +32,10 @@ function buildInvoiceFixture(): InvoiceRecord {
     invoice_number: 7,
     recipient_email: "cliente@demo.com",
     sent_at: null,
+    paid_at: null,
+    payment_method: null,
+    payment_reference: null,
+    payment_notes: null,
     created_at: "2026-02-28T10:00:00.000Z",
   };
 }

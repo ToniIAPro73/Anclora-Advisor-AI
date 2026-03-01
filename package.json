@@ -21,6 +21,7 @@
     "labor:workflow:v3:apply": "tsx scripts/apply-labor-mitigation-v3.ts",
     "labor:evidence:storage:apply": "tsx scripts/apply-labor-evidence-storage.ts",
     "invoice:workflow:apply": "tsx scripts/apply-invoice-series-delivery.ts",
+    "invoice:workflow:v4:apply": "tsx scripts/apply-invoice-payment-v4.ts",
     "fiscal:templates:apply": "tsx scripts/apply-fiscal-templates.ts",
     "fiscal:workflow:v2:apply": "tsx scripts/apply-fiscal-workflow-v2.ts",
     "ops:apply": "tsx scripts/apply-operations-outbox-jobs.ts",

@@ -9,6 +9,7 @@
 - Vista imprimible lista para PDF.
 - Envio real por SMTP con PDF adjunto via outbox y job queue.
 - Exportacion del libro visible en CSV y JSON.
+- Seguimiento de cobro con fecha, metodo, referencia y notas.
 
 ## Endpoints
 - `GET /api/invoices`
@@ -29,8 +30,10 @@
 - Resumen de volumen y estados.
 - Libro de facturas agrupado por periodo y estado.
 - Lista filtrable con acciones de emitir, marcar pagada, volver a borrador, eliminar, abrir vista PDF, encolar envios y procesar cola.
+- Registro de cobro desde listado o formulario de edicion.
 - Accion de duplicar factura desde listado.
 - Filtros avanzados por cliente/NIF, serie, estado y rango de fechas.
+- Resumen de volumen total, cobrado y pendiente de cobro.
 
 ## Flujo
 - Al crear una factura se asigna `series` y `invoice_number`.
@@ -39,6 +42,7 @@
 - `Enviar` crea un registro en `email_outbox` y un `app_job`.
 - `Procesar cola` ejecuta jobs pendientes del usuario actual.
 - Solo cuando el job termina con exito se actualizan `recipient_email`, `sent_at` y `draft -> issued`.
+- `Registrar cobro` actualiza `paid_at`, `payment_method`, `payment_reference` y deja trazabilidad operativa.
 
 ## Variables de entorno
 - `SMTP_HOST`

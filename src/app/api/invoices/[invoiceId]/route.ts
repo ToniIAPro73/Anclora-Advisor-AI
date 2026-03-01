@@ -72,6 +72,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (patch.issueDate !== undefined) updatePayload.issue_date = patch.issueDate;
   if (patch.recipientEmail !== undefined) updatePayload.recipient_email = patch.recipientEmail;
   if (patch.status !== undefined) updatePayload.status = patch.status;
+  if (patch.paymentMethod !== undefined) updatePayload.payment_method = patch.paymentMethod;
+  if (patch.paymentReference !== undefined) updatePayload.payment_reference = patch.paymentReference;
+  if (patch.paymentNotes !== undefined) updatePayload.payment_notes = patch.paymentNotes;
+  if (patch.paidAt !== undefined) updatePayload.paid_at = patch.paidAt;
 
   const needsRecalculation =
     patch.amountBase !== undefined || patch.ivaRate !== undefined || patch.irpfRetention !== undefined;
@@ -141,6 +145,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         return response;
       }
     }
+  }
+
+  if (patch.status === "paid" && patch.paidAt === undefined) {
+    updatePayload.paid_at = new Date().toISOString();
+  }
+
+  if (patch.status && patch.status !== "paid" && patch.paidAt === undefined) {
+    updatePayload.paid_at = null;
   }
 
   const { data, error } = await supabase

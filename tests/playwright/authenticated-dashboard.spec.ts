@@ -60,6 +60,8 @@ test("login flow and dashboard navigation create a real invoice", async ({ page 
   await page.getByLabel("NIF/CIF").fill("B12345678");
   await page.getByLabel("Serie").fill("PWUI");
   await page.getByLabel("Email destinatario").fill("cliente.ui@example.com");
+  await page.getByLabel("Metodo de cobro").fill("transferencia");
+  await page.getByLabel("Referencia de cobro").fill("COBRO-UI-001");
   await page.getByRole("button", { name: "Guardar borrador" }).click();
 
   await expect(page.getByText("Factura guardada en borrador.")).toBeVisible();
@@ -68,6 +70,17 @@ test("login flow and dashboard navigation create a real invoice", async ({ page 
   await page.getByPlaceholder("Cliente o NIF").fill(clientName);
   await page.getByRole("button", { name: "Aplicar filtros" }).click();
   await expect(page.getByText(clientName)).toBeVisible();
+
+  const invoiceCard = page.locator("div").filter({ has: page.getByText(clientName, { exact: true }) }).first();
+  await invoiceCard.getByRole("button", { name: "Emitir" }).click();
+  await expect(page.getByText("Factura marcada como issued.")).toBeVisible();
+
+  const registerPaymentButton = invoiceCard.getByRole("button", { name: "Registrar cobro" });
+  await expect(registerPaymentButton).toBeEnabled();
+  await registerPaymentButton.click();
+  await expect(page.getByText("Cobro registrado correctamente.")).toBeVisible();
+  await expect(invoiceCard.getByText("Metodo: transferencia · Ref COBRO-UI-001")).toBeVisible();
+  await expect(invoiceCard.getByText("Cobrada:")).toBeVisible();
 });
 
 test("fiscal UI creates a real alert and template", async ({ page }) => {

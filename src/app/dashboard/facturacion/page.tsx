@@ -5,18 +5,29 @@ import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth
 import type { InvoiceRecord } from "@/lib/invoices/contracts";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
-export default async function DashboardFacturacionPage() {
+interface DashboardFacturacionPageProps {
+  searchParams?: Promise<{
+    q?: string;
+    status?: string;
+    series?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }>;
+}
+
+export default async function DashboardFacturacionPage({ searchParams }: DashboardFacturacionPageProps) {
   const user = await getCurrentUserFromCookies();
   const accessToken = await getAccessTokenFromCookies();
   if (!user || !accessToken) {
     redirect("/login");
   }
 
+  const params = (await searchParams) ?? {};
   const supabase = createUserScopedSupabaseClient(accessToken);
   const { data } = await supabase
     .from("invoices")
     .select(
-      "id, client_name, client_nif, amount_base, iva_rate, irpf_retention, total_amount, issue_date, status, series, invoice_number, recipient_email, sent_at, created_at"
+      "id, client_name, client_nif, amount_base, iva_rate, irpf_retention, total_amount, issue_date, status, series, invoice_number, recipient_email, sent_at, paid_at, payment_method, payment_reference, payment_notes, created_at"
     )
     .order("created_at", { ascending: false })
     .limit(60);
@@ -39,7 +50,20 @@ export default async function DashboardFacturacionPage() {
           Workspace operativo para alta, edicion, numeracion por serie, vista imprimible y envio asistido.
         </p>
       </article>
-      <InvoiceWorkspace initialInvoices={invoices} initialAuditLogs={auditLogs} />
+      <InvoiceWorkspace
+        initialInvoices={invoices}
+        initialAuditLogs={auditLogs}
+        initialFilters={{
+          q: params.q ?? "",
+          series: params.series ?? "",
+          dateFrom: params.dateFrom ?? "",
+          dateTo: params.dateTo ?? "",
+          status:
+            params.status === "draft" || params.status === "issued" || params.status === "paid"
+              ? params.status
+              : "all",
+        }}
+      />
     </section>
   );
 }

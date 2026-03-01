@@ -141,6 +141,10 @@ export async function POST(request: NextRequest) {
       series,
       invoice_number: invoiceNumber,
       recipient_email: invoice.recipientEmail ?? null,
+      paid_at: invoice.paidAt ?? null,
+      payment_method: invoice.paymentMethod ?? null,
+      payment_reference: invoice.paymentReference ?? null,
+      payment_notes: invoice.paymentNotes ?? null,
     })
     .select(INVOICE_SELECT_FIELDS)
     .single();
