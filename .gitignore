@@ -9,3 +9,5 @@ node_modules/
 coverage/
 tsconfig.tsbuildinfo
 artifacts/
+playwright-report/
+test-results/

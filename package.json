@@ -40,6 +40,7 @@
     "test:admin-status:service": "tsx tests/unit/test-admin-status-service.ts",
     "test:chat-actions": "tsx tests/unit/test-chat-action-suggestions.ts",
     "test:e2e:auth": "tsx tests/e2e/test-authenticated-workflows.ts",
+    "test:e2e:ui": "node scripts/run-playwright-with-env.mjs",
     "test:integration:ops": "tsx tests/integration/test-operational-workflows.ts",
     "test:i18n": "tsx tests/test-i18n-hardening.ts",
     "test:smoke": "tsx tests/test-smoke-hardening.ts"
@@ -62,6 +63,7 @@
     "node": ">=20.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.16.0",
     "@types/react": "19.2.14",
