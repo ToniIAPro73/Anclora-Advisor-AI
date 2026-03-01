@@ -11,7 +11,10 @@ import type {
 export type ChatActionKind =
   | "create_fiscal_alert"
   | "create_labor_assessment"
-  | "create_invoice_draft";
+  | "create_invoice_draft"
+  | "open_existing_fiscal_alert"
+  | "open_existing_labor_assessment"
+  | "open_existing_invoice";
 
 export interface ChatActionRoutingLike {
   primarySpecialist: string;
@@ -48,6 +51,10 @@ export interface InvoiceDraftActionPayload {
   recipientEmail?: string;
 }
 
+export interface ExistingEntityActionPayload {
+  searchQuery: string;
+}
+
 export interface ChatSuggestedAction {
   id: string;
   kind: ChatActionKind;
@@ -58,7 +65,8 @@ export interface ChatSuggestedAction {
   payload:
     | FiscalAlertActionPayload
     | LaborAssessmentActionPayload
-    | InvoiceDraftActionPayload;
+    | InvoiceDraftActionPayload
+    | ExistingEntityActionPayload;
 }
 
 export interface BuildChatSuggestedActionsInput {
@@ -84,6 +92,18 @@ function summarizeText(value: string, maxLength: number): string {
     return cleaned;
   }
   return `${cleaned.slice(0, maxLength - 1).trim()}...`;
+}
+
+function toNavigationHref(pathname: string, params: Record<string, string>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    const normalized = value.trim();
+    if (normalized) {
+      search.set(key, normalized);
+    }
+  }
+  const query = search.toString();
+  return query ? `${pathname}?${query}` : pathname;
 }
 
 function inferFiscalAlertType(query: string): FiscalAlertType {
@@ -126,6 +146,15 @@ function shouldSuggestFiscalAlert(query: string, primarySpecialist: string): boo
     return false;
   }
   return /cuota cero|iva|irpf|reta|modelo|plazo|venc|present|deduc|record/.test(
+    query.toLowerCase(),
+  );
+}
+
+function shouldOpenExistingFiscalAlerts(query: string, primarySpecialist: string): boolean {
+  if (primarySpecialist !== "fiscal") {
+    return false;
+  }
+  return /\b(tengo|mis|pendiente|pendientes|estado|presentad|alerta|alertas)\b/.test(
     query.toLowerCase(),
   );
 }
@@ -214,6 +243,18 @@ function buildLaborAssessmentAction(
   };
 }
 
+function shouldOpenExistingLaborAssessments(
+  query: string,
+  primarySpecialist: string,
+): boolean {
+  if (primarySpecialist !== "labor") {
+    return false;
+  }
+  return /\b(tengo|mis|seguimiento|evaluacion|evaluaciones|mitigacion|mitigaciones)\b/.test(
+    query.toLowerCase(),
+  );
+}
+
 function buildInvoiceDraftAction(query: string): ChatSuggestedAction | null {
   const parsed = parseInvoiceCalculationQuery(query);
   if (!parsed.matched) {
@@ -239,6 +280,67 @@ function buildInvoiceDraftAction(query: string): ChatSuggestedAction | null {
   };
 }
 
+function shouldOpenExistingInvoices(query: string): boolean {
+  const normalized = query.toLowerCase();
+  if (parseInvoiceCalculationQuery(query).matched) {
+    return false;
+  }
+  return /\b(factura|facturas|cobro|cobrada|cobrada|pagada|pagadas|emitida|emitidas|cliente)\b/.test(
+    normalized,
+  );
+}
+
+function buildOpenExistingFiscalAlertAction(query: string): ChatSuggestedAction {
+  return {
+    id: "open_existing_fiscal_alert",
+    kind: "open_existing_fiscal_alert",
+    title: "Ver alertas fiscales relacionadas",
+    description:
+      "Abre el modulo fiscal con un filtro precargado para revisar alertas ya existentes antes de crear otra nueva.",
+    ctaLabel: "Ver alertas",
+    navigationHref: toNavigationHref("/dashboard/fiscal", {
+      q: summarizeText(query, 120),
+    }),
+    payload: {
+      searchQuery: summarizeText(query, 120),
+    },
+  };
+}
+
+function buildOpenExistingLaborAssessmentAction(query: string): ChatSuggestedAction {
+  return {
+    id: "open_existing_labor_assessment",
+    kind: "open_existing_labor_assessment",
+    title: "Ver evaluaciones laborales existentes",
+    description:
+      "Abre el modulo laboral con el escenario filtrado para revisar evaluaciones o mitigaciones ya registradas.",
+    ctaLabel: "Ver evaluaciones",
+    navigationHref: toNavigationHref("/dashboard/laboral", {
+      scenario: summarizeText(query, 120),
+    }),
+    payload: {
+      searchQuery: summarizeText(query, 120),
+    },
+  };
+}
+
+function buildOpenExistingInvoiceAction(query: string): ChatSuggestedAction {
+  return {
+    id: "open_existing_invoice",
+    kind: "open_existing_invoice",
+    title: "Ver facturas relacionadas",
+    description:
+      "Abre facturacion con filtros precargados para localizar facturas existentes antes de crear un nuevo borrador.",
+    ctaLabel: "Ver facturas",
+    navigationHref: toNavigationHref("/dashboard/facturacion", {
+      q: summarizeText(query, 120),
+    }),
+    payload: {
+      searchQuery: summarizeText(query, 120),
+    },
+  };
+}
+
 export function buildSuggestedChatActions(
   input: BuildChatSuggestedActionsInput,
 ): ChatSuggestedAction[] {
@@ -248,13 +350,19 @@ export function buildSuggestedChatActions(
 
   if (invoiceDraftAction) {
     actions.push(invoiceDraftAction);
+  } else if (shouldOpenExistingInvoices(input.query)) {
+    actions.push(buildOpenExistingInvoiceAction(input.query));
   }
 
-  if (shouldSuggestFiscalAlert(input.query, primarySpecialist)) {
+  if (shouldOpenExistingFiscalAlerts(input.query, primarySpecialist)) {
+    actions.push(buildOpenExistingFiscalAlertAction(input.query));
+  } else if (shouldSuggestFiscalAlert(input.query, primarySpecialist)) {
     actions.push(buildFiscalAlertAction(input.query, input.alerts));
   }
 
-  if (shouldSuggestLaborAssessment(input.query, primarySpecialist)) {
+  if (shouldOpenExistingLaborAssessments(input.query, primarySpecialist)) {
+    actions.push(buildOpenExistingLaborAssessmentAction(input.query));
+  } else if (shouldSuggestLaborAssessment(input.query, primarySpecialist)) {
     actions.push(buildLaborAssessmentAction(input.query, input.response, input.alerts));
   }
 

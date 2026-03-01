@@ -56,6 +56,12 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, actionStates
               <div className="mt-3 space-y-2">
                 {msg.suggestedActions.map((action) => {
                   const state = actionStates[`${msg.id}:${action.id}`] ?? { status: "idle", message: null };
+                  const successLabel =
+                    action.kind === "open_existing_fiscal_alert" ||
+                    action.kind === "open_existing_labor_assessment" ||
+                    action.kind === "open_existing_invoice"
+                      ? "Abierto"
+                      : "Creado";
                   return (
                     <div key={`${msg.id}_${action.id}`} className="rounded-lg border border-[#d2dceb] bg-[#f7faff] p-3">
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -74,7 +80,7 @@ export const MessageList: React.FC<MessageListProps> = ({ messages, actionStates
                           disabled={state.status === "loading" || state.status === "success"}
                           className="rounded-lg bg-[#1DAB89] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#179a7a] disabled:cursor-not-allowed disabled:bg-gray-300"
                         >
-                          {state.status === "loading" ? "Creando..." : state.status === "success" ? "Creado" : action.ctaLabel}
+                          {state.status === "loading" ? "Procesando..." : state.status === "success" ? successLabel : action.ctaLabel}
                         </button>
                         {state.message && (
                           <span

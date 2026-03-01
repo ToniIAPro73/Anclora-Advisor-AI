@@ -26,6 +26,7 @@ interface FiscalWorkspaceProps {
   initialAlerts: FiscalAlertRecord[];
   initialTemplates: FiscalAlertTemplateRecord[];
   initialAuditLogs: AuditLogRecord[];
+  initialSearchQuery?: string;
 }
 
 type FilterStatus = "all" | FiscalAlertStatus;
@@ -146,7 +147,12 @@ function toTemplateForm(template: FiscalAlertTemplateRecord): TemplateFormState 
   };
 }
 
-export function FiscalWorkspace({ initialAlerts, initialTemplates, initialAuditLogs }: FiscalWorkspaceProps) {
+export function FiscalWorkspace({
+  initialAlerts,
+  initialTemplates,
+  initialAuditLogs,
+  initialSearchQuery = "",
+}: FiscalWorkspaceProps) {
   const [alerts, setAlerts] = useState(sortFiscalAlerts(initialAlerts));
   const [templates, setTemplates] = useState(initialTemplates);
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
@@ -155,6 +161,7 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates, initialAuditL
   const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [submitting, setSubmitting] = useState(false);
   const [templateSubmitting, setTemplateSubmitting] = useState(false);
   const [processingQueue, setProcessingQueue] = useState(false);
@@ -165,8 +172,25 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates, initialAuditL
   const [okMessage, setOkMessage] = useState<string | null>(null);
 
   const filteredAlerts = useMemo(
-    () => (filterStatus === "all" ? alerts : alerts.filter((alert) => alert.status === filterStatus)),
-    [alerts, filterStatus]
+    () => {
+      const scopedAlerts = filterStatus === "all" ? alerts : alerts.filter((alert) => alert.status === filterStatus);
+      const needle = searchQuery.trim().toLowerCase();
+      if (!needle) {
+        return scopedAlerts;
+      }
+      return scopedAlerts.filter((alert) => {
+        const haystack = [
+          alert.alert_type,
+          alert.description ?? "",
+          alert.period_key ?? "",
+          alert.source,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(needle);
+      });
+    },
+    [alerts, filterStatus, searchQuery]
   );
   const proactiveAlerts = useMemo(() => buildProactiveFiscalAlerts(alerts), [alerts]);
   const fiscalJobs = useMemo(() => jobs.filter((job) => job.job_kind === "fiscal_template_generation"), [jobs]);
@@ -515,10 +539,18 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates, initialAuditL
               <h3 className="advisor-heading text-2xl text-[#162944]">Operacion fiscal</h3>
               <p className="mt-1 text-sm text-[#3a4f67]">{filteredAlerts.length} alerta(s), {templates.length} plantilla(s), {proactiveAlerts.length} alerta(s) proactiva(s).</p>
             </div>
-            <select className="advisor-input min-w-40" value={filterStatus} onChange={(event) => setFilterStatus(event.target.value as FilterStatus)}>
-              <option value="all">Todos</option>
-              {fiscalAlertStatusValues.map((status) => <option key={status} value={status}>{status}</option>)}
-            </select>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                className="advisor-input min-w-48"
+                placeholder="Buscar alerta o periodo"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+              <select className="advisor-input min-w-40" value={filterStatus} onChange={(event) => setFilterStatus(event.target.value as FilterStatus)}>
+                <option value="all">Todos</option>
+                {fiscalAlertStatusValues.map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+            </div>
           </div>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">

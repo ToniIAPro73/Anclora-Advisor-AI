@@ -20,6 +20,7 @@ interface LaborWorkspaceProps {
   initialAssessments: LaborRiskAssessmentRecord[];
   initialMitigationActions: LaborMitigationActionRecord[];
   initialAuditLogs: AuditLogRecord[];
+  initialFilters?: Partial<AssessmentFilters>;
 }
 
 type LaborFormState = {
@@ -214,7 +215,12 @@ function toFormState(assessment: LaborRiskAssessmentRecord): LaborFormState {
   };
 }
 
-export function LaborWorkspace({ initialAssessments, initialMitigationActions, initialAuditLogs }: LaborWorkspaceProps) {
+export function LaborWorkspace({
+  initialAssessments,
+  initialMitigationActions,
+  initialAuditLogs,
+  initialFilters,
+}: LaborWorkspaceProps) {
   const [assessments, setAssessments] = useState<LaborRiskAssessmentRecord[]>(initialAssessments);
   const [mitigationActions, setMitigationActions] = useState<LaborMitigationActionRecord[]>(initialMitigationActions);
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
@@ -229,7 +235,7 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
   const [updatingActionId, setUpdatingActionId] = useState<string | null>(null);
   const [evidenceLabel, setEvidenceLabel] = useState("");
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
-  const [filters, setFilters] = useState<AssessmentFilters>(INITIAL_FILTERS);
+  const [filters, setFilters] = useState<AssessmentFilters>({ ...INITIAL_FILTERS, ...initialFilters });
   const [error, setError] = useState<string | null>(null);
   const [okMessage, setOkMessage] = useState<string | null>(null);
 

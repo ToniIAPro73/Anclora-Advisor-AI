@@ -9,7 +9,16 @@ import {
 } from "@/lib/labor/assessments";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
-export default async function DashboardLaboralPage() {
+interface DashboardLaboralPageProps {
+  searchParams?: Promise<{
+    scenario?: string;
+    owner?: string;
+    actionStatus?: string;
+    slaState?: string;
+  }>;
+}
+
+export default async function DashboardLaboralPage({ searchParams }: DashboardLaboralPageProps) {
   const user = await getCurrentUserFromCookies();
   const accessToken = await getAccessTokenFromCookies();
 
@@ -17,6 +26,7 @@ export default async function DashboardLaboralPage() {
     redirect("/login");
   }
 
+  const params = (await searchParams) ?? {};
   const supabase = createUserScopedSupabaseClient(accessToken);
   const { data, error } = await supabase
     .from("labor_risk_assessments")
@@ -55,7 +65,28 @@ export default async function DashboardLaboralPage() {
           </div>
         )}
       </article>
-      <LaborWorkspace initialAssessments={assessments} initialMitigationActions={mitigationActions} initialAuditLogs={auditLogs} />
+      <LaborWorkspace
+        initialAssessments={assessments}
+        initialMitigationActions={mitigationActions}
+        initialAuditLogs={auditLogs}
+        initialFilters={{
+          scenarioQuery: params.scenario ?? "",
+          ownerQuery: params.owner ?? "",
+          actionStatus:
+            params.actionStatus === "pending" ||
+            params.actionStatus === "in_progress" ||
+            params.actionStatus === "completed" ||
+            params.actionStatus === "blocked"
+              ? params.actionStatus
+              : "all",
+          slaState:
+            params.slaState === "ok" ||
+            params.slaState === "warning" ||
+            params.slaState === "breached"
+              ? params.slaState
+              : "all",
+        }}
+      />
     </section>
   );
 }

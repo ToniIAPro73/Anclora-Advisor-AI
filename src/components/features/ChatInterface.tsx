@@ -226,6 +226,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       let response: Response;
       let successSummary = "";
 
+      if (action.kind === "open_existing_fiscal_alert" || action.kind === "open_existing_labor_assessment" || action.kind === "open_existing_invoice") {
+        router.push(action.navigationHref);
+        setActionStates((prev) => ({
+          ...prev,
+          [stateKey]: { status: "success", message: "Filtro aplicado en el modulo correspondiente." },
+        }));
+        appendAssistantMessage({
+          content: "He abierto el modulo con un filtro precargado para revisar entidades ya existentes relacionadas con esta consulta.",
+          suggestedActions: [],
+          alerts: [],
+          citations: [],
+          contexts: [],
+        });
+        return;
+      }
+
       if (action.kind === "create_fiscal_alert") {
         response = await fetch("/api/fiscal-alerts", {
           method: "POST",

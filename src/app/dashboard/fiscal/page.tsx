@@ -6,7 +6,11 @@ import type { FiscalAlertRecord } from "@/lib/fiscal/alerts";
 import type { FiscalAlertTemplateRecord } from "@/lib/fiscal/templates";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
-export default async function DashboardFiscalPage() {
+interface DashboardFiscalPageProps {
+  searchParams?: Promise<{ q?: string }>;
+}
+
+export default async function DashboardFiscalPage({ searchParams }: DashboardFiscalPageProps) {
   const user = await getCurrentUserFromCookies();
   const accessToken = await getAccessTokenFromCookies();
 
@@ -14,6 +18,7 @@ export default async function DashboardFiscalPage() {
     redirect("/login");
   }
 
+  const params = (await searchParams) ?? {};
   const supabase = createUserScopedSupabaseClient(accessToken);
   const { data, error } = await supabase
     .from("fiscal_alerts")
@@ -51,7 +56,12 @@ export default async function DashboardFiscalPage() {
           </div>
         )}
       </article>
-      <FiscalWorkspace initialAlerts={alerts} initialTemplates={templates} initialAuditLogs={auditLogs} />
+      <FiscalWorkspace
+        initialAlerts={alerts}
+        initialTemplates={templates}
+        initialAuditLogs={auditLogs}
+        initialSearchQuery={params.q ?? ""}
+      />
     </section>
   );
 }
