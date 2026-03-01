@@ -25,6 +25,7 @@ function mapPersistedMessage(message: ChatPersistedMessageRecord): ChatMessage |
     role: message.role,
     content: message.content,
     timestamp: new Date(message.created_at),
+    suggestedActions: message.suggested_actions ?? [],
   };
 }
 

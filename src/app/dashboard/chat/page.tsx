@@ -54,7 +54,7 @@ export default async function DashboardChatPage({ searchParams }: DashboardChatP
 
   const { data: messagesData } = await supabase
     .from("messages")
-    .select("id, role, content, created_at, context_chunks")
+    .select("id, role, content, created_at, context_chunks, suggested_actions")
     .eq("conversation_id", activeConversation.id)
     .order("created_at", { ascending: true });
 

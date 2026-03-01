@@ -1,3 +1,5 @@
+import type { ChatSuggestedAction } from "@/lib/chat/action-suggestions";
+
 export interface ChatConversationRecord {
   id: string;
   title: string | null;
@@ -11,4 +13,5 @@ export interface ChatPersistedMessageRecord {
   content: string;
   created_at: string;
   context_chunks?: string[] | null;
+  suggested_actions?: ChatSuggestedAction[] | null;
 }

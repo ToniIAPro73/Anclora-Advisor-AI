@@ -23,6 +23,7 @@
     "fiscal:templates:apply": "tsx scripts/apply-fiscal-templates.ts",
     "ops:apply": "tsx scripts/apply-operations-outbox-jobs.ts",
     "audit:apply": "tsx scripts/apply-app-audit-logs.ts",
+    "chat:suggested-actions:apply": "tsx scripts/apply-chat-suggested-actions.ts",
     "ops:process": "tsx scripts/process-app-jobs.ts",
     "rag:metadata:apply": "tsx scripts/apply-rag-document-metadata.ts",
     "rag:metadata:backfill": "tsx scripts/backfill-rag-metadata.ts",

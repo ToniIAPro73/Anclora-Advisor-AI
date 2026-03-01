@@ -669,7 +669,7 @@ export class Orchestrator {
 
     // 9. Persist conversation
     const tPersistStart = Date.now();
-    await this.saveConversation(userId, conversationId, query, primaryResponse, contexts);
+    await this.saveConversation(userId, conversationId, query, primaryResponse, contexts, result.suggestedActions);
     const persistenceMs = Date.now() - tPersistStart;
     const totalMs = Date.now() - tTotalStart;
     result.performance.persistence_ms = persistenceMs;
@@ -692,7 +692,8 @@ export class Orchestrator {
     conversationId: string,
     query: string,
     response: string,
-    contexts: SpecialistContext[]
+    contexts: SpecialistContext[],
+    suggestedActions: ChatSuggestedAction[]
   ): Promise<void> {
     try {
       const title = this.buildConversationTitle(query);
@@ -719,12 +720,14 @@ export class Orchestrator {
           role: 'user',
           content: query,
           context_chunks: [],
+          suggested_actions: [],
         },
         {
           conversation_id: conversationId,
           role: 'assistant',
           content: response,
           context_chunks: contexts.flatMap(ctx => ctx.chunks.map(ch => ch.id)),
+          suggested_actions: suggestedActions,
         },
       ]);
     } catch (error) {
