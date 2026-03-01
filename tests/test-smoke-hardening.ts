@@ -3,6 +3,7 @@ import * as chatConversationsRoute from "../src/app/api/chat/conversations/route
 import * as chatConversationDetailRoute from "../src/app/api/chat/conversations/[conversationId]/route";
 import * as adminIngestRoute from "../src/app/api/admin/rag/ingest/route";
 import * as adminDocumentDeleteRoute from "../src/app/api/admin/rag/documents/[documentId]/route";
+import * as adminDocumentsBatchRoute from "../src/app/api/admin/rag/documents/batch/route";
 import * as adminObservabilityRagRoute from "../src/app/api/admin/observability/rag/route";
 import * as adminStatusRoute from "../src/app/api/admin/rag/status/route";
 import * as auditLogsRoute from "../src/app/api/audit-logs/route";
@@ -62,6 +63,7 @@ async function main(): Promise<void> {
   assert(typeof adminDocumentDeleteRoute.GET === "function", "GET /api/admin/rag/documents/[documentId] handler exported");
   assert(typeof adminDocumentDeleteRoute.POST === "function", "POST /api/admin/rag/documents/[documentId] handler exported");
   assert(typeof adminDocumentDeleteRoute.DELETE === "function", "DELETE /api/admin/rag/documents/[documentId] handler exported");
+  assert(typeof adminDocumentsBatchRoute.POST === "function", "POST /api/admin/rag/documents/batch handler exported");
   assert(typeof adminObservabilityRagRoute.GET === "function", "GET /api/admin/observability/rag handler exported");
   assert(typeof adminStatusRoute.GET === "function", "GET /api/admin/rag/status handler exported");
   assert(typeof auditLogsRoute.GET === "function", "GET /api/audit-logs handler exported");

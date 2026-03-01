@@ -280,13 +280,19 @@ export function AdminInventoryPanel({
   page,
   pageSize,
   selectedDocument,
+  selectedDocumentIds,
+  bulkDeleting,
   onDomainFilterChange,
   onTopicFilterChange,
   onSearchChange,
   onPageChange,
   onPageSizeChange,
   onSelectDocument,
+  onToggleDocumentSelection,
+  onSelectVisibleDocuments,
+  onClearDocumentSelection,
   onDeleteDocument,
+  onBulkDeleteDocuments,
   versions,
   versionDiff,
   selectedLeftVersionId,
@@ -305,13 +311,19 @@ export function AdminInventoryPanel({
   page: number;
   pageSize: 25 | 50 | 100;
   selectedDocument: AdminDocumentRecord | null;
+  selectedDocumentIds: string[];
+  bulkDeleting: boolean;
   onDomainFilterChange: (...args: ["all" | "fiscal" | "laboral" | "mercado"]) => void;
   onTopicFilterChange: (...args: [string]) => void;
   onSearchChange: (...args: [string]) => void;
   onPageChange: (...args: [number]) => void;
   onPageSizeChange: (...args: [25 | 50 | 100]) => void;
   onSelectDocument: (...args: [string]) => void;
+  onToggleDocumentSelection: (...args: [string]) => void;
+  onSelectVisibleDocuments: (...args: [string[]]) => void;
+  onClearDocumentSelection: () => void;
   onDeleteDocument: (...args: [string]) => void;
+  onBulkDeleteDocuments: (...args: [string[]]) => void;
   versions: AdminDocumentVersionRecord[];
   versionDiff: AdminDocumentVersionDiffRecord | null;
   selectedLeftVersionId: string | null;
@@ -326,6 +338,9 @@ export function AdminInventoryPanel({
   const currentEnd = totalDocuments === 0 ? 0 : page * pageSize + documents.length;
   const canGoPrev = page > 0;
   const canGoNext = documents.length === pageSize && currentEnd < totalDocuments;
+  const visibleDocumentIds = documents.map((document) => document.id);
+  const allVisibleSelected =
+    visibleDocumentIds.length > 0 && visibleDocumentIds.every((documentId) => selectedDocumentIds.includes(documentId));
 
   return (
     <article className="advisor-card min-h-0 flex-1 overflow-hidden">
@@ -392,6 +407,38 @@ export function AdminInventoryPanel({
                 Siguiente
               </button>
             </div>
+            <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">
+                  Seleccionados: {selectedDocumentIds.length}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-[#d2dceb] bg-white px-3 py-2 text-xs font-semibold text-[#162944]"
+                    onClick={() => onSelectVisibleDocuments(allVisibleSelected ? [] : visibleDocumentIds)}
+                  >
+                    {allVisibleSelected ? "Deseleccionar visibles" : "Seleccionar visibles"}
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-[#d2dceb] bg-white px-3 py-2 text-xs font-semibold text-[#162944]"
+                    onClick={onClearDocumentSelection}
+                    disabled={selectedDocumentIds.length === 0}
+                  >
+                    Limpiar
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 disabled:opacity-50"
+                    onClick={() => onBulkDeleteDocuments(selectedDocumentIds)}
+                    disabled={selectedDocumentIds.length === 0 || bulkDeleting}
+                  >
+                    {bulkDeleting ? "Eliminando..." : "Borrado masivo"}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
           {documents.length === 0 ? (
             <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">No hay documentos que coincidan con los filtros actuales.</div>
@@ -399,27 +446,34 @@ export function AdminInventoryPanel({
             <div className="space-y-3">
               {documents.map((document) => {
                 const isSelected = document.id === selectedDocument?.id;
+                const isChecked = selectedDocumentIds.includes(document.id);
                 return (
-                  <button
+                  <div
                     key={document.id}
-                    type="button"
-                    onClick={() => onSelectDocument(document.id)}
-                    className={`w-full rounded-2xl border p-4 text-left transition ${
+                    className={`w-full rounded-2xl border p-4 transition ${
                       isSelected
                         ? "border-[#1dab89]/40 bg-[#effaf6] shadow-sm"
                         : "border-[#d2dceb] bg-white hover:border-[#9eb6d5] hover:bg-[#f8fbff]"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-[#162944]">{document.title}</p>
-                        <p className="mt-1 text-xs text-[#3a4f67]">
-                          {document.category ?? "sin categoria"} | {document.doc_metadata?.topic ?? "sin topic"}
-                        </p>
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => onToggleDocumentSelection(document.id)}
+                          className="mt-1"
+                        />
+                        <button type="button" onClick={() => onSelectDocument(document.id)} className="text-left">
+                          <p className="text-sm font-semibold text-[#162944]">{document.title}</p>
+                          <p className="mt-1 text-xs text-[#3a4f67]">
+                            {document.category ?? "sin categoria"} | {document.doc_metadata?.topic ?? "sin topic"}
+                          </p>
+                        </button>
                       </div>
                       <span className="text-xs font-semibold text-[#3a4f67]">{formatDateTime(document.created_at)}</span>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

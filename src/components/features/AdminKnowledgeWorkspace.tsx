@@ -64,13 +64,19 @@ export function AdminKnowledgeWorkspace({
           page={state.inventoryPage}
           pageSize={state.inventoryPageSize}
           selectedDocument={state.selectedDocument}
+          selectedDocumentIds={state.selectedDocumentIds}
+          bulkDeleting={state.bulkDeleting}
           onDomainFilterChange={actions.setInventoryDomainFilter}
           onTopicFilterChange={actions.setInventoryTopicFilter}
           onSearchChange={actions.setInventorySearch}
           onPageChange={actions.setInventoryPage}
           onPageSizeChange={actions.setInventoryPageSize}
           onSelectDocument={actions.setSelectedDocumentId}
+          onToggleDocumentSelection={actions.toggleDocumentSelection}
+          onSelectVisibleDocuments={actions.selectVisibleDocuments}
+          onClearDocumentSelection={actions.clearDocumentSelection}
           onDeleteDocument={(documentId) => void actions.deleteDocument(documentId)}
+          onBulkDeleteDocuments={(documentIds) => void actions.bulkDeleteDocuments(documentIds)}
           versions={state.documentVersions}
           versionDiff={state.documentVersionDiff}
           selectedLeftVersionId={state.selectedLeftVersionId}

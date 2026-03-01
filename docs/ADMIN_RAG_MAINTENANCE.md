@@ -5,6 +5,7 @@
 - Historial de versiones visible desde `/dashboard/admin`.
 - Rollback operativo de metadata + chunks desde una version previa.
 - Diff operativo entre dos snapshots del mismo documento.
+- Operaciones masivas de borrado con snapshot previo por documento.
 
 ## Infraestructura
 - Tabla `rag_document_versions`.
@@ -41,6 +42,10 @@
   - `{ action: "rollback", versionId }`
 - `DELETE /api/admin/rag/documents/[documentId]`
   - mantiene snapshot previo antes de borrar
+- `POST /api/admin/rag/documents/batch`
+  - `{ action: "bulk_delete", documentIds }`
+  - crea `pre_bulk_delete` por documento antes de borrar
+  - audita cada documento como `bulk_deleted`
 
 ## Nota operativa
 - El rollback regenera embeddings, por lo que su latencia depende del modelo de embeddings local.

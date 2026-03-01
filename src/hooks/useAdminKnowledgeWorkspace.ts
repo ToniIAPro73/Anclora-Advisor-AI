@@ -82,6 +82,8 @@ export function useAdminKnowledgeWorkspace({
   const [selectedLeftVersionId, setSelectedLeftVersionId] = useState<string | null>(null);
   const [selectedRightVersionId, setSelectedRightVersionId] = useState<string | null>(null);
   const [loadingVersionDiff, setLoadingVersionDiff] = useState(false);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [rollingBackDocumentId, setRollingBackDocumentId] = useState<string | null>(null);
 
   const notebookPreset = useMemo(() => NOTEBOOK_PRESETS[domain], [domain]);
@@ -222,6 +224,8 @@ export function useAdminKnowledgeWorkspace({
       setHardware(observabilityResult.hardware);
       setCron(observabilityResult.cron);
       setAuditLogs(auditResult.logs ?? []);
+      const nextDocuments = statusResult.recentDocuments ?? [];
+      setSelectedDocumentIds((current) => current.filter((documentId) => nextDocuments.some((document) => document.id === documentId)));
       const nextSelectedDocumentId = selectedDocumentId ?? statusResult.recentDocuments?.[0]?.id ?? null;
       setSelectedDocumentId(nextSelectedDocumentId);
       await refreshDocumentVersions(nextSelectedDocumentId);
@@ -344,6 +348,69 @@ export function useAdminKnowledgeWorkspace({
     [refreshStatus]
   );
 
+  const toggleDocumentSelection = useCallback((documentId: string): void => {
+    setSelectedDocumentIds((current) =>
+      current.includes(documentId) ? current.filter((id) => id !== documentId) : [...current, documentId]
+    );
+  }, []);
+
+  const selectVisibleDocuments = useCallback((documentIds: string[]): void => {
+    setSelectedDocumentIds(documentIds);
+  }, []);
+
+  const clearDocumentSelection = useCallback((): void => {
+    setSelectedDocumentIds([]);
+  }, []);
+
+  const bulkDeleteDocuments = useCallback(
+    async (documentIds: string[]): Promise<void> => {
+      if (documentIds.length === 0) {
+        return;
+      }
+      if (!window.confirm(`Se eliminaran ${documentIds.length} documento(s) y sus chunks asociados. Continuar?`)) {
+        return;
+      }
+
+      setBulkDeleting(true);
+      setError(null);
+      setMessage(null);
+
+      try {
+        const response = await fetch("/api/admin/rag/documents/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "bulk_delete",
+            documentIds,
+          }),
+        });
+        const result = (await response.json()) as {
+          success: boolean;
+          deletedCount?: number;
+          failed?: Array<{ documentId: string; error: string }>;
+          error?: string;
+        };
+        if (!response.ok) {
+          throw new Error(result.error ?? "No se pudo ejecutar el borrado masivo");
+        }
+
+        const failedCount = result.failed?.length ?? 0;
+        setMessage(
+          failedCount === 0
+            ? `Operacion masiva completada: ${result.deletedCount ?? 0} documento(s) eliminados.`
+            : `Operacion masiva parcial: ${result.deletedCount ?? 0} eliminados, ${failedCount} con error.`
+        );
+        setSelectedDocumentIds([]);
+        await refreshStatus();
+      } catch (bulkDeleteError) {
+        setError(bulkDeleteError instanceof Error ? bulkDeleteError.message : "Error al eliminar documentos");
+      } finally {
+        setBulkDeleting(false);
+      }
+    },
+    [refreshStatus]
+  );
+
   const rollbackDocument = useCallback(
     async (documentId: string, versionId: string): Promise<void> => {
       if (!window.confirm("Se restauraran metadata y chunks desde esta version. Continuar?")) {
@@ -411,6 +478,8 @@ export function useAdminKnowledgeWorkspace({
       selectedLeftVersionId,
       selectedRightVersionId,
       loadingVersionDiff,
+      selectedDocumentIds,
+      bulkDeleting,
       rollingBackDocumentId,
       notebookPreset,
     },
@@ -430,11 +499,15 @@ export function useAdminKnowledgeWorkspace({
       setAutoRefreshIntervalSec,
       setSelectedLeftVersionId,
       setSelectedRightVersionId,
+      toggleDocumentSelection,
+      selectVisibleDocuments,
+      clearDocumentSelection,
       refreshStatus,
       refreshDocumentVersions,
       refreshVersionDiff,
       submitIngest,
       deleteDocument,
+      bulkDeleteDocuments,
       rollbackDocument,
     },
   };
