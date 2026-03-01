@@ -59,6 +59,8 @@ async function main(): Promise<void> {
   assert(typeof chatConversationDetailRoute.GET === "function", "GET /api/chat/conversations/[conversationId] handler exported");
   assert(typeof chatConversationDetailRoute.PATCH === "function", "PATCH /api/chat/conversations/[conversationId] handler exported");
   assert(typeof adminIngestRoute.POST === "function", "POST /api/admin/rag/ingest handler exported");
+  assert(typeof adminDocumentDeleteRoute.GET === "function", "GET /api/admin/rag/documents/[documentId] handler exported");
+  assert(typeof adminDocumentDeleteRoute.POST === "function", "POST /api/admin/rag/documents/[documentId] handler exported");
   assert(typeof adminDocumentDeleteRoute.DELETE === "function", "DELETE /api/admin/rag/documents/[documentId] handler exported");
   assert(typeof adminObservabilityRagRoute.GET === "function", "GET /api/admin/observability/rag handler exported");
   assert(typeof adminStatusRoute.GET === "function", "GET /api/admin/rag/status handler exported");

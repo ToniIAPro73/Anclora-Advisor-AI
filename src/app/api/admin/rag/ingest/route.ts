@@ -189,6 +189,7 @@ export async function POST(request: NextRequest) {
     const result = await ingestAdminSources({
       ...payload.data,
       sources: normalizedSources,
+      requested_by: appUser.id,
     });
     await completeAdminIngestJob(job.id, result);
     const response = NextResponse.json({

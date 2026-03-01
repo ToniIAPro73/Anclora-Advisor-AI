@@ -16,6 +16,27 @@ export interface AdminDocumentRecord {
   } | null;
 }
 
+export interface AdminDocumentVersionRecord {
+  id: string;
+  document_id: string;
+  version_number: number;
+  snapshot_reason: string;
+  title: string;
+  category: string | null;
+  source_url: string | null;
+  doc_metadata?: {
+    notebook_id?: string | null;
+    notebook_title?: string | null;
+    jurisdiction?: string | null;
+    topic?: string | null;
+    reason_for_fit?: string | null;
+  } | null;
+  chunk_count: number;
+  chunk_char_count: number;
+  created_by: string | null;
+  created_at: string;
+}
+
 export interface AdminIngestJobRecord {
   id: string;
   status: string;

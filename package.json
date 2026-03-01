@@ -16,6 +16,7 @@
     "rbac:apply": "tsx scripts/apply-admin-rbac.ts",
     "rbac:set-role": "tsx scripts/set-user-role.ts",
     "admin:jobs:apply": "tsx scripts/apply-admin-ingest-jobs.ts",
+    "admin:rag:versions:apply": "tsx scripts/apply-admin-rag-document-versions.ts",
     "labor:workflow:apply": "tsx scripts/apply-labor-mitigation-workflow.ts",
     "labor:workflow:v2:apply": "tsx scripts/apply-labor-mitigation-v2.ts",
     "labor:workflow:v3:apply": "tsx scripts/apply-labor-mitigation-v3.ts",

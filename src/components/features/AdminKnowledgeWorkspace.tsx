@@ -71,6 +71,9 @@ export function AdminKnowledgeWorkspace({
           onPageSizeChange={actions.setInventoryPageSize}
           onSelectDocument={actions.setSelectedDocumentId}
           onDeleteDocument={(documentId) => void actions.deleteDocument(documentId)}
+          versions={state.documentVersions}
+          rollingBackDocumentId={state.rollingBackDocumentId}
+          onRollbackDocument={(documentId, versionId) => void actions.rollbackDocument(documentId, versionId)}
         />
       </section>
 

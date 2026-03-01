@@ -1,6 +1,7 @@
 import { createServiceSupabaseClient } from "@/lib/supabase/server-admin";
 import { chunkStructuredText, normalizeText } from "@/lib/rag/chunking";
 import { generateEmbedding } from "@/lib/rag/embeddings";
+import { createDocumentSnapshot } from "@/lib/rag/admin-document-versions";
 import type { IngestSourcePayload, NotebookDomain } from "@/lib/rag/governance";
 
 export interface AdminIngestRequest {
@@ -9,6 +10,7 @@ export interface AdminIngestRequest {
   domain: NotebookDomain;
   sources: IngestSourcePayload[];
   replace_existing?: boolean;
+  requested_by?: string | null;
 }
 
 export interface AdminIngestResult {
@@ -115,6 +117,13 @@ export async function ingestAdminSources(payload: AdminIngestRequest): Promise<A
     }
 
     if (payload.replace_existing !== false) {
+      if (documentId) {
+        await createDocumentSnapshot({
+          documentId,
+          snapshotReason: "pre_ingest_replace",
+          createdBy: payload.requested_by ?? null,
+        });
+      }
       const { error: deleteError } = await supabase
         .from("rag_chunks")
         .delete()

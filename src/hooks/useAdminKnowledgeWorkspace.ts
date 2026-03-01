@@ -5,6 +5,7 @@ import type { AuditLogRecord } from "@/lib/audit/logs";
 import type {
   AdminAuditLogsResponse,
   AdminDocumentRecord,
+  AdminDocumentVersionRecord,
   IngestResponse,
   NotebookPreset,
   ObservabilityResponse,
@@ -75,6 +76,8 @@ export function useAdminKnowledgeWorkspace({
   const [hardware, setHardware] = useState<ObservabilityResponse["hardware"]>();
   const [cron, setCron] = useState<ObservabilityResponse["cron"]>();
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
+  const [documentVersions, setDocumentVersions] = useState<AdminDocumentVersionRecord[]>([]);
+  const [rollingBackDocumentId, setRollingBackDocumentId] = useState<string | null>(null);
 
   const notebookPreset = useMemo(() => NOTEBOOK_PRESETS[domain], [domain]);
   const filteredDocuments = useMemo(() => {
@@ -104,6 +107,28 @@ export function useAdminKnowledgeWorkspace({
     () => filteredDocuments.find((document) => document.id === selectedDocumentId) ?? filteredDocuments[0] ?? null,
     [filteredDocuments, selectedDocumentId]
   );
+
+  const refreshDocumentVersions = useCallback(async (documentId: string | null): Promise<void> => {
+    if (!documentId) {
+      setDocumentVersions([]);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/rag/documents/${documentId}`, { cache: "no-store" });
+      const result = (await response.json()) as {
+        success: boolean;
+        versions?: AdminDocumentVersionRecord[];
+        error?: string;
+      };
+      if (!response.ok || !result.success) {
+        throw new Error(result.error ?? "No se pudieron cargar versiones del documento");
+      }
+      setDocumentVersions(result.versions ?? []);
+    } catch (versionError) {
+      setError(versionError instanceof Error ? versionError.message : "Error al cargar versiones");
+    }
+  }, []);
 
   const refreshStatus = useCallback(async (): Promise<void> => {
     setRefreshing(true);
@@ -149,13 +174,15 @@ export function useAdminKnowledgeWorkspace({
       setHardware(observabilityResult.hardware);
       setCron(observabilityResult.cron);
       setAuditLogs(auditResult.logs ?? []);
-      setSelectedDocumentId((current) => current ?? statusResult.recentDocuments?.[0]?.id ?? null);
+      const nextSelectedDocumentId = selectedDocumentId ?? statusResult.recentDocuments?.[0]?.id ?? null;
+      setSelectedDocumentId(nextSelectedDocumentId);
+      await refreshDocumentVersions(nextSelectedDocumentId);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Error al refrescar estado");
     } finally {
       setRefreshing(false);
     }
-  }, [inventoryDomainFilter, inventoryPage, inventoryPageSize, inventorySearch, inventoryTopicFilter]);
+  }, [inventoryDomainFilter, inventoryPage, inventoryPageSize, inventorySearch, inventoryTopicFilter, refreshDocumentVersions, selectedDocumentId]);
 
   useEffect(() => {
     void refreshStatus();
@@ -174,6 +201,10 @@ export function useAdminKnowledgeWorkspace({
 
     return () => window.clearInterval(timer);
   }, [autoRefreshEnabled, autoRefreshIntervalSec, refreshStatus]);
+
+  useEffect(() => {
+    void refreshDocumentVersions(selectedDocumentId);
+  }, [refreshDocumentVersions, selectedDocumentId]);
 
   const submitIngest = useCallback(
     async (event: React.FormEvent<HTMLFormElement>, dryRun: boolean): Promise<void> => {
@@ -261,6 +292,37 @@ export function useAdminKnowledgeWorkspace({
     [refreshStatus]
   );
 
+  const rollbackDocument = useCallback(
+    async (documentId: string, versionId: string): Promise<void> => {
+      if (!window.confirm("Se restauraran metadata y chunks desde esta version. Continuar?")) {
+        return;
+      }
+
+      setRollingBackDocumentId(documentId);
+      setError(null);
+      setMessage(null);
+
+      try {
+        const response = await fetch(`/api/admin/rag/documents/${documentId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "rollback", versionId }),
+        });
+        const result = (await response.json()) as { success: boolean; error?: string; restoredVersion?: number };
+        if (!response.ok || !result.success) {
+          throw new Error(result.error ?? "No se pudo restaurar el documento");
+        }
+        setMessage(`Documento restaurado a la version ${result.restoredVersion ?? "n/d"}.`);
+        await refreshStatus();
+      } catch (rollbackError) {
+        setError(rollbackError instanceof Error ? rollbackError.message : "Error al restaurar documento");
+      } finally {
+        setRollingBackDocumentId(null);
+      }
+    },
+    [refreshStatus]
+  );
+
   return {
     state: {
       documents,
@@ -292,6 +354,8 @@ export function useAdminKnowledgeWorkspace({
       hardware,
       cron,
       auditLogs,
+      documentVersions,
+      rollingBackDocumentId,
       notebookPreset,
     },
     actions: {
@@ -309,8 +373,10 @@ export function useAdminKnowledgeWorkspace({
       setAutoRefreshEnabled,
       setAutoRefreshIntervalSec,
       refreshStatus,
+      refreshDocumentVersions,
       submitIngest,
       deleteDocument,
+      rollbackDocument,
     },
   };
 }
