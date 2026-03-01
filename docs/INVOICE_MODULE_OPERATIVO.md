@@ -24,6 +24,7 @@
 - Serie y email destinatario editables.
 - Resumen de volumen y estados.
 - Lista filtrable con acciones de emitir, marcar pagada, volver a borrador, eliminar, abrir vista PDF, encolar envios y procesar cola.
+- Filtros avanzados por cliente/NIF, serie, estado y rango de fechas.
 
 ## Flujo
 - Al crear una factura se asigna `series` y `invoice_number`.

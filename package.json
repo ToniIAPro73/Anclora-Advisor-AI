@@ -19,6 +19,7 @@
     "labor:workflow:apply": "tsx scripts/apply-labor-mitigation-workflow.ts",
     "labor:workflow:v2:apply": "tsx scripts/apply-labor-mitigation-v2.ts",
     "labor:workflow:v3:apply": "tsx scripts/apply-labor-mitigation-v3.ts",
+    "labor:evidence:storage:apply": "tsx scripts/apply-labor-evidence-storage.ts",
     "invoice:workflow:apply": "tsx scripts/apply-invoice-series-delivery.ts",
     "fiscal:templates:apply": "tsx scripts/apply-fiscal-templates.ts",
     "fiscal:workflow:v2:apply": "tsx scripts/apply-fiscal-workflow-v2.ts",
@@ -38,6 +39,7 @@
     "test:admin-status": "tsx tests/unit/test-admin-status-filters.ts",
     "test:admin-status:service": "tsx tests/unit/test-admin-status-service.ts",
     "test:chat-actions": "tsx tests/unit/test-chat-action-suggestions.ts",
+    "test:e2e:auth": "tsx tests/e2e/test-authenticated-workflows.ts",
     "test:integration:ops": "tsx tests/integration/test-operational-workflows.ts",
     "test:i18n": "tsx tests/test-i18n-hardening.ts",
     "test:smoke": "tsx tests/test-smoke-hardening.ts"

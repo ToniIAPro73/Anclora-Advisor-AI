@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 import { createAuditLog } from "@/lib/audit/logs";
 import { validateAccessToken } from "@/lib/auth/token";
-import { createInvoiceSchema, type InvoiceRecord } from "@/lib/invoices/contracts";
+import { createInvoiceSchema, invoiceStatusValues, type InvoiceRecord } from "@/lib/invoices/contracts";
 import { getNextInvoiceNumber, INVOICE_SELECT_FIELDS, normalizeInvoiceSeries } from "@/lib/invoices/service";
 import { resolveLocale, t } from "@/lib/i18n/messages";
 import { getRequestId, log } from "@/lib/observability/logger";
@@ -40,11 +40,37 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
-  const { data, error } = await supabase
+  const searchParams = request.nextUrl.searchParams;
+  const query = searchParams.get("q")?.trim() ?? "";
+  const status = searchParams.get("status")?.trim() ?? "";
+  const series = searchParams.get("series")?.trim().toUpperCase() ?? "";
+  const dateFrom = searchParams.get("dateFrom")?.trim() ?? "";
+  const dateTo = searchParams.get("dateTo")?.trim() ?? "";
+  const limit = Math.max(1, Math.min(100, Number.parseInt(searchParams.get("limit") ?? "60", 10) || 60));
+
+  let dbQuery = supabase
     .from("invoices")
     .select(INVOICE_SELECT_FIELDS)
     .order("created_at", { ascending: false })
-    .limit(60);
+    .limit(limit);
+
+  if (status && invoiceStatusValues.includes(status as (typeof invoiceStatusValues)[number])) {
+    dbQuery = dbQuery.eq("status", status);
+  }
+  if (series) {
+    dbQuery = dbQuery.eq("series", series);
+  }
+  if (dateFrom) {
+    dbQuery = dbQuery.gte("issue_date", dateFrom);
+  }
+  if (dateTo) {
+    dbQuery = dbQuery.lte("issue_date", dateTo);
+  }
+  if (query) {
+    dbQuery = dbQuery.or(`client_name.ilike.%${query}%,client_nif.ilike.%${query}%`);
+  }
+
+  const { data, error } = await dbQuery;
 
   if (error) {
     log("error", "api_invoices_get_failed", requestId, { error: error.message });

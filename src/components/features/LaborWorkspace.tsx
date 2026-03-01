@@ -206,6 +206,8 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
   const [editingActionId, setEditingActionId] = useState<string | null>(null);
   const [updatingAssessmentId, setUpdatingAssessmentId] = useState<string | null>(null);
   const [updatingActionId, setUpdatingActionId] = useState<string | null>(null);
+  const [evidenceLabel, setEvidenceLabel] = useState("");
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [okMessage, setOkMessage] = useState<string | null>(null);
 
@@ -254,6 +256,8 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
   function resetMitigationForm() {
     setMitigationForm(INITIAL_MITIGATION_FORM);
     setEditingActionId(null);
+    setEvidenceLabel("");
+    setEvidenceFile(null);
   }
 
   function startMitigationEditing(action: LaborMitigationActionRecord) {
@@ -271,6 +275,8 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
       evidenceLinksText: formatEvidenceLinksText(action.evidence_links),
       status: action.status as LaborMitigationStatus,
     });
+    setEvidenceLabel("");
+    setEvidenceFile(null);
     setError(null);
     setOkMessage(null);
   }
@@ -489,6 +495,77 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
       await refreshAuditLogs();
     } catch (toggleError) {
       setError(toggleError instanceof Error ? toggleError.message : "Error al actualizar checklist");
+    } finally {
+      setUpdatingActionId(null);
+    }
+  }
+
+  async function handleEvidenceUpload() {
+    if (!editingActionId || !evidenceFile) {
+      setError("Selecciona una mitigacion y un archivo antes de subir evidencia.");
+      return;
+    }
+
+    setUpdatingActionId(editingActionId);
+    setError(null);
+    setOkMessage(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", evidenceFile);
+      if (evidenceLabel.trim()) {
+        formData.append("label", evidenceLabel.trim());
+      }
+      const response = await fetch(`/api/labor-mitigation-actions/${editingActionId}/evidence`, {
+        method: "POST",
+        body: formData,
+      });
+      const result = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        action?: LaborMitigationActionRecord;
+      };
+      if (!response.ok || !result.success || !result.action) {
+        throw new Error(result.error ?? "No se pudo subir la evidencia");
+      }
+      setMitigationActions((previous) => previous.map((item) => (item.id === result.action?.id ? result.action : item)));
+      startMitigationEditing(result.action);
+      setEvidenceLabel("");
+      setEvidenceFile(null);
+      setOkMessage("Evidencia subida correctamente.");
+      await refreshAuditLogs();
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Error al subir evidencia");
+    } finally {
+      setUpdatingActionId(null);
+    }
+  }
+
+  async function handleEvidenceDelete(action: LaborMitigationActionRecord, url: string) {
+    setUpdatingActionId(action.id);
+    setError(null);
+    setOkMessage(null);
+    try {
+      const response = await fetch(`/api/labor-mitigation-actions/${action.id}/evidence`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const result = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        action?: LaborMitigationActionRecord;
+      };
+      if (!response.ok || !result.success || !result.action) {
+        throw new Error(result.error ?? "No se pudo eliminar la evidencia");
+      }
+      setMitigationActions((previous) => previous.map((item) => (item.id === result.action?.id ? result.action : item)));
+      if (editingActionId === action.id) {
+        startMitigationEditing(result.action);
+      }
+      setOkMessage("Evidencia eliminada.");
+      await refreshAuditLogs();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Error al eliminar evidencia");
     } finally {
       setUpdatingActionId(null);
     }
@@ -785,6 +862,27 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
                       <label className="advisor-label" htmlFor="mitigationEvidenceLinks">Evidencias enlazadas (Etiqueta | URL)</label>
                       <textarea id="mitigationEvidenceLinks" className="advisor-input min-h-20 resize-y" value={mitigationForm.evidenceLinksText} onChange={(event) => setMitigationForm((current) => ({ ...current, evidenceLinksText: event.target.value }))} placeholder="Contrato firmado | https://...&#10;Dictamen externo | https://..." />
                     </div>
+                    {editingActionId && (
+                      <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Subir evidencia a storage</p>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <input
+                            className="advisor-input"
+                            value={evidenceLabel}
+                            onChange={(event) => setEvidenceLabel(event.target.value)}
+                            placeholder="Etiqueta de la evidencia"
+                          />
+                          <input
+                            type="file"
+                            className="advisor-input"
+                            onChange={(event) => setEvidenceFile(event.target.files?.[0] ?? null)}
+                          />
+                        </div>
+                        <button type="button" disabled={!evidenceFile || updatingActionId === editingActionId} className="advisor-btn mt-3 border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => void handleEvidenceUpload()}>
+                          {updatingActionId === editingActionId ? "Subiendo..." : "Subir evidencia"}
+                        </button>
+                      </div>
+                    )}
                     <button type="submit" disabled={mitigationSubmitting} className="advisor-btn advisor-btn-primary advisor-btn-full">
                       {mitigationSubmitting ? "Guardando..." : editingActionId ? "Actualizar mitigacion" : "Crear mitigacion"}
                     </button>
@@ -872,9 +970,14 @@ export function LaborWorkspace({ initialAssessments, initialMitigationActions, i
                                 <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Evidencias enlazadas</p>
                                 <div className="mt-2 space-y-1">
                                   {evidenceLinks.map((item) => (
-                                    <a key={item.id} href={item.url} target="_blank" rel="noreferrer" className="block text-sm font-semibold text-[#1dab89] hover:underline">
-                                      {item.label}
-                                    </a>
+                                    <div key={item.id} className="flex flex-wrap items-center justify-between gap-2">
+                                      <a href={item.url} target="_blank" rel="noreferrer" className="block text-sm font-semibold text-[#1dab89] hover:underline">
+                                        {item.label}
+                                      </a>
+                                      <button type="button" disabled={isBusy} className="text-xs font-semibold text-red-700 hover:underline" onClick={() => void handleEvidenceDelete(action, item.url)}>
+                                        Eliminar
+                                      </button>
+                                    </div>
                                   ))}
                                 </div>
                               </div>

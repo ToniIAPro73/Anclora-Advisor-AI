@@ -28,6 +28,14 @@ type InvoiceFormState = {
 
 type InvoiceFilterStatus = "all" | InvoiceStatus;
 
+type InvoiceFilters = {
+  q: string;
+  status: InvoiceFilterStatus;
+  series: string;
+  dateFrom: string;
+  dateTo: string;
+};
+
 type SendInvoiceResponse = {
   success: boolean;
   error?: string;
@@ -67,6 +75,14 @@ const INITIAL_FORM: InvoiceFormState = {
   issueDate: TODAY,
   series: TODAY.slice(0, 4),
   recipientEmail: "",
+};
+
+const INITIAL_FILTERS: InvoiceFilters = {
+  q: "",
+  status: "all",
+  series: "",
+  dateFrom: "",
+  dateTo: "",
 };
 
 function toNumber(value: string): number {
@@ -118,7 +134,7 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
   const [form, setForm] = useState<InvoiceFormState>(INITIAL_FORM);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
-  const [filterStatus, setFilterStatus] = useState<InvoiceFilterStatus>("all");
+  const [filters, setFilters] = useState<InvoiceFilters>(INITIAL_FILTERS);
   const [submitting, setSubmitting] = useState(false);
   const [updatingInvoiceId, setUpdatingInvoiceId] = useState<string | null>(null);
   const [processingQueue, setProcessingQueue] = useState(false);
@@ -134,12 +150,7 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
     return round2(base + (base * iva) / 100 - (base * irpf) / 100);
   }, [form.amountBase, form.ivaRate, form.irpfRetention]);
 
-  const filteredInvoices = useMemo(() => {
-    if (filterStatus === "all") {
-      return invoices;
-    }
-    return invoices.filter((invoice) => invoice.status === filterStatus);
-  }, [filterStatus, invoices]);
+  const filteredInvoices = invoices;
 
   const draftCount = useMemo(() => invoices.filter((invoice) => invoice.status === "draft").length, [invoices]);
   const issuedCount = useMemo(() => invoices.filter((invoice) => invoice.status === "issued").length, [invoices]);
@@ -187,6 +198,30 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
   useEffect(() => {
     void refreshOperations();
   }, []);
+
+  async function refreshInvoices(nextFilters: InvoiceFilters = filters) {
+    try {
+      const params = new URLSearchParams();
+      if (nextFilters.q.trim()) params.set("q", nextFilters.q.trim());
+      if (nextFilters.status !== "all") params.set("status", nextFilters.status);
+      if (nextFilters.series.trim()) params.set("series", nextFilters.series.trim().toUpperCase());
+      if (nextFilters.dateFrom) params.set("dateFrom", nextFilters.dateFrom);
+      if (nextFilters.dateTo) params.set("dateTo", nextFilters.dateTo);
+      params.set("limit", "100");
+      const response = await fetch(`/api/invoices?${params.toString()}`, { cache: "no-store" });
+      const result = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        invoices?: InvoiceRecord[];
+      };
+      if (!response.ok || !result.success || !result.invoices) {
+        throw new Error(result.error ?? "No se pudieron cargar las facturas");
+      }
+      setInvoices(result.invoices);
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : "Error al cargar facturas");
+    }
+  }
 
   function resetForm() {
     setForm(INITIAL_FORM);
@@ -245,6 +280,7 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
       upsertInvoice(result.invoice);
       setOkMessage(isEditing ? "Factura actualizada." : "Factura guardada en borrador.");
       resetForm();
+      await refreshInvoices();
       await refreshAuditLogs();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Error al guardar factura");
@@ -276,6 +312,7 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
 
       upsertInvoice(result.invoice);
       setOkMessage(`Factura marcada como ${status}.`);
+      await refreshInvoices();
       await refreshAuditLogs();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Error al actualizar factura");
@@ -305,6 +342,7 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
         resetForm();
       }
       setOkMessage("Factura eliminada.");
+      await refreshInvoices();
       await refreshAuditLogs();
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Error al eliminar factura");
@@ -341,6 +379,7 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
       }
 
       upsertInvoice(result.invoice);
+      await refreshInvoices();
       await refreshOperations();
       setOkMessage(`Factura encolada para envio. Job ${result.delivery.jobId}.`);
       await refreshAuditLogs();
@@ -594,19 +633,30 @@ export function InvoiceWorkspace({ initialInvoices, initialAuditLogs }: InvoiceW
                 {filteredInvoices.length} visible(s) de {invoices.length} registro(s).
               </p>
             </div>
-            <div>
-              <label className="advisor-label" htmlFor="invoiceStatusFilter">Filtro de estado</label>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+              <input className="advisor-input min-w-32" placeholder="Cliente o NIF" value={filters.q} onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))} />
+              <input className="advisor-input min-w-24" placeholder="Serie" value={filters.series} onChange={(event) => setFilters((current) => ({ ...current, series: event.target.value.toUpperCase() }))} />
+              <input type="date" className="advisor-input min-w-28" value={filters.dateFrom} onChange={(event) => setFilters((current) => ({ ...current, dateFrom: event.target.value }))} />
+              <input type="date" className="advisor-input min-w-28" value={filters.dateTo} onChange={(event) => setFilters((current) => ({ ...current, dateTo: event.target.value }))} />
               <select
                 id="invoiceStatusFilter"
-                className="advisor-input min-w-40"
-                value={filterStatus}
-                onChange={(event) => setFilterStatus(event.target.value as InvoiceFilterStatus)}
+                className="advisor-input min-w-32"
+                value={filters.status}
+                onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value as InvoiceFilterStatus }))}
               >
                 <option value="all">Todos</option>
                 {invoiceStatusValues.map((status) => (
                   <option key={status} value={status}>{status}</option>
                 ))}
               </select>
+              <div className="flex gap-2 lg:col-span-5">
+                <button type="button" className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => void refreshInvoices()}>
+                  Aplicar filtros
+                </button>
+                <button type="button" className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => { setFilters(INITIAL_FILTERS); void refreshInvoices(INITIAL_FILTERS); }}>
+                  Limpiar
+                </button>
+              </div>
             </div>
           </div>
         </div>

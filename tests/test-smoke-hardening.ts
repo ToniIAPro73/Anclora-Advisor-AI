@@ -16,6 +16,7 @@ import * as laborAssessmentsRoute from "../src/app/api/labor-risk-assessments/ro
 import * as laborAssessmentDetailRoute from "../src/app/api/labor-risk-assessments/[assessmentId]/route";
 import * as laborAssessmentActionsRoute from "../src/app/api/labor-risk-assessments/[assessmentId]/actions/route";
 import * as laborMitigationActionDetailRoute from "../src/app/api/labor-mitigation-actions/[actionId]/route";
+import * as laborMitigationEvidenceRoute from "../src/app/api/labor-mitigation-actions/[actionId]/evidence/route";
 import * as invoicesRoute from "../src/app/api/invoices/route";
 import * as invoiceDetailRoute from "../src/app/api/invoices/[invoiceId]/route";
 import * as invoicePdfRoute from "../src/app/api/invoices/[invoiceId]/pdf/route";
@@ -73,6 +74,9 @@ async function main(): Promise<void> {
   assert(typeof laborAssessmentActionsRoute.POST === "function", "POST /api/labor-risk-assessments/[assessmentId]/actions handler exported");
   assert(typeof laborMitigationActionDetailRoute.PATCH === "function", "PATCH /api/labor-mitigation-actions/[actionId] handler exported");
   assert(typeof laborMitigationActionDetailRoute.DELETE === "function", "DELETE /api/labor-mitigation-actions/[actionId] handler exported");
+  assert(typeof laborMitigationEvidenceRoute.GET === "function", "GET /api/labor-mitigation-actions/[actionId]/evidence handler exported");
+  assert(typeof laborMitigationEvidenceRoute.POST === "function", "POST /api/labor-mitigation-actions/[actionId]/evidence handler exported");
+  assert(typeof laborMitigationEvidenceRoute.DELETE === "function", "DELETE /api/labor-mitigation-actions/[actionId]/evidence handler exported");
   assert(typeof invoicesRoute.GET === "function", "GET /api/invoices handler exported");
   assert(typeof invoicesRoute.POST === "function", "POST /api/invoices handler exported");
   assert(typeof invoiceDetailRoute.PATCH === "function", "PATCH /api/invoices/[invoiceId] handler exported");
