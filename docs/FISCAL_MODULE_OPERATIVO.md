@@ -4,6 +4,7 @@
 - Workspace fiscal operativo dentro de `/dashboard/fiscal`.
 - CRUD basico de `fiscal_alerts` con RLS por usuario.
 - Acciones rapidas de estado: `pending`, `resolved`, `ignored`.
+- Workflow v2 de tramitacion: `pending`, `prepared`, `presented`, `closed`.
 - Plantillas recurrentes para obligaciones fiscales futuras.
 - Generacion automatizada por job queue.
 
@@ -20,9 +21,12 @@
 
 ## UI
 - Formulario unificado para crear y editar alertas.
+- Selector de estado de tramitacion en la alerta.
 - Formulario de plantillas mensuales, trimestrales y anuales.
 - Resumen operativo con Cuota Cero, pendientes, resueltas y vencidas.
+- Calendario por periodos con agrupacion visual de obligaciones.
 - Lista filtrable por estado con scroll interno y acciones directas.
+- Acciones directas de tramite: preparar, presentar, cerrar y reabrir tramite.
 - Encolado de generacion recurrente y procesado manual de cola desde el modulo.
 
 ## Flujo recurrente
@@ -31,6 +35,7 @@
 - `POST /api/operations/jobs` procesa la cola del usuario actual.
 - El worker genera alertas en `fiscal_alerts` con `template_id`, `period_key` y `source=template`.
 - La combinacion `user_id + template_id + period_key` evita duplicados.
+- `workflow_status` y `presented_at` permiten separar el tramite de la resolucion final de la alerta.
 
 ## Notas de layout
 - La pagina mantiene `h-full` y `overflow-hidden` en el shell dashboard.

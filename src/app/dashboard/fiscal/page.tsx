@@ -17,7 +17,7 @@ export default async function DashboardFiscalPage() {
   const supabase = createUserScopedSupabaseClient(accessToken);
   const { data, error } = await supabase
     .from("fiscal_alerts")
-    .select("id, alert_type, description, due_date, priority, status, created_at")
+    .select("id, alert_type, description, due_date, priority, status, workflow_status, presented_at, template_id, period_key, source, created_at")
     .order("due_date", { ascending: true })
     .limit(60);
 

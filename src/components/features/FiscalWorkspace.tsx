@@ -8,11 +8,13 @@ import {
   fiscalAlertPriorityValues,
   fiscalAlertStatusValues,
   fiscalAlertTypeValues,
+  fiscalAlertWorkflowStatusValues,
   sortFiscalAlerts,
   type FiscalAlertPriority,
   type FiscalAlertRecord,
   type FiscalAlertStatus,
   type FiscalAlertType,
+  type FiscalAlertWorkflowStatus,
 } from "@/lib/fiscal/alerts";
 import {
   getFiscalTemplateLabel,
@@ -33,6 +35,7 @@ type FiscalFormState = {
   description: string;
   dueDate: string;
   priority: FiscalAlertPriority;
+  workflowStatus: FiscalAlertWorkflowStatus;
 };
 
 type TemplateFormState = {
@@ -61,6 +64,7 @@ const INITIAL_ALERT_FORM: FiscalFormState = {
   description: "",
   dueDate: TODAY,
   priority: "medium",
+  workflowStatus: "pending",
 };
 
 const INITIAL_TEMPLATE_FORM: TemplateFormState = {
@@ -95,6 +99,13 @@ function getStatusClass(status: string): string {
   return "bg-blue-100 text-blue-700 border-blue-200";
 }
 
+function getWorkflowClass(status: string): string {
+  if (status === "closed") return "bg-emerald-100 text-emerald-700 border-emerald-200";
+  if (status === "presented") return "bg-blue-100 text-blue-700 border-blue-200";
+  if (status === "prepared") return "bg-amber-100 text-amber-700 border-amber-200";
+  return "bg-slate-100 text-slate-700 border-slate-200";
+}
+
 function getAlertLabel(alertType: string): string {
   if (alertType === "cuota_cero") return "Cuota Cero";
   if (alertType === "iva") return "Modelo 303 (IVA)";
@@ -111,7 +122,15 @@ function toAlertForm(alert: FiscalAlertRecord): FiscalFormState {
     description: alert.description ?? "",
     dueDate: alert.due_date,
     priority: alert.priority as FiscalAlertPriority,
+    workflowStatus: (alert.workflow_status as FiscalAlertWorkflowStatus) ?? "pending",
   };
+}
+
+function getFiscalPeriodLabel(alert: FiscalAlertRecord): string {
+  if (alert.period_key) {
+    return alert.period_key.replace("Q", "T");
+  }
+  return new Intl.DateTimeFormat("es-ES", { month: "short", year: "numeric" }).format(new Date(alert.due_date));
 }
 
 function toTemplateForm(template: FiscalAlertTemplateRecord): TemplateFormState {
@@ -151,6 +170,25 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates, initialAuditL
   );
   const proactiveAlerts = useMemo(() => buildProactiveFiscalAlerts(alerts), [alerts]);
   const fiscalJobs = useMemo(() => jobs.filter((job) => job.job_kind === "fiscal_template_generation"), [jobs]);
+  const workflowCounts = useMemo(() => ({
+    pending: alerts.filter((alert) => alert.workflow_status === "pending").length,
+    prepared: alerts.filter((alert) => alert.workflow_status === "prepared").length,
+    presented: alerts.filter((alert) => alert.workflow_status === "presented").length,
+    closed: alerts.filter((alert) => alert.workflow_status === "closed").length,
+  }), [alerts]);
+  const calendarGroups = useMemo(() => {
+    const groups = new Map<string, FiscalAlertRecord[]>();
+    for (const alert of filteredAlerts) {
+      const key = getFiscalPeriodLabel(alert);
+      const current = groups.get(key) ?? [];
+      current.push(alert);
+      groups.set(key, current);
+    }
+    return Array.from(groups.entries()).map(([period, items]) => ({
+      period,
+      items: sortFiscalAlerts(items),
+    }));
+  }, [filteredAlerts]);
 
   async function refreshAuditLogs() {
     try {
@@ -271,6 +309,30 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates, initialAuditL
       await refreshAuditLogs();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Error al actualizar alerta");
+    } finally {
+      setUpdatingAlertId(null);
+    }
+  }
+
+  async function updateAlertWorkflowStatus(alertId: string, workflowStatus: FiscalAlertWorkflowStatus) {
+    setUpdatingAlertId(alertId);
+    setError(null);
+    setOkMessage(null);
+    try {
+      const response = await fetch(`/api/fiscal-alerts/${alertId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workflowStatus }),
+      });
+      const result = (await response.json()) as { success: boolean; error?: string; alert?: FiscalAlertRecord };
+      if (!response.ok || !result.success || !result.alert) {
+        throw new Error(result.error ?? "No se pudo actualizar el tramite");
+      }
+      setAlerts((current) => sortFiscalAlerts(current.map((item) => (item.id === result.alert!.id ? result.alert! : item))));
+      setOkMessage(`Tramite marcado como ${workflowStatus}.`);
+      await refreshAuditLogs();
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "Error al actualizar tramite fiscal");
     } finally {
       setUpdatingAlertId(null);
     }
@@ -431,6 +493,9 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates, initialAuditL
                 {fiscalAlertPriorityValues.map((priority) => <option key={priority} value={priority}>{priority}</option>)}
               </select>
             </div>
+            <select className="advisor-input" value={alertForm.workflowStatus} onChange={(event) => setAlertForm((current) => ({ ...current, workflowStatus: event.target.value as FiscalAlertWorkflowStatus }))}>
+              {fiscalAlertWorkflowStatusValues.map((workflowStatus) => <option key={workflowStatus} value={workflowStatus}>{workflowStatus}</option>)}
+            </select>
             <textarea className="advisor-input min-h-28 resize-y" value={alertForm.description} onChange={(event) => setAlertForm((current) => ({ ...current, description: event.target.value }))} placeholder="Descripcion operativa" />
             {error && <div className="advisor-alert advisor-alert-error">{error}</div>}
             {okMessage && <div className="advisor-alert advisor-alert-success">{okMessage}</div>}
@@ -458,6 +523,41 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates, initialAuditL
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           <div className="space-y-3">
+            <div className="advisor-card-muted p-3">
+              <p className="text-sm font-semibold text-[#162944]">Calendario y tramite</p>
+              <div className="mt-2 grid gap-2 text-sm text-[#3a4f67] sm:grid-cols-4">
+                <p>Pendiente: <strong className="text-[#162944]">{workflowCounts.pending}</strong></p>
+                <p>Preparado: <strong className="text-[#162944]">{workflowCounts.prepared}</strong></p>
+                <p>Presentado: <strong className="text-[#162944]">{workflowCounts.presented}</strong></p>
+                <p>Cerrado: <strong className="text-[#162944]">{workflowCounts.closed}</strong></p>
+              </div>
+              <div className="mt-3 space-y-2">
+                {calendarGroups.length === 0 && <div className="rounded-xl border border-[#d2dceb] bg-white p-3 text-sm text-[#3a4f67]">Sin obligaciones en el calendario actual.</div>}
+                {calendarGroups.map((group) => (
+                  <div key={group.period} className="rounded-xl border border-[#d2dceb] bg-white p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-[#162944]">{group.period}</p>
+                      <span className="text-xs text-[#3a4f67]">{group.items.length} obligacion(es)</span>
+                    </div>
+                    <div className="mt-2 space-y-2">
+                      {group.items.map((alert) => (
+                        <div key={`${group.period}_${alert.id}`} className="rounded-lg border border-[#e2e8f3] bg-[#f8fbff] p-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-[#162944]">{getAlertLabel(alert.alert_type)}</p>
+                            <div className="flex flex-wrap gap-2">
+                              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getWorkflowClass(alert.workflow_status)}`}>{alert.workflow_status}</span>
+                              <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getPriorityClass(alert.priority)}`}>{alert.priority}</span>
+                            </div>
+                          </div>
+                          <p className="mt-1 text-xs text-[#3a4f67]">Vence {formatDate(alert.due_date)}{alert.presented_at ? ` · presentado ${formatDate(alert.presented_at)}` : ""}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="advisor-card-muted p-3">
               <p className="text-sm font-semibold text-[#162944]">Plantillas activas</p>
               <div className="mt-2 space-y-2">
@@ -521,11 +621,21 @@ export function FiscalWorkspace({ initialAlerts, initialTemplates, initialAuditL
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getPriorityClass(alert.priority)}`}>prioridad: {alert.priority}</span>
                     <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getStatusClass(alert.status)}`}>estado: {alert.status}</span>
+                    <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getWorkflowClass(alert.workflow_status)}`}>tramite: {alert.workflow_status}</span>
+                    <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">periodo: {getFiscalPeriodLabel(alert)}</span>
+                    <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">origen: {alert.source}</span>
                   </div>
+                  {alert.presented_at && (
+                    <p className="mt-2 text-xs text-[#3a4f67]">Presentado el {formatDate(alert.presented_at)}</p>
+                  )}
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button type="button" className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]" onClick={() => { setAlertForm(toAlertForm(alert)); setEditingAlertId(alert.id); }}>
                       Editar
                     </button>
+                    {alert.workflow_status !== "prepared" && <button type="button" disabled={isBusy} className="advisor-btn bg-amber-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => void updateAlertWorkflowStatus(alert.id, "prepared")}>Preparar</button>}
+                    {alert.workflow_status !== "presented" && <button type="button" disabled={isBusy} className="advisor-btn bg-blue-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => void updateAlertWorkflowStatus(alert.id, "presented")}>Presentar</button>}
+                    {alert.workflow_status !== "closed" && <button type="button" disabled={isBusy} className="advisor-btn bg-emerald-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => void updateAlertWorkflowStatus(alert.id, "closed")}>Cerrar</button>}
+                    {alert.workflow_status !== "pending" && <button type="button" disabled={isBusy} className="advisor-btn bg-slate-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => void updateAlertWorkflowStatus(alert.id, "pending")}>Reabrir tramite</button>}
                     {alert.status !== "resolved" && <button type="button" disabled={isBusy} className="advisor-btn bg-emerald-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => void updateAlertStatus(alert.id, "resolved")}>Resolver</button>}
                     {alert.status !== "ignored" && <button type="button" disabled={isBusy} className="advisor-btn bg-slate-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => void updateAlertStatus(alert.id, "ignored")}>Ignorar</button>}
                     {alert.status !== "pending" && <button type="button" disabled={isBusy} className="advisor-btn bg-blue-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => void updateAlertStatus(alert.id, "pending")}>Reabrir</button>}

@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
   const { data, error } = await supabase
     .from("fiscal_alerts")
-    .select("id, alert_type, description, due_date, priority, status, created_at")
+    .select("id, alert_type, description, due_date, priority, status, workflow_status, presented_at, template_id, period_key, source, created_at")
     .order("due_date", { ascending: true })
     .limit(60);
 
@@ -97,8 +97,13 @@ export async function POST(request: NextRequest) {
       due_date: payload.data.dueDate,
       priority: payload.data.priority,
       status: "pending",
+      workflow_status: payload.data.workflowStatus ?? "pending",
+      presented_at: payload.data.workflowStatus === "presented" || payload.data.workflowStatus === "closed"
+        ? payload.data.dueDate
+        : null,
+      source: "manual",
     })
-    .select("id, alert_type, description, due_date, priority, status, created_at")
+    .select("id, alert_type, description, due_date, priority, status, workflow_status, presented_at, template_id, period_key, source, created_at")
     .single();
 
   if (error) {
@@ -125,6 +130,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         priority: payload.data.priority,
         dueDate: payload.data.dueDate,
+        workflowStatus: payload.data.workflowStatus ?? "pending",
       },
     });
   } catch (auditError) {

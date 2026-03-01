@@ -82,8 +82,10 @@ async function main(): Promise<void> {
     description: "  Presentar IVA trimestral  ",
     dueDate: "2026-04-20",
     priority: "high",
+    workflowStatus: "prepared",
   });
   assert(fiscalAlert.description === "Presentar IVA trimestral", "fiscal alert schema trims description");
+  assert(fiscalAlert.workflowStatus === "prepared", "fiscal alert schema keeps workflow status");
 
   const sortedAlerts = sortFiscalAlerts([
     {

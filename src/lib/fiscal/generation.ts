@@ -126,6 +126,7 @@ export async function generateFiscalAlertsFromTemplates(params: {
           due_date: formatDate(dueDate),
           priority: template.priority,
           status: "pending",
+          workflow_status: "pending",
           template_id: template.id,
           period_key: periodKey,
           source: "template",

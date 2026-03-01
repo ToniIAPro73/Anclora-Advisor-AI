@@ -61,13 +61,24 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (patch.dueDate !== undefined) updatePayload.due_date = patch.dueDate;
   if (patch.priority !== undefined) updatePayload.priority = patch.priority;
   if (patch.status !== undefined) updatePayload.status = patch.status;
+  if (patch.workflowStatus !== undefined) {
+    updatePayload.workflow_status = patch.workflowStatus;
+    if (patch.workflowStatus === "presented" || patch.workflowStatus === "closed") {
+      updatePayload.presented_at = new Date().toISOString().slice(0, 10);
+    }
+    if (patch.workflowStatus === "closed") {
+      updatePayload.status = "resolved";
+    } else if (patch.workflowStatus === "pending" || patch.workflowStatus === "prepared" || patch.workflowStatus === "presented") {
+      updatePayload.status = patch.status ?? "pending";
+    }
+  }
 
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
   const { data, error } = await supabase
     .from("fiscal_alerts")
     .update(updatePayload)
     .eq("id", alertId)
-    .select("id, alert_type, description, due_date, priority, status, created_at")
+    .select("id, alert_type, description, due_date, priority, status, workflow_status, presented_at, template_id, period_key, source, created_at")
     .single();
 
   if (error) {
