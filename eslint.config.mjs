@@ -1,5 +1,5 @@
-import js from "../anclora-nexus/node_modules/@eslint/js/src/index.js";
-import tsParser from "../anclora-nexus/node_modules/@typescript-eslint/parser/dist/index.js";
+import js from "@eslint/js";
+import tsParser from "@typescript-eslint/parser";
 
 export default [
   {
