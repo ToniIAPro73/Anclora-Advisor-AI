@@ -33,6 +33,150 @@ export interface RagDocumentVersionRecord {
   created_at: string;
 }
 
+export interface RagDocumentVersionDiffRecord {
+  leftVersion: Pick<RagDocumentVersionRecord, "id" | "version_number" | "snapshot_reason" | "created_at">;
+  rightVersion: Pick<RagDocumentVersionRecord, "id" | "version_number" | "snapshot_reason" | "created_at">;
+  fieldChanges: Array<{
+    field: string;
+    leftValue: string;
+    rightValue: string;
+  }>;
+  stats: {
+    leftChunkCount: number;
+    rightChunkCount: number;
+    chunkCountDelta: number;
+    leftChunkCharCount: number;
+    rightChunkCharCount: number;
+    chunkCharCountDelta: number;
+  };
+  chunkChanges: {
+    addedCount: number;
+    removedCount: number;
+    unchangedCount: number;
+    addedSamples: string[];
+    removedSamples: string[];
+  };
+}
+
+function normalizeValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value.trim();
+  return JSON.stringify(value);
+}
+
+function normalizeChunkContent(content: string): string {
+  return content.replace(/\s+/g, " ").trim();
+}
+
+function buildChunkSample(content: string): string {
+  const normalized = normalizeChunkContent(content);
+  return normalized.length > 180 ? `${normalized.slice(0, 177)}...` : normalized;
+}
+
+export function buildDocumentVersionDiff(
+  leftVersion: RagDocumentVersionRecord,
+  rightVersion: RagDocumentVersionRecord
+): RagDocumentVersionDiffRecord {
+  const leftMetadata = leftVersion.doc_metadata ?? {};
+  const rightMetadata = rightVersion.doc_metadata ?? {};
+  const fieldChanges: RagDocumentVersionDiffRecord["fieldChanges"] = [];
+  const trackedFields: Array<[string, unknown, unknown]> = [
+    ["title", leftVersion.title, rightVersion.title],
+    ["category", leftVersion.category, rightVersion.category],
+    ["source_url", leftVersion.source_url, rightVersion.source_url],
+    ["metadata.notebook_id", leftMetadata.notebook_id, rightMetadata.notebook_id],
+    ["metadata.notebook_title", leftMetadata.notebook_title, rightMetadata.notebook_title],
+    ["metadata.jurisdiction", leftMetadata.jurisdiction, rightMetadata.jurisdiction],
+    ["metadata.topic", leftMetadata.topic, rightMetadata.topic],
+    ["metadata.reason_for_fit", leftMetadata.reason_for_fit, rightMetadata.reason_for_fit],
+  ];
+
+  for (const [field, leftValueRaw, rightValueRaw] of trackedFields) {
+    const leftValue = normalizeValue(leftValueRaw);
+    const rightValue = normalizeValue(rightValueRaw);
+    if (leftValue !== rightValue) {
+      fieldChanges.push({
+        field,
+        leftValue: leftValue || "vacio",
+        rightValue: rightValue || "vacio",
+      });
+    }
+  }
+
+  const leftChunkMap = new Map<string, number>();
+  for (const chunk of leftVersion.snapshot_payload.chunks ?? []) {
+    const key = normalizeChunkContent(chunk.content);
+    leftChunkMap.set(key, (leftChunkMap.get(key) ?? 0) + 1);
+  }
+
+  const rightChunkMap = new Map<string, number>();
+  for (const chunk of rightVersion.snapshot_payload.chunks ?? []) {
+    const key = normalizeChunkContent(chunk.content);
+    rightChunkMap.set(key, (rightChunkMap.get(key) ?? 0) + 1);
+  }
+
+  const allKeys = new Set([...leftChunkMap.keys(), ...rightChunkMap.keys()]);
+  const addedSamples: string[] = [];
+  const removedSamples: string[] = [];
+  let addedCount = 0;
+  let removedCount = 0;
+  let unchangedCount = 0;
+
+  for (const key of allKeys) {
+    const leftCount = leftChunkMap.get(key) ?? 0;
+    const rightCount = rightChunkMap.get(key) ?? 0;
+    const shared = Math.min(leftCount, rightCount);
+    unchangedCount += shared;
+
+    if (leftCount > rightCount) {
+      const delta = leftCount - rightCount;
+      removedCount += delta;
+      if (removedSamples.length < 5) {
+        removedSamples.push(buildChunkSample(key));
+      }
+    }
+
+    if (rightCount > leftCount) {
+      const delta = rightCount - leftCount;
+      addedCount += delta;
+      if (addedSamples.length < 5) {
+        addedSamples.push(buildChunkSample(key));
+      }
+    }
+  }
+
+  return {
+    leftVersion: {
+      id: leftVersion.id,
+      version_number: leftVersion.version_number,
+      snapshot_reason: leftVersion.snapshot_reason,
+      created_at: leftVersion.created_at,
+    },
+    rightVersion: {
+      id: rightVersion.id,
+      version_number: rightVersion.version_number,
+      snapshot_reason: rightVersion.snapshot_reason,
+      created_at: rightVersion.created_at,
+    },
+    fieldChanges,
+    stats: {
+      leftChunkCount: leftVersion.chunk_count,
+      rightChunkCount: rightVersion.chunk_count,
+      chunkCountDelta: leftVersion.chunk_count - rightVersion.chunk_count,
+      leftChunkCharCount: leftVersion.chunk_char_count,
+      rightChunkCharCount: rightVersion.chunk_char_count,
+      chunkCharCountDelta: leftVersion.chunk_char_count - rightVersion.chunk_char_count,
+    },
+    chunkChanges: {
+      addedCount,
+      removedCount,
+      unchangedCount,
+      addedSamples,
+      removedSamples,
+    },
+  };
+}
+
 async function getNextVersionNumber(documentId: string): Promise<number> {
   const supabase = createServiceSupabaseClient();
   const { data, error } = await supabase
@@ -129,6 +273,22 @@ export async function listDocumentVersions(documentId: string, limit = 10): Prom
   }
 
   return (data ?? []) as RagDocumentVersionRecord[];
+}
+
+export async function getDocumentVersionDiff(params: {
+  documentId: string;
+  leftVersionId: string;
+  rightVersionId: string;
+}): Promise<RagDocumentVersionDiffRecord> {
+  const versions = await listDocumentVersions(params.documentId, 50);
+  const leftVersion = versions.find((version) => version.id === params.leftVersionId);
+  const rightVersion = versions.find((version) => version.id === params.rightVersionId);
+
+  if (!leftVersion || !rightVersion) {
+    throw new Error("Versiones no encontradas para calcular diff");
+  }
+
+  return buildDocumentVersionDiff(leftVersion, rightVersion);
 }
 
 export async function rollbackDocumentVersion(params: {

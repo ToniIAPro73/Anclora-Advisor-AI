@@ -5,6 +5,7 @@ import type { AuditLogRecord } from "@/lib/audit/logs";
 import type {
   AdminAuditLogsResponse,
   AdminDocumentRecord,
+  AdminDocumentVersionDiffRecord,
   AdminDocumentVersionRecord,
   IngestResponse,
   NotebookPreset,
@@ -77,6 +78,10 @@ export function useAdminKnowledgeWorkspace({
   const [cron, setCron] = useState<ObservabilityResponse["cron"]>();
   const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>(initialAuditLogs);
   const [documentVersions, setDocumentVersions] = useState<AdminDocumentVersionRecord[]>([]);
+  const [documentVersionDiff, setDocumentVersionDiff] = useState<AdminDocumentVersionDiffRecord | null>(null);
+  const [selectedLeftVersionId, setSelectedLeftVersionId] = useState<string | null>(null);
+  const [selectedRightVersionId, setSelectedRightVersionId] = useState<string | null>(null);
+  const [loadingVersionDiff, setLoadingVersionDiff] = useState(false);
   const [rollingBackDocumentId, setRollingBackDocumentId] = useState<string | null>(null);
 
   const notebookPreset = useMemo(() => NOTEBOOK_PRESETS[domain], [domain]);
@@ -111,6 +116,9 @@ export function useAdminKnowledgeWorkspace({
   const refreshDocumentVersions = useCallback(async (documentId: string | null): Promise<void> => {
     if (!documentId) {
       setDocumentVersions([]);
+      setDocumentVersionDiff(null);
+      setSelectedLeftVersionId(null);
+      setSelectedRightVersionId(null);
       return;
     }
 
@@ -124,11 +132,51 @@ export function useAdminKnowledgeWorkspace({
       if (!response.ok || !result.success) {
         throw new Error(result.error ?? "No se pudieron cargar versiones del documento");
       }
-      setDocumentVersions(result.versions ?? []);
+      const versions = result.versions ?? [];
+      setDocumentVersions(versions);
+      const nextLeftVersionId = versions[0]?.id ?? null;
+      const nextRightVersionId = versions[1]?.id ?? null;
+      setSelectedLeftVersionId((current) => (current && versions.some((version) => version.id === current) ? current : nextLeftVersionId));
+      setSelectedRightVersionId((current) =>
+        current && versions.some((version) => version.id === current) ? current : nextRightVersionId
+      );
     } catch (versionError) {
       setError(versionError instanceof Error ? versionError.message : "Error al cargar versiones");
     }
   }, []);
+
+  const refreshVersionDiff = useCallback(
+    async (documentId: string | null, leftVersionId: string | null, rightVersionId: string | null): Promise<void> => {
+      if (!documentId || !leftVersionId || !rightVersionId || leftVersionId === rightVersionId) {
+        setDocumentVersionDiff(null);
+        return;
+      }
+
+      setLoadingVersionDiff(true);
+      try {
+        const diffUrl = new URL(`/api/admin/rag/documents/${documentId}`, window.location.origin);
+        diffUrl.searchParams.set("view", "diff");
+        diffUrl.searchParams.set("leftVersionId", leftVersionId);
+        diffUrl.searchParams.set("rightVersionId", rightVersionId);
+
+        const response = await fetch(diffUrl.toString(), { cache: "no-store" });
+        const result = (await response.json()) as {
+          success: boolean;
+          diff?: AdminDocumentVersionDiffRecord;
+          error?: string;
+        };
+        if (!response.ok || !result.success) {
+          throw new Error(result.error ?? "No se pudo calcular el diff de versiones");
+        }
+        setDocumentVersionDiff(result.diff ?? null);
+      } catch (diffError) {
+        setError(diffError instanceof Error ? diffError.message : "Error al calcular diff");
+      } finally {
+        setLoadingVersionDiff(false);
+      }
+    },
+    []
+  );
 
   const refreshStatus = useCallback(async (): Promise<void> => {
     setRefreshing(true);
@@ -205,6 +253,10 @@ export function useAdminKnowledgeWorkspace({
   useEffect(() => {
     void refreshDocumentVersions(selectedDocumentId);
   }, [refreshDocumentVersions, selectedDocumentId]);
+
+  useEffect(() => {
+    void refreshVersionDiff(selectedDocumentId, selectedLeftVersionId, selectedRightVersionId);
+  }, [refreshVersionDiff, selectedDocumentId, selectedLeftVersionId, selectedRightVersionId]);
 
   const submitIngest = useCallback(
     async (event: React.FormEvent<HTMLFormElement>, dryRun: boolean): Promise<void> => {
@@ -355,6 +407,10 @@ export function useAdminKnowledgeWorkspace({
       cron,
       auditLogs,
       documentVersions,
+      documentVersionDiff,
+      selectedLeftVersionId,
+      selectedRightVersionId,
+      loadingVersionDiff,
       rollingBackDocumentId,
       notebookPreset,
     },
@@ -372,8 +428,11 @@ export function useAdminKnowledgeWorkspace({
       setInventoryPageSize,
       setAutoRefreshEnabled,
       setAutoRefreshIntervalSec,
+      setSelectedLeftVersionId,
+      setSelectedRightVersionId,
       refreshStatus,
       refreshDocumentVersions,
+      refreshVersionDiff,
       submitIngest,
       deleteDocument,
       rollbackDocument,

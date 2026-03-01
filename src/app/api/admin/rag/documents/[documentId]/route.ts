@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentAppUserFromCookies } from "@/lib/auth/app-user";
 import { createAuditLog } from "@/lib/audit/logs";
 import { isAdminRole } from "@/lib/auth/roles";
-import { createDocumentSnapshot, listDocumentVersions, rollbackDocumentVersion } from "@/lib/rag/admin-document-versions";
+import {
+  createDocumentSnapshot,
+  getDocumentVersionDiff,
+  listDocumentVersions,
+  rollbackDocumentVersion,
+} from "@/lib/rag/admin-document-versions";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { createServiceSupabaseClient } from "@/lib/supabase/server-admin";
 
@@ -22,6 +27,25 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   const { documentId } = await context.params;
   try {
+    const view = request.nextUrl.searchParams.get("view");
+    if (view === "diff") {
+      const leftVersionId = request.nextUrl.searchParams.get("leftVersionId");
+      const rightVersionId = request.nextUrl.searchParams.get("rightVersionId");
+      if (!leftVersionId || !rightVersionId) {
+        const response = NextResponse.json(
+          { success: false, error: "leftVersionId y rightVersionId son obligatorios" },
+          { status: 400 }
+        );
+        response.headers.set("x-request-id", requestId);
+        return response;
+      }
+
+      const diff = await getDocumentVersionDiff({ documentId, leftVersionId, rightVersionId });
+      const response = NextResponse.json({ success: true, diff });
+      response.headers.set("x-request-id", requestId);
+      return response;
+    }
+
     const versions = await listDocumentVersions(documentId, 10);
     const response = NextResponse.json({ success: true, versions });
     response.headers.set("x-request-id", requestId);

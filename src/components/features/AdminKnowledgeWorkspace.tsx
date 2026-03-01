@@ -72,7 +72,13 @@ export function AdminKnowledgeWorkspace({
           onSelectDocument={actions.setSelectedDocumentId}
           onDeleteDocument={(documentId) => void actions.deleteDocument(documentId)}
           versions={state.documentVersions}
+          versionDiff={state.documentVersionDiff}
+          selectedLeftVersionId={state.selectedLeftVersionId}
+          selectedRightVersionId={state.selectedRightVersionId}
+          loadingVersionDiff={state.loadingVersionDiff}
           rollingBackDocumentId={state.rollingBackDocumentId}
+          onLeftVersionChange={actions.setSelectedLeftVersionId}
+          onRightVersionChange={actions.setSelectedRightVersionId}
           onRollbackDocument={(documentId, versionId) => void actions.rollbackDocument(documentId, versionId)}
         />
       </section>

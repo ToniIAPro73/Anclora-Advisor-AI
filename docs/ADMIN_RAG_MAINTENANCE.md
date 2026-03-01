@@ -4,6 +4,7 @@
 - Snapshots versionados de documentos RAG antes de `replace_existing` y antes de borrado.
 - Historial de versiones visible desde `/dashboard/admin`.
 - Rollback operativo de metadata + chunks desde una version previa.
+- Diff operativo entre dos snapshots del mismo documento.
 
 ## Infraestructura
 - Tabla `rag_document_versions`.
@@ -31,6 +32,11 @@
 ## Endpoint
 - `GET /api/admin/rag/documents/[documentId]`
   - lista versiones del documento
+- `GET /api/admin/rag/documents/[documentId]?view=diff&leftVersionId=...&rightVersionId=...`
+  - compara dos snapshots
+  - resume cambios en metadata
+  - resume delta de chunks/chars
+  - muestra muestras de chunks anadidos y eliminados
 - `POST /api/admin/rag/documents/[documentId]`
   - `{ action: "rollback", versionId }`
 - `DELETE /api/admin/rag/documents/[documentId]`

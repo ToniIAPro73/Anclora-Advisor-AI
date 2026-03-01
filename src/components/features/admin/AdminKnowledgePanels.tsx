@@ -3,6 +3,7 @@
 
 import type {
   AdminDocumentRecord,
+  AdminDocumentVersionDiffRecord,
   AdminDocumentVersionRecord,
   AdminIngestJobRecord,
   HardwareBaselineSummary,
@@ -287,7 +288,13 @@ export function AdminInventoryPanel({
   onSelectDocument,
   onDeleteDocument,
   versions,
+  versionDiff,
+  selectedLeftVersionId,
+  selectedRightVersionId,
+  loadingVersionDiff,
   rollingBackDocumentId,
+  onLeftVersionChange,
+  onRightVersionChange,
   onRollbackDocument,
 }: {
   documents: AdminDocumentRecord[];
@@ -306,7 +313,13 @@ export function AdminInventoryPanel({
   onSelectDocument: (...args: [string]) => void;
   onDeleteDocument: (...args: [string]) => void;
   versions: AdminDocumentVersionRecord[];
+  versionDiff: AdminDocumentVersionDiffRecord | null;
+  selectedLeftVersionId: string | null;
+  selectedRightVersionId: string | null;
+  loadingVersionDiff: boolean;
   rollingBackDocumentId: string | null;
+  onLeftVersionChange: (...args: [string | null]) => void;
+  onRightVersionChange: (...args: [string | null]) => void;
   onRollbackDocument: (...args: [string, string]) => void;
 }) {
   const currentStart = totalDocuments === 0 ? 0 : page * pageSize + 1;
@@ -488,6 +501,157 @@ export function AdminInventoryPanel({
                         </div>
                       </div>
                     ))
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Diff entre versiones</p>
+                  <span className="advisor-chip">
+                    {selectedLeftVersionId && selectedRightVersionId ? "comparando snapshots" : "selecciona 2 versiones"}
+                  </span>
+                </div>
+
+                <div className="mt-2 grid gap-3 md:grid-cols-2">
+                  <select
+                    className="advisor-input"
+                    value={selectedLeftVersionId ?? ""}
+                    onChange={(event) => onLeftVersionChange(event.target.value || null)}
+                    disabled={versions.length < 2}
+                  >
+                    <option value="">Version izquierda</option>
+                    {versions.map((version) => (
+                      <option key={`left-${version.id}`} value={version.id}>
+                        v{version.version_number} · {version.snapshot_reason}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="advisor-input"
+                    value={selectedRightVersionId ?? ""}
+                    onChange={(event) => onRightVersionChange(event.target.value || null)}
+                    disabled={versions.length < 2}
+                  >
+                    <option value="">Version derecha</option>
+                    {versions.map((version) => (
+                      <option key={`right-${version.id}`} value={version.id}>
+                        v{version.version_number} · {version.snapshot_reason}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mt-2 rounded-xl border border-[#d2dceb] bg-white p-3">
+                  {versions.length < 2 ? (
+                    <p className="text-sm text-[#3a4f67]">Se necesitan al menos 2 snapshots para calcular el diff.</p>
+                  ) : loadingVersionDiff ? (
+                    <p className="text-sm text-[#3a4f67]">Calculando diff...</p>
+                  ) : !versionDiff ? (
+                    <p className="text-sm text-[#3a4f67]">Selecciona dos versiones distintas para comparar cambios.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Izquierda</p>
+                          <p className="mt-1 text-sm font-semibold text-[#162944]">
+                            v{versionDiff.leftVersion.version_number}
+                          </p>
+                          <p className="mt-1 text-xs text-[#3a4f67]">
+                            {versionDiff.leftVersion.snapshot_reason} · {formatDateTime(versionDiff.leftVersion.created_at)}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Derecha</p>
+                          <p className="mt-1 text-sm font-semibold text-[#162944]">
+                            v{versionDiff.rightVersion.version_number}
+                          </p>
+                          <p className="mt-1 text-xs text-[#3a4f67]">
+                            {versionDiff.rightVersion.snapshot_reason} · {formatDateTime(versionDiff.rightVersion.created_at)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <div className="advisor-card-muted p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Chunks</p>
+                          <p className="mt-1 text-sm text-[#162944]">
+                            {versionDiff.stats.leftChunkCount} vs {versionDiff.stats.rightChunkCount}
+                          </p>
+                          <p className="mt-1 text-xs text-[#3a4f67]">delta: {versionDiff.stats.chunkCountDelta}</p>
+                        </div>
+                        <div className="advisor-card-muted p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Chars</p>
+                          <p className="mt-1 text-sm text-[#162944]">
+                            {versionDiff.stats.leftChunkCharCount} vs {versionDiff.stats.rightChunkCharCount}
+                          </p>
+                          <p className="mt-1 text-xs text-[#3a4f67]">delta: {versionDiff.stats.chunkCharCountDelta}</p>
+                        </div>
+                        <div className="advisor-card-muted p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Chunks cambiados</p>
+                          <p className="mt-1 text-sm text-[#162944]">
+                            +{versionDiff.chunkChanges.addedCount} / -{versionDiff.chunkChanges.removedCount}
+                          </p>
+                          <p className="mt-1 text-xs text-[#3a4f67]">
+                            iguales: {versionDiff.chunkChanges.unchangedCount}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Cambios de metadata</p>
+                        <div className="mt-2 space-y-2">
+                          {versionDiff.fieldChanges.length === 0 ? (
+                            <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3 text-sm text-[#3a4f67]">
+                              No hay cambios en title/category/source_url/doc_metadata.
+                            </div>
+                          ) : (
+                            versionDiff.fieldChanges.map((change) => (
+                              <div key={change.field} className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3">
+                                <p className="text-sm font-semibold text-[#162944]">{change.field}</p>
+                                <p className="mt-1 text-xs text-[#3a4f67]">izquierda: {change.leftValue}</p>
+                                <p className="mt-1 text-xs text-[#3a4f67]">derecha: {change.rightValue}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Chunks anadidos en izquierda</p>
+                          <div className="mt-2 space-y-2">
+                            {versionDiff.chunkChanges.addedSamples.length === 0 ? (
+                              <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3 text-sm text-[#3a4f67]">
+                                Sin chunks anadidos.
+                              </div>
+                            ) : (
+                              versionDiff.chunkChanges.addedSamples.map((sample) => (
+                                <div key={`added-${sample}`} className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3 text-xs text-[#3a4f67]">
+                                  {sample}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Chunks eliminados en izquierda</p>
+                          <div className="mt-2 space-y-2">
+                            {versionDiff.chunkChanges.removedSamples.length === 0 ? (
+                              <div className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3 text-sm text-[#3a4f67]">
+                                Sin chunks eliminados.
+                              </div>
+                            ) : (
+                              versionDiff.chunkChanges.removedSamples.map((sample) => (
+                                <div key={`removed-${sample}`} className="rounded-xl border border-[#d2dceb] bg-[#f8fbff] p-3 text-xs text-[#3a4f67]">
+                                  {sample}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

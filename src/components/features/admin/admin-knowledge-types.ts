@@ -37,6 +37,41 @@ export interface AdminDocumentVersionRecord {
   created_at: string;
 }
 
+export interface AdminDocumentVersionDiffRecord {
+  leftVersion: {
+    id: string;
+    version_number: number;
+    snapshot_reason: string;
+    created_at: string;
+  };
+  rightVersion: {
+    id: string;
+    version_number: number;
+    snapshot_reason: string;
+    created_at: string;
+  };
+  fieldChanges: Array<{
+    field: string;
+    leftValue: string;
+    rightValue: string;
+  }>;
+  stats: {
+    leftChunkCount: number;
+    rightChunkCount: number;
+    chunkCountDelta: number;
+    leftChunkCharCount: number;
+    rightChunkCharCount: number;
+    chunkCharCountDelta: number;
+  };
+  chunkChanges: {
+    addedCount: number;
+    removedCount: number;
+    unchangedCount: number;
+    addedSamples: string[];
+    removedSamples: string[];
+  };
+}
+
 export interface AdminIngestJobRecord {
   id: string;
   status: string;
