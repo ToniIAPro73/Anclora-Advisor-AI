@@ -712,10 +712,8 @@ export class Orchestrator {
         throw conversationError;
       }
 
-      const userMessageId = `usr_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
-      await this.supabase.from('messages').insert([
+      const { error: messagesError } = await this.supabase.from('messages').insert([
         {
-          id: userMessageId,
           conversation_id: conversationId,
           role: 'user',
           content: query,
@@ -730,6 +728,10 @@ export class Orchestrator {
           suggested_actions: suggestedActions,
         },
       ]);
+
+      if (messagesError) {
+        throw messagesError;
+      }
     } catch (error) {
       // Non-critical: log but do not propagate
       console.error('[Orchestrator] Save conversation error:', error);
