@@ -38,7 +38,7 @@ export default async function DashboardAdminPage() {
 
   return (
     <section className="flex h-full min-h-0 overflow-hidden">
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 min-w-0 flex-1">
         {recentError ? (
           <div className="advisor-card p-6 text-sm text-red-700">
             No se pudo cargar el inventario RAG inicial: {recentError.message}

@@ -34,8 +34,8 @@ export function AdminKnowledgeWorkspace({
   });
 
   return (
-    <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-      <section className="flex min-h-0 flex-col gap-4">
+    <div className="grid h-full min-h-0 gap-4 lg:grid-cols-5">
+      <section className="flex min-h-0 min-w-0 flex-col gap-4 lg:col-span-3">
         <AdminHeaderPanel
           documentCount={state.documentCount}
           chunkCount={state.chunkCount}
@@ -89,25 +89,27 @@ export function AdminKnowledgeWorkspace({
         />
       </section>
 
-      <AdminIngestSidebar
-        domain={state.domain}
-        notebookPreset={state.notebookPreset}
-        title={state.title}
-        url={state.url}
-        reasonForFit={state.reasonForFit}
-        content={state.content}
-        submitting={state.submitting}
-        message={state.message}
-        error={state.error}
-        jobs={state.jobs}
-        onDomainChange={actions.setDomain}
-        onTitleChange={actions.setTitle}
-        onUrlChange={actions.setUrl}
-        onReasonForFitChange={actions.setReasonForFit}
-        onContentChange={actions.setContent}
-        onDryRun={(event) => void actions.submitIngest(event, true)}
-        onSubmit={(event) => void actions.submitIngest(event, false)}
-      />
+      <div className="min-h-0 min-w-0 lg:col-span-2">
+        <AdminIngestSidebar
+          domain={state.domain}
+          notebookPreset={state.notebookPreset}
+          title={state.title}
+          url={state.url}
+          reasonForFit={state.reasonForFit}
+          content={state.content}
+          submitting={state.submitting}
+          message={state.message}
+          error={state.error}
+          jobs={state.jobs}
+          onDomainChange={actions.setDomain}
+          onTitleChange={actions.setTitle}
+          onUrlChange={actions.setUrl}
+          onReasonForFitChange={actions.setReasonForFit}
+          onContentChange={actions.setContent}
+          onDryRun={(event) => void actions.submitIngest(event, true)}
+          onSubmit={(event) => void actions.submitIngest(event, false)}
+        />
+      </div>
     </div>
   );
 }

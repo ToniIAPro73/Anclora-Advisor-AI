@@ -36,6 +36,12 @@ test.beforeAll(async () => {
   }
 
   tempUserId = data.user.id;
+  await admin.from("users").upsert({
+    id: data.user.id,
+    email: tempEmail,
+    role: "admin",
+    is_active: true,
+  });
 
   const anon = createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -171,4 +177,35 @@ test("labor UI creates assessment, mitigation and verifies storage evidence flow
   await evidenceDeleteButton.click();
   await expect(page.getByText("Evidencia eliminada.")).toBeVisible();
   await expect(evidenceLink).toHaveCount(0);
+});
+
+test("admin UI keeps ingest panel in its own column without overlapping the workspace", async ({ page }) => {
+  await login(page);
+  await navigateFromSidebar(page, /Admin/i, "Knowledge Base Admin");
+
+  const workspaceHeading = page.getByRole("heading", { name: "Knowledge Base Admin", exact: true });
+  const ingestHeading = page.getByRole("heading", { name: "Nueva ingesta", exact: true });
+  await expect(workspaceHeading).toBeVisible();
+  await expect(ingestHeading).toBeVisible();
+
+  const workspaceCard = page.locator("article").filter({ has: workspaceHeading }).first();
+  const ingestCard = page.locator("aside").filter({ has: ingestHeading }).first();
+
+  await expect(workspaceCard).toBeVisible();
+  await expect(ingestCard).toBeVisible();
+
+  const workspaceBox = await workspaceCard.boundingBox();
+  const ingestBox = await ingestCard.boundingBox();
+
+  expect(workspaceBox).not.toBeNull();
+  expect(ingestBox).not.toBeNull();
+
+  if (!workspaceBox || !ingestBox) {
+    throw new Error("No se pudieron medir los paneles del admin");
+  }
+
+  expect(ingestBox.x).toBeGreaterThan(workspaceBox.x + workspaceBox.width - 40);
+  expect(Math.abs(ingestBox.y - workspaceBox.y)).toBeLessThan(40);
+  expect(ingestBox.width).toBeLessThan(workspaceBox.width);
+  expect(ingestBox.height).toBeGreaterThan(300);
 });
