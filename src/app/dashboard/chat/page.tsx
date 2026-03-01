@@ -24,47 +24,26 @@ export default async function DashboardChatPage({ searchParams }: DashboardChatP
     .order("updated_at", { ascending: false })
     .limit(20);
 
-  let conversations = (conversationData ?? []) as ChatConversationRecord[];
-
-  if (conversations.length === 0) {
-    const { data: newConversation } = await supabase
-      .from("conversations")
-      .insert({ user_id: user.id, title: "Nueva conversacion" })
-      .select("id, title, created_at, updated_at")
-      .single();
-
-    if (newConversation) {
-      conversations = [newConversation as ChatConversationRecord];
-    }
-  }
-
+  const conversations = (conversationData ?? []) as ChatConversationRecord[];
   const requestedConversationId = params.c;
   const activeConversation = conversations.find((item) => item.id === requestedConversationId) ?? conversations[0] ?? null;
 
-  if (!activeConversation) {
-    return (
-      <section className="flex h-full min-h-0 flex-col gap-3">
-        <article className="advisor-card shrink-0 p-4">
-          <h1 className="advisor-heading text-3xl text-[#162944]">Workspace Conversacional</h1>
-          <p className="mt-2 text-sm text-[#3a4f67]">No se pudo inicializar una conversacion persistida.</p>
-        </article>
-      </section>
-    );
+  let messages: ChatPersistedMessageRecord[] = [];
+  if (activeConversation) {
+    const { data: messagesData } = await supabase
+      .from("messages")
+      .select("id, role, content, created_at, context_chunks, suggested_actions")
+      .eq("conversation_id", activeConversation.id)
+      .order("created_at", { ascending: true });
+
+    messages = (messagesData ?? []) as ChatPersistedMessageRecord[];
   }
-
-  const { data: messagesData } = await supabase
-    .from("messages")
-    .select("id, role, content, created_at, context_chunks, suggested_actions")
-    .eq("conversation_id", activeConversation.id)
-    .order("created_at", { ascending: true });
-
-  const messages = (messagesData ?? []) as ChatPersistedMessageRecord[];
 
   return (
     <section className="flex h-full min-h-0 flex-col gap-3">
       <article className="advisor-card shrink-0 p-4">
-        <h1 className="advisor-heading text-3xl text-[#162944]">Workspace Conversacional</h1>
-        <p className="mt-2 text-sm text-[#3a4f67]">
+        <h1 className="advisor-heading text-3xl" style={{ color: "var(--text-primary)" }}>Workspace Conversacional</h1>
+        <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
           Consulta normativa y reanuda conversaciones persistidas con trazabilidad de fuentes y alertas de riesgo.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -75,7 +54,7 @@ export default async function DashboardChatPage({ searchParams }: DashboardChatP
       </article>
       <ChatInterface
         userId={user.id}
-        initialConversationId={activeConversation.id}
+        initialConversationId={activeConversation?.id ?? null}
         initialConversations={conversations}
         initialMessages={messages}
       />

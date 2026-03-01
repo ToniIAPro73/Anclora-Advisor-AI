@@ -1,6 +1,6 @@
 // src/hooks/useChat.ts
 /**
- * HOOK: useChat - Integración Frontend del Orchestrator
+ * HOOK: useChat - Integracion Frontend del Orchestrator
  */
 
 import { useState, useCallback, useEffect } from "react";
@@ -86,8 +86,13 @@ export function useChat(userId: string, conversationId: string, initialMessages:
     setState({ messages, loading: false, error: null });
   }, []);
 
-  const sendMessageStreaming = useCallback(async (query: string) => {
+  const sendMessageStreaming = useCallback(async (query: string, targetConversationId?: string) => {
     if (!query.trim()) return;
+
+    const resolvedConversationId = targetConversationId ?? conversationId;
+    if (!resolvedConversationId) {
+      throw new Error("No hay una conversacion activa para enviar mensajes.");
+    }
 
     const baseId = Date.now();
     const userMessage: ChatMessage = {
@@ -119,7 +124,7 @@ export function useChat(userId: string, conversationId: string, initialMessages:
       const response = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, conversationId, query }),
+        body: JSON.stringify({ userId, conversationId: resolvedConversationId, query }),
       });
 
       if (!response.ok || !response.body) {
@@ -130,7 +135,6 @@ export function useChat(userId: string, conversationId: string, initialMessages:
       const decoder = new TextDecoder();
       let buffer = "";
 
-      // eslint-disable-next-line no-unused-vars
       const updateAssistantMessage = (updater: (...args: [ChatMessage]) => ChatMessage) => {
         setState((prev) => ({
           ...prev,
@@ -232,6 +236,3 @@ export function useChat(userId: string, conversationId: string, initialMessages:
     appendAssistantMessage,
   };
 }
-
-
-

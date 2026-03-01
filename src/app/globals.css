@@ -23,6 +23,22 @@
   --shell-overlay-start: rgba(20, 31, 45, 0.78);
   --shell-overlay-end: rgba(17, 28, 42, 0.92);
   --sidebar-width: 290px;
+  --sidebar-surface: linear-gradient(180deg, rgba(22, 41, 68, 0.98) 0%, rgba(28, 43, 60, 0.98) 100%);
+  --sidebar-glow: radial-gradient(500px 220px at 100% 0%, rgba(29, 171, 137, 0.22), transparent 75%);
+  --sidebar-border: rgba(161, 219, 198, 0.14);
+  --sidebar-text: #f3f7fd;
+  --sidebar-text-muted: #9eb3cc;
+  --sidebar-text-strong: #ffffff;
+  --sidebar-active-bg: rgba(255, 255, 255, 0.1);
+  --sidebar-active-border: rgba(161, 219, 198, 0.4);
+  --sidebar-active-shadow: 0 12px 24px rgba(3, 8, 18, 0.28);
+  --sidebar-item-bg: rgba(255, 255, 255, 0.03);
+  --sidebar-hover-bg: rgba(255, 255, 255, 0.08);
+  --sidebar-hover-border: rgba(255, 255, 255, 0.2);
+  --sidebar-subtitle-active: #a1dbc6;
+  --sidebar-subtitle: #9eb3cc;
+  --sidebar-dot-inactive: rgba(255, 255, 255, 0.2);
+  --sidebar-control-bg: rgba(255, 255, 255, 0.05);
 }
 
 html[data-theme="light"] {
@@ -37,6 +53,27 @@ html[data-theme="light"] {
   --shadow-soft: 0 12px 30px rgba(20, 40, 65, 0.08);
   --shell-overlay-start: rgba(255, 255, 255, 0.8);
   --shell-overlay-end: rgba(245, 249, 255, 0.92);
+  --sidebar-surface:
+    radial-gradient(520px 280px at 100% 0%, rgba(29, 171, 137, 0.2), transparent 70%),
+    radial-gradient(340px 240px at 0% 100%, rgba(22, 41, 68, 0.1), transparent 75%),
+    linear-gradient(180deg, #e8eef8 0%, #edf3fb 36%, #f8fbff 100%);
+  --sidebar-glow:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 28%),
+    radial-gradient(280px 160px at 18% 12%, rgba(255, 255, 255, 0.42), transparent 78%);
+  --sidebar-border: rgba(22, 41, 68, 0.11);
+  --sidebar-text: #223a57;
+  --sidebar-text-muted: #607892;
+  --sidebar-text-strong: #162944;
+  --sidebar-active-bg: linear-gradient(135deg, rgba(22, 41, 68, 0.97) 0%, rgba(28, 43, 60, 0.94) 78%, rgba(29, 171, 137, 0.9) 100%);
+  --sidebar-active-border: rgba(29, 171, 137, 0.36);
+  --sidebar-active-shadow: 0 18px 34px rgba(20, 40, 65, 0.2);
+  --sidebar-item-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.58), rgba(233, 240, 249, 0.88));
+  --sidebar-hover-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(223, 232, 244, 0.96));
+  --sidebar-hover-border: rgba(22, 41, 68, 0.14);
+  --sidebar-subtitle-active: rgba(220, 228, 244, 0.92);
+  --sidebar-subtitle: #607892;
+  --sidebar-dot-inactive: rgba(22, 41, 68, 0.22);
+  --sidebar-control-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(226, 234, 245, 0.98));
 }
 
 html[data-sidebar="collapsed"] {
@@ -75,10 +112,57 @@ html[data-sidebar="collapsed"] {
   }
 
   .advisor-sidebar {
-    background:
-      linear-gradient(180deg, rgba(22, 41, 68, 0.98) 0%, rgba(28, 43, 60, 0.98) 100%),
-      radial-gradient(500px 220px at 100% 0%, rgba(29, 171, 137, 0.22), transparent 75%);
-    color: var(--text-on-dark);
+    background: var(--sidebar-surface), var(--sidebar-glow);
+    color: var(--sidebar-text);
+    box-shadow: inset -1px 0 0 var(--sidebar-border);
+  }
+
+  .advisor-sidebar-link {
+    border-radius: 16px;
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-item-bg);
+    color: var(--sidebar-text);
+    box-shadow: 0 10px 24px rgba(20, 40, 65, 0.06);
+    transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, color 0.18s ease;
+    backdrop-filter: blur(12px);
+  }
+
+  .advisor-sidebar-link:hover {
+    background: var(--sidebar-hover-bg);
+    border-color: var(--sidebar-hover-border);
+    box-shadow: 0 14px 26px rgba(20, 40, 65, 0.1);
+    transform: translateY(-1px);
+  }
+
+  .advisor-sidebar-link[data-active="true"] {
+    background: var(--sidebar-active-bg);
+    border-color: var(--sidebar-active-border);
+    color: var(--sidebar-text-strong);
+    box-shadow: var(--sidebar-active-shadow);
+  }
+
+  .advisor-sidebar-control {
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-control-bg);
+    color: var(--sidebar-text-strong);
+    box-shadow: 0 10px 22px rgba(20, 40, 65, 0.08);
+  }
+
+  .advisor-sidebar-logo-shell {
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-control-bg);
+  }
+
+  .advisor-sidebar-logout {
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-item-bg);
+    color: var(--sidebar-text-strong);
+    box-shadow: 0 10px 22px rgba(20, 40, 65, 0.06);
+  }
+
+  .advisor-sidebar-logout:hover {
+    background: var(--sidebar-hover-bg);
+    border-color: var(--sidebar-hover-border);
   }
 
   .advisor-card {
@@ -250,8 +334,60 @@ html[data-sidebar="collapsed"] {
   }
 }
 
+html[data-theme="dark"] .text-\[\#162944\],
+html[data-theme="dark"] .text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .text-\[\#3a4f67\],
+html[data-theme="dark"] .text-gray-500,
+html[data-theme="dark"] .text-slate-400,
+html[data-theme="dark"] .text-slate-200 {
+  color: var(--text-secondary) !important;
+}
+
+html[data-theme="dark"] .border-\[\#d2dceb\],
+html[data-theme="dark"] .border-\[\#b8c8de\],
+html[data-theme="dark"] .border-\[\#c7d4e6\],
+html[data-theme="dark"] .border-\[\#e2e8f3\] {
+  border-color: var(--advisor-border) !important;
+}
+
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] .bg-\[\#f7faff\],
+html[data-theme="dark"] .bg-\[\#f8fbff\],
+html[data-theme="dark"] .bg-\[\#f2f7ff\],
+html[data-theme="dark"] .bg-\[\#eefbf6\] {
+  background: color-mix(in srgb, var(--advisor-panel) 92%, var(--advisor-light)) !important;
+}
+
+html[data-theme="dark"] .hover\:bg-\[\#f7faff\]:hover,
+html[data-theme="dark"] .hover\:bg-\[\#f3f7fd\]:hover,
+html[data-theme="dark"] .hover\:bg-red-100:hover,
+html[data-theme="dark"] .hover\:bg-white\/10:hover {
+  background: color-mix(in srgb, var(--advisor-panel) 82%, var(--advisor-accent)) !important;
+}
+
+html[data-theme="dark"] .bg-red-50 {
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.88), rgba(69, 10, 10, 0.96)) !important;
+}
+
+html[data-theme="dark"] .border-red-200 {
+  border-color: rgba(248, 113, 113, 0.28) !important;
+}
+
+html[data-theme="dark"] .text-red-700 {
+  color: #fecaca !important;
+}
+
+html[data-theme="dark"] .shadow-sm,
+html[data-theme="dark"] .shadow-md {
+  box-shadow: var(--shadow-soft) !important;
+}
+
 @keyframes advisor-spin {
   to {
     transform: rotate(360deg);
   }
 }
+
