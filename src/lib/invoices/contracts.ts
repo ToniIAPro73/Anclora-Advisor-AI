@@ -25,6 +25,17 @@ export interface InvoiceRecord {
   created_at: string;
 }
 
+export interface InvoicePaymentRecord {
+  id: string;
+  invoice_id: string;
+  amount: number;
+  paid_at: string;
+  payment_method: string | null;
+  payment_reference: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export const createInvoiceSchema = z.object({
   clientName: z.string().min(2).max(255).transform((value) => value.trim()),
   clientNif: z.string().min(5).max(50).transform((value) => value.trim().toUpperCase()),
@@ -59,3 +70,11 @@ export const updateInvoiceSchema = z
   .refine((value) => Object.values(value).some((item) => item !== undefined), {
     message: "At least one field must be provided",
   });
+
+export const createInvoicePaymentSchema = z.object({
+  amount: z.number().positive(),
+  paidAt: z.string().datetime(),
+  paymentMethod: z.string().min(2).max(80).transform((value) => value.trim()),
+  paymentReference: z.string().max(120).transform((value) => value.trim()).optional(),
+  notes: z.string().max(2000).transform((value) => value.trim()).optional(),
+});

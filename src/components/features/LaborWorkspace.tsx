@@ -21,6 +21,7 @@ interface LaborWorkspaceProps {
   initialMitigationActions: LaborMitigationActionRecord[];
   initialAuditLogs: AuditLogRecord[];
   initialFilters?: Partial<AssessmentFilters>;
+  initialSelectedAssessmentId?: string | null;
 }
 
 type LaborFormState = {
@@ -220,6 +221,7 @@ export function LaborWorkspace({
   initialMitigationActions,
   initialAuditLogs,
   initialFilters,
+  initialSelectedAssessmentId,
 }: LaborWorkspaceProps) {
   const [assessments, setAssessments] = useState<LaborRiskAssessmentRecord[]>(initialAssessments);
   const [mitigationActions, setMitigationActions] = useState<LaborMitigationActionRecord[]>(initialMitigationActions);
@@ -227,7 +229,7 @@ export function LaborWorkspace({
   const [form, setForm] = useState<LaborFormState>(INITIAL_FORM);
   const [mitigationForm, setMitigationForm] = useState<MitigationFormState>(INITIAL_MITIGATION_FORM);
   const [editingAssessmentId, setEditingAssessmentId] = useState<string | null>(null);
-  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(initialAssessments[0]?.id ?? null);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(initialSelectedAssessmentId ?? initialAssessments[0]?.id ?? null);
   const [submitting, setSubmitting] = useState(false);
   const [mitigationSubmitting, setMitigationSubmitting] = useState(false);
   const [editingActionId, setEditingActionId] = useState<string | null>(null);
@@ -290,6 +292,20 @@ export function LaborWorkspace({
     (item) => item.status !== "completed" && item.due_date && new Date(item.due_date) < new Date()
   ).length;
   const slaBreachedActions = filteredActions.filter((item) => getSlaState(item) === "breached").length;
+  const ownerStats = useMemo(() => {
+    const stats = new Map<string, { owner: string; total: number; breached: number; warning: number; completed: number }>();
+    for (const action of mitigationActions) {
+      const owner = action.owner_name?.trim() || action.owner_email?.trim() || "Sin asignar";
+      const current = stats.get(owner) ?? { owner, total: 0, breached: 0, warning: 0, completed: 0 };
+      current.total += 1;
+      const slaState = getSlaState(action);
+      current.breached += slaState === "breached" ? 1 : 0;
+      current.warning += slaState === "warning" ? 1 : 0;
+      current.completed += action.status === "completed" ? 1 : 0;
+      stats.set(owner, current);
+    }
+    return Array.from(stats.values()).sort((left, right) => right.total - left.total).slice(0, 6);
+  }, [mitigationActions]);
 
   async function refreshAuditLogs() {
     try {
@@ -879,6 +895,48 @@ export function LaborWorkspace({
                   <p className="mt-2 text-xs text-[#3a4f67]">
                     Filtros activos: {filteredActions.length} accion(es) visible(s) de {selectedActions.length}.
                   </p>
+                </article>
+
+                <article className="advisor-card-muted p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">Responsables y SLA</p>
+                      <p className="mt-1 text-sm text-[#162944]">Carga operativa agregada por responsable.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-xs font-semibold text-[#162944]"
+                      onClick={() => setFilters((current) => ({ ...current, ownerQuery: "", slaState: "all" }))}
+                    >
+                      Limpiar foco
+                    </button>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {ownerStats.length === 0 ? (
+                      <div className="rounded-xl border border-[#d2dceb] bg-white p-3 text-sm text-[#3a4f67]">
+                        Sin responsables asignados todavia.
+                      </div>
+                    ) : (
+                      ownerStats.map((owner) => (
+                        <button
+                          key={owner.owner}
+                          type="button"
+                          className="w-full rounded-xl border border-[#d2dceb] bg-white p-3 text-left"
+                          onClick={() => setFilters((current) => ({ ...current, ownerQuery: owner.owner }))}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-[#162944]">{owner.owner}</p>
+                            <span className="text-xs text-[#3a4f67]">{owner.total} accion(es)</span>
+                          </div>
+                          <div className="mt-2 grid gap-2 text-xs text-[#3a4f67] sm:grid-cols-3">
+                            <p>Completadas: <strong className="text-[#162944]">{owner.completed}</strong></p>
+                            <p>SLA warning: <strong className="text-[#162944]">{owner.warning}</strong></p>
+                            <p>SLA roto: <strong className="text-[#162944]">{owner.breached}</strong></p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
                 </article>
 
                 <article className="advisor-card p-4">

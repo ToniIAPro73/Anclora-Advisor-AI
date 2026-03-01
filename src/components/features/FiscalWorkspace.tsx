@@ -27,6 +27,7 @@ interface FiscalWorkspaceProps {
   initialTemplates: FiscalAlertTemplateRecord[];
   initialAuditLogs: AuditLogRecord[];
   initialSearchQuery?: string;
+  initialSelectedAlertId?: string | null;
 }
 
 type FilterStatus = "all" | FiscalAlertStatus;
@@ -152,6 +153,7 @@ export function FiscalWorkspace({
   initialTemplates,
   initialAuditLogs,
   initialSearchQuery = "",
+  initialSelectedAlertId = null,
 }: FiscalWorkspaceProps) {
   const [alerts, setAlerts] = useState(sortFiscalAlerts(initialAlerts));
   const [templates, setTemplates] = useState(initialTemplates);
@@ -639,10 +641,11 @@ export function FiscalWorkspace({
             )}
 
             {filteredAlerts.length === 0 && <div className="advisor-card-muted p-4 text-sm text-[#3a4f67]">No hay alertas para el filtro seleccionado.</div>}
-            {filteredAlerts.map((alert) => {
-              const isBusy = updatingAlertId === alert.id;
-              return (
-                <div key={alert.id} className="advisor-card-muted p-4">
+              {filteredAlerts.map((alert) => {
+                const isBusy = updatingAlertId === alert.id;
+                const isSelected = initialSelectedAlertId === alert.id;
+                return (
+                <div key={alert.id} className={`advisor-card-muted p-4 ${isSelected ? "ring-2 ring-[#1dab89] ring-offset-2 ring-offset-white" : ""}`}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <p className="text-sm font-semibold text-[#162944]">{getAlertLabel(alert.alert_type)}</p>

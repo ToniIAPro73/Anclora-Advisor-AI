@@ -7,7 +7,7 @@ import type { FiscalAlertTemplateRecord } from "@/lib/fiscal/templates";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
 interface DashboardFiscalPageProps {
-  searchParams?: Promise<{ q?: string }>;
+  searchParams?: Promise<{ q?: string; alertId?: string }>;
 }
 
 export default async function DashboardFiscalPage({ searchParams }: DashboardFiscalPageProps) {
@@ -61,6 +61,7 @@ export default async function DashboardFiscalPage({ searchParams }: DashboardFis
         initialTemplates={templates}
         initialAuditLogs={auditLogs}
         initialSearchQuery={params.q ?? ""}
+        initialSelectedAlertId={params.alertId ?? null}
       />
     </section>
   );

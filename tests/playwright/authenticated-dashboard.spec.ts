@@ -60,27 +60,27 @@ test("login flow and dashboard navigation create a real invoice", async ({ page 
   await page.getByLabel("NIF/CIF").fill("B12345678");
   await page.getByLabel("Serie").fill("PWUI");
   await page.getByLabel("Email destinatario").fill("cliente.ui@example.com");
-  await page.getByLabel("Metodo de cobro").fill("transferencia");
-  await page.getByLabel("Referencia de cobro").fill("COBRO-UI-001");
   await page.getByRole("button", { name: "Guardar borrador" }).click();
 
   await expect(page.getByText("Factura guardada en borrador.")).toBeVisible();
-  await expect(page.getByText(clientName)).toBeVisible();
+  await expect(page.getByText(clientName, { exact: true })).toBeVisible();
 
   await page.getByPlaceholder("Cliente o NIF").fill(clientName);
   await page.getByRole("button", { name: "Aplicar filtros" }).click();
-  await expect(page.getByText(clientName)).toBeVisible();
+  await expect(page.getByText(clientName, { exact: true })).toBeVisible();
 
   const invoiceCard = page.locator("div").filter({ has: page.getByText(clientName, { exact: true }) }).first();
   await invoiceCard.getByRole("button", { name: "Emitir" }).click();
   await expect(page.getByText("Factura marcada como issued.")).toBeVisible();
 
-  const registerPaymentButton = invoiceCard.getByRole("button", { name: "Registrar cobro" });
-  await expect(registerPaymentButton).toBeEnabled();
-  await registerPaymentButton.click();
-  await expect(page.getByText("Cobro registrado correctamente.")).toBeVisible();
-  await expect(invoiceCard.getByText("Metodo: transferencia · Ref COBRO-UI-001")).toBeVisible();
-  await expect(invoiceCard.getByText("Cobrada:")).toBeVisible();
+  await invoiceCard.getByRole("button", { name: "Cobros" }).click();
+  await page.locator('input[placeholder="Importe cobrado"]').fill("500");
+  await page.locator('input[placeholder="Metodo de cobro"]').fill("transferencia");
+  await page.locator('input[placeholder="Referencia"]').fill("COBRO-UI-001");
+  await page.locator('textarea[placeholder="Notas del cobro"]').fill("Primer cobro parcial");
+  await page.getByRole("button", { name: "Registrar cobro parcial" }).click();
+  await expect(page.getByText("Primer cobro parcial")).toBeVisible();
+  await expect(invoiceCard.getByText("Pendiente:")).toBeVisible();
 });
 
 test("fiscal UI creates a real alert and template", async ({ page }) => {

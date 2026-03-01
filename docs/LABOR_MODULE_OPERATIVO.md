@@ -8,6 +8,7 @@
 - Workflow v3 con SLA, checklist estructurado y evidencias enlazadas.
 - Evidencias reales en Supabase Storage con descarga firmada y borrado desde UI.
 - Workspace v4 con filtros por escenario, responsable, estado y SLA.
+- Workspace v5 con reporting agregado por responsable y foco rapido sobre SLA.
 
 ## Endpoints
 - `GET /api/labor-risk-assessments`
@@ -37,6 +38,7 @@
   - subida de ficheros a bucket privado y acceso temporal por URL firmada
   - metadatos visibles por evidencia (`fileName`, `mimeType`, `sizeBytes`, `storagePath`)
   - filtros operativos por escenario, responsable, estado de accion y estado SLA
+  - resumen agregado por responsable con quick focus sobre carga y SLA
 
 ## Infraestructura
 - Nueva tabla `labor_mitigation_actions`.

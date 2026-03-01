@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useChat, type ChatMessage } from "@/hooks/useChat";
 import type { ChatSuggestedAction } from "@/lib/chat/action-suggestions";
 import type { ChatConversationRecord, ChatPersistedMessageRecord } from "@/lib/chat/contracts";
+import { resolveExactNavigationHref } from "@/lib/chat/entity-resolution";
 import MessageList from "./MessageList";
 
 interface ChatInterfaceProps {
@@ -227,13 +228,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       let successSummary = "";
 
       if (action.kind === "open_existing_fiscal_alert" || action.kind === "open_existing_labor_assessment" || action.kind === "open_existing_invoice") {
-        router.push(action.navigationHref);
+        const resolvedHref = await resolveExactNavigationHref(action);
+        router.push(resolvedHref);
         setActionStates((prev) => ({
           ...prev,
-          [stateKey]: { status: "success", message: "Filtro aplicado en el modulo correspondiente." },
+          [stateKey]: { status: "success", message: resolvedHref === action.navigationHref ? "Filtro aplicado en el modulo correspondiente." : "Entidad localizada y abierta en su modulo." },
         }));
         appendAssistantMessage({
-          content: "He abierto el modulo con un filtro precargado para revisar entidades ya existentes relacionadas con esta consulta.",
+          content: resolvedHref === action.navigationHref
+            ? "He abierto el modulo con un filtro precargado para revisar entidades ya existentes relacionadas con esta consulta."
+            : "He localizado una entidad ya existente y he abierto el modulo directamente sobre ese registro.",
           suggestedActions: [],
           alerts: [],
           citations: [],

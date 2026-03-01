@@ -2,7 +2,7 @@ import { createFiscalAlertSchema, sortFiscalAlerts } from "../../src/lib/fiscal/
 import { createFiscalTemplateSchema, getFiscalTemplateLabel } from "../../src/lib/fiscal/templates";
 import { deliverInvoiceByEmail } from "../../src/lib/invoices/delivery";
 import { renderInvoicePrintableHtml } from "../../src/lib/invoices/pdf";
-import type { InvoiceRecord } from "../../src/lib/invoices/contracts";
+import { createInvoicePaymentSchema, type InvoiceRecord } from "../../src/lib/invoices/contracts";
 import { buildInvoiceCsv, buildInvoiceReference } from "../../src/lib/invoices/service";
 import {
   createLaborMitigationActionSchema,
@@ -100,6 +100,17 @@ async function main(): Promise<void> {
   ]);
   assert(invoiceCsv.includes("reference,client_name"), "invoice csv export includes headers");
   assert(invoiceCsv.includes("2026-0007"), "invoice csv export includes invoice reference");
+
+  const partialPayment = createInvoicePaymentSchema.parse({
+    amount: 500,
+    paidAt: "2026-03-01T10:00:00.000Z",
+    paymentMethod: "transferencia",
+    paymentReference: "COBRO-001",
+    notes: "Primer cobro parcial",
+  });
+  assert(partialPayment.amount === 500, "invoice payment schema keeps amount");
+  assert(partialPayment.paymentMethod === "transferencia", "invoice payment schema normalizes payment method");
+  assert(partialPayment.paymentReference === "COBRO-001", "invoice payment schema keeps payment reference");
 
   const fiscalAlert = createFiscalAlertSchema.parse({
     alertType: "iva",

@@ -15,6 +15,7 @@ interface DashboardLaboralPageProps {
     owner?: string;
     actionStatus?: string;
     slaState?: string;
+    assessmentId?: string;
   }>;
 }
 
@@ -86,6 +87,7 @@ export default async function DashboardLaboralPage({ searchParams }: DashboardLa
               ? params.slaState
               : "all",
         }}
+        initialSelectedAssessmentId={params.assessmentId ?? null}
       />
     </section>
   );

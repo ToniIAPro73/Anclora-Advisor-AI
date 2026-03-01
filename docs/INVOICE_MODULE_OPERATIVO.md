@@ -10,6 +10,7 @@
 - Envio real por SMTP con PDF adjunto via outbox y job queue.
 - Exportacion del libro visible en CSV y JSON.
 - Seguimiento de cobro con fecha, metodo, referencia y notas.
+- Cobros parciales con historico por factura.
 
 ## Endpoints
 - `GET /api/invoices`
@@ -20,6 +21,9 @@
 - `GET /api/invoices/export`
 - `GET /api/invoices/[invoiceId]/pdf`
 - `POST /api/invoices/[invoiceId]/send`
+- `GET /api/invoices/[invoiceId]/payments`
+- `POST /api/invoices/[invoiceId]/payments`
+- `DELETE /api/invoice-payments/[paymentId]`
 - `GET /api/operations/jobs`
 - `POST /api/operations/jobs`
 
@@ -31,6 +35,7 @@
 - Libro de facturas agrupado por periodo y estado.
 - Lista filtrable con acciones de emitir, marcar pagada, volver a borrador, eliminar, abrir vista PDF, encolar envios y procesar cola.
 - Registro de cobro desde listado o formulario de edicion.
+- Registro de cobros parciales sobre la factura seleccionada.
 - Accion de duplicar factura desde listado.
 - Filtros avanzados por cliente/NIF, serie, estado y rango de fechas.
 - Resumen de volumen total, cobrado y pendiente de cobro.
@@ -43,6 +48,8 @@
 - `Procesar cola` ejecuta jobs pendientes del usuario actual.
 - Solo cuando el job termina con exito se actualizan `recipient_email`, `sent_at` y `draft -> issued`.
 - `Registrar cobro` actualiza `paid_at`, `payment_method`, `payment_reference` y deja trazabilidad operativa.
+- Cada cobro parcial se guarda en `invoice_payments`.
+- La factura pasa a `paid` solo cuando la suma de cobros alcanza el total.
 
 ## Variables de entorno
 - `SMTP_HOST`

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import type { AuditLogRecord } from "@/lib/audit/logs";
 import { InvoiceWorkspace } from "@/components/features/InvoiceWorkspace";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
-import type { InvoiceRecord } from "@/lib/invoices/contracts";
+import type { InvoicePaymentRecord, InvoiceRecord } from "@/lib/invoices/contracts";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
 interface DashboardFacturacionPageProps {
@@ -12,6 +12,7 @@ interface DashboardFacturacionPageProps {
     series?: string;
     dateFrom?: string;
     dateTo?: string;
+    invoiceId?: string;
   }>;
 }
 
@@ -39,7 +40,14 @@ export default async function DashboardFacturacionPage({ searchParams }: Dashboa
     .order("created_at", { ascending: false })
     .limit(8);
 
+  const { data: paymentData } = await supabase
+    .from("invoice_payments")
+    .select("id, invoice_id, amount, paid_at, payment_method, payment_reference, notes, created_at")
+    .order("paid_at", { ascending: false })
+    .limit(200);
+
   const invoices = (data ?? []) as InvoiceRecord[];
+  const payments = (paymentData ?? []) as InvoicePaymentRecord[];
   const auditLogs = (auditData ?? []) as unknown as AuditLogRecord[];
 
   return (
@@ -63,6 +71,8 @@ export default async function DashboardFacturacionPage({ searchParams }: Dashboa
               ? params.status
               : "all",
         }}
+        initialSelectedInvoiceId={params.invoiceId ?? null}
+        initialPayments={payments}
       />
     </section>
   );
