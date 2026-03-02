@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
+import type { SetStateAction } from "react";
 import type { ChatSuggestedAction } from "@/lib/chat/action-suggestions";
 
 export type AlertLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
@@ -151,7 +152,7 @@ export function useChat(userId: string, conversationId: string, initialMessages:
       const decoder = new TextDecoder();
       let buffer = "";
 
-      const updateAssistantMessage = (updater: (...args: [ChatMessage]) => ChatMessage) => {
+      const updateAssistantMessage = (updater: Exclude<SetStateAction<ChatMessage>, ChatMessage>) => {
         setState((prev) => ({
           ...prev,
           messages: prev.messages.map((message) =>
