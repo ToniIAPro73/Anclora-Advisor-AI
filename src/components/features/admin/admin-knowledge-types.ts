@@ -174,6 +174,16 @@ export interface ObservabilityResponse {
     baseline?: HardwareBaselineSummary | null;
     benchmark?: HardwareBenchmarkSummary | null;
   };
+  runtime?: {
+    configured: boolean;
+    profile: string | null;
+    chat_provider: string | null;
+    embedding_provider: string | null;
+    chat_models: string[];
+    embedding_model: string | null;
+    expected_embedding_dimension: number | null;
+    error: string | null;
+  };
   cron?: {
     configured: boolean;
     secret_source: "APP_JOBS_CRON_SECRET" | "CRON_SECRET" | "missing";

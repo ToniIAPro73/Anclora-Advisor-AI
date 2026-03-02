@@ -43,6 +43,7 @@
     "perf:benchmark:hardware": "tsx scripts/benchmark-hardware.ts",
     "test:admin-status": "tsx tests/unit/test-admin-status-filters.ts",
     "test:admin-status:service": "tsx tests/unit/test-admin-status-service.ts",
+    "test:ai-runtime-profile": "tsx tests/unit/test-ai-runtime-profile.ts",
     "test:chat-actions": "tsx tests/unit/test-chat-action-suggestions.ts",
     "test:chat-entity-resolution": "tsx tests/unit/test-chat-entity-resolution.ts",
     "test:e2e:auth": "tsx tests/e2e/test-authenticated-workflows.ts",

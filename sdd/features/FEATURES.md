@@ -9,6 +9,7 @@
 - [labor-risk-monitor-and-history](./labor-risk-monitor-and-history/labor-risk-monitor-and-history-INDEX.md)
 - [invoicing-workspace-and-withholding-rules](./invoicing-workspace-and-withholding-rules/invoicing-workspace-and-withholding-rules-INDEX.md)
 - [i18n-observability-and-release-hardening](./i18n-observability-and-release-hardening/i18n-observability-and-release-hardening-INDEX.md)
+- [ai-runtime-provider-profiles](./ai-runtime-provider-profiles/ai-runtime-provider-profiles-INDEX.md)
 - [frontend-app-delivery-roadmap-v1](./frontend-app-delivery-roadmap-v1.md)
 
 ## Delivery Status
@@ -24,6 +25,7 @@
 | labor-risk-monitor-and-history               | CLOSED   | GO      |
 | invoicing-workspace-and-withholding-rules    | CLOSED   | GO      |
 | i18n-observability-and-release-hardening     | CLOSED   | GO      |
+| ai-runtime-provider-profiles                 | ACTIVE   | NO-GO   |
 
 ## Notes
 

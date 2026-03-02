@@ -55,3 +55,11 @@
 - Se agrega capa i18n backend `es/en` con test de paridad de claves.
 - Se agrega smoke test automatizado de rutas/pages/handlers criticos.
 - Resultado del roadmap: todas las fases en `CLOSED/GO`.
+
+## 2026-03-02
+
+- Se abre la feature `ANCLORA-AI-001` para conmutacion de runtime IA por perfil.
+- Se agrega capa centralizada `src/lib/ai/runtime.ts` para perfiles `local`, `cloudflare` y `groq-cloudflare`.
+- `lib/agents/orchestrator.ts` y `src/lib/rag/embeddings.ts` pasan a depender de la nueva capa.
+- Se documenta la gobernanza operativa del runtime en `docs/AI_RUNTIME_PROFILES.md` y `.env.example`.
+- Se agregan artefactos SDD de `ai-runtime-provider-profiles` (rule/skill/prompts/spec/test/qa/gate).

@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { getCurrentAppUserFromCookies } from "@/lib/auth/app-user";
 import { isAdminRole } from "@/lib/auth/roles";
+import { getAIRuntimeSummary } from "@/lib/ai/runtime";
 import { getRequestId, log } from "@/lib/observability/logger";
 import { listRagTraces, summarizeRagTraces } from "@/lib/observability/rag-traces";
 
@@ -46,6 +47,17 @@ type CronStatus = {
   path: string | null;
 };
 
+type AIRuntimeStatus = {
+  configured: boolean;
+  profile: string | null;
+  chat_provider: string | null;
+  embedding_provider: string | null;
+  chat_models: string[];
+  embedding_model: string | null;
+  expected_embedding_dimension: number | null;
+  error: string | null;
+};
+
 async function readJsonFile<T>(filePath: string): Promise<T | null> {
   try {
     const raw = await fs.readFile(filePath, "utf8");
@@ -78,6 +90,36 @@ export async function GET(request: NextRequest) {
     readJsonFile<OllamaBaselineReport>(path.join(artifactsDir, "ollama_baseline_report.json")),
     readJsonFile<HardwareBenchmarkReport>(path.join(artifactsDir, "hardware_benchmark_report.json")),
   ]);
+  let runtimeStatus: AIRuntimeStatus;
+  try {
+    const runtime = getAIRuntimeSummary();
+    runtimeStatus = {
+      configured: true,
+      profile: runtime.profile,
+      chat_provider: runtime.chatProvider,
+      embedding_provider: runtime.embeddingProvider,
+      chat_models: [
+        runtime.chatModels.primary,
+        runtime.chatModels.fast,
+        runtime.chatModels.fallback,
+        runtime.chatModels.guard,
+      ],
+      embedding_model: runtime.embeddingModel,
+      expected_embedding_dimension: runtime.expectedEmbeddingDimension,
+      error: null,
+    };
+  } catch (error) {
+    runtimeStatus = {
+      configured: false,
+      profile: process.env.AI_RUNTIME_PROFILE?.trim() ?? "local",
+      chat_provider: null,
+      embedding_provider: null,
+      chat_models: [],
+      embedding_model: null,
+      expected_embedding_dimension: null,
+      error: error instanceof Error ? error.message : "unknown_runtime_error",
+    };
+  }
 
   const response = NextResponse.json({
     success: true,
@@ -88,6 +130,7 @@ export async function GET(request: NextRequest) {
       baseline: ollamaBaseline,
       benchmark: hardwareBenchmark,
     },
+    runtime: runtimeStatus,
     cron: {
       configured: Boolean(process.env.APP_JOBS_CRON_SECRET || process.env.CRON_SECRET),
       secret_source: process.env.APP_JOBS_CRON_SECRET

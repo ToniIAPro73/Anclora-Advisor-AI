@@ -1,11 +1,11 @@
 // lib/agents/orchestrator.ts
 /**
  * ORCHESTRATOR CENTRAL - Anclora Advisor AI
- * Primary LLM: Ollama local (qwen2.5:14b)
- * Fallback LLM: Ollama local (llama3.1:8b)
+ * Runtime de LLM configurable por perfil (`AI_RUNTIME_PROFILE`)
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { generateChatText, getAIRuntimeConfig } from '@/lib/ai/runtime';
 import { retrieveContext, RAGChunk } from '../../src/lib/rag/retrieval';
 import { runDeterministicFiscalTool } from '../../src/lib/tools/deterministic-fiscal-tools';
 import { buildSuggestedChatActions, type ChatSuggestedAction } from '../../src/lib/chat/action-suggestions';
@@ -228,7 +228,7 @@ async function retrieveWithCascade(
 // ----------------------------------------------------------------
 export class Orchestrator {
   private supabase: SupabaseClient;
-  private ollamaBaseUrl: string;
+  private llmProviderLabel: string;
   private primaryModel: string;
   private fallbackModel: string;
   private fastModel: string;
@@ -244,16 +244,17 @@ export class Orchestrator {
   private responseCache: Map<string, { value: OrchestratorResponse; expiresAt: number }>;
 
   constructor() {
+    const aiRuntime = getAIRuntimeConfig();
     this.supabase  = createClient(
       process.env.SUPABASE_URL ?? 'https://placeholder.supabase.co',
       process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'placeholder'
     );
-    this.ollamaBaseUrl = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
-    this.primaryModel = process.env.OLLAMA_MODEL_PRIMARY ?? process.env.OLLAMA_MODEL ?? 'qwen2.5:14b';
-    this.fallbackModel = process.env.OLLAMA_MODEL_FALLBACK ?? 'llama3.1:8b';
-    this.fastModel = process.env.OLLAMA_MODEL_FAST ?? 'llama3.2:latest';
-    this.noEvidenceFastModel = process.env.OLLAMA_MODEL_NO_EVIDENCE ?? 'gemma3:1b';
-    this.guardModel = process.env.OLLAMA_MODEL_GUARD ?? this.fastModel;
+    this.llmProviderLabel = aiRuntime.chat.label;
+    this.primaryModel = aiRuntime.chat.models.primary;
+    this.fallbackModel = aiRuntime.chat.models.fallback;
+    this.fastModel = aiRuntime.chat.models.fast;
+    this.noEvidenceFastModel = aiRuntime.chat.models.noEvidence;
+    this.guardModel = aiRuntime.chat.models.guard;
     this.fastPathEnabled = process.env.ORCHESTRATOR_FASTPATH_ENABLED !== 'false';
     this.localNoEvidenceEnabled = process.env.ORCHESTRATOR_LOCAL_NO_EVIDENCE !== 'false';
     this.guardEnabled = process.env.ORCHESTRATOR_GUARD_ENABLED !== 'false';
@@ -374,38 +375,12 @@ export class Orchestrator {
       .replace('{query}', query)
       .replace('{answer}', answer);
 
-    const raw = await this.generateWithOllama(this.guardModel, prompt, query);
+    const raw = await this.generateWithProvider(this.guardModel, prompt, query);
     return this.parseGuardResult(raw);
   }
 
-  private async generateWithOllama(model: string, systemPrompt: string, query: string): Promise<string> {
-    const response = await fetch(`${this.ollamaBaseUrl}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        stream: false,
-        options: {
-          temperature: 0.1,
-        },
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: query },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Ollama ${model} error: ${response.status} ${errorText}`);
-    }
-
-    const data = (await response.json()) as { message?: { content?: string } };
-    const text = data.message?.content?.trim() ?? '';
-    if (!text) {
-      throw new Error(`Ollama ${model} returned empty response`);
-    }
-    return text;
+  private async generateWithProvider(model: string, systemPrompt: string, query: string): Promise<string> {
+    return generateChatText(model, systemPrompt, query);
   }
 
   async processQuery(
@@ -529,21 +504,19 @@ export class Orchestrator {
       llmPath = 'local_no_evidence';
     } else {
       try {
-        // Primary: Ollama qwen2.5:14b (default)
         const tPrimaryStart = Date.now();
         try {
-          primaryResponse = await this.generateWithOllama(modelToUse, systemPrompt, query);
+          primaryResponse = await this.generateWithProvider(modelToUse, systemPrompt, query);
         } finally {
           llmPrimaryMs = Date.now() - tPrimaryStart;
         }
       } catch (primaryError) {
-        console.error('[Orchestrator] Primary Ollama model failed, using local fallback:', primaryError);
+        console.error('[Orchestrator] Primary model failed, using configured fallback:', primaryError);
 
         try {
-          // Fallback: Ollama llama3.1:8b (default)
           const tFallbackStart = Date.now();
           try {
-            primaryResponse = await this.generateWithOllama(this.fallbackModel, systemPrompt, query);
+            primaryResponse = await this.generateWithProvider(this.fallbackModel, systemPrompt, query);
           } finally {
             llmFallbackMs = Date.now() - tFallbackStart;
           }
@@ -551,7 +524,7 @@ export class Orchestrator {
           llmPath = 'fallback';
           usedFallbackModel = true;
         } catch (fallbackError) {
-          console.error('[Orchestrator] Local Ollama fallback also failed:', fallbackError);
+          console.error('[Orchestrator] Configured fallback model also failed:', fallbackError);
           primaryResponse = hasEvidence
             ? 'He encontrado información relevante en mi base de conocimientos pero no puedo generar una respuesta completa en este momento. Por favor, consulta con un asesor humano.'
             : 'No tengo evidencia suficiente en mi base de datos especializada para responder esta consulta. Te recomiendo consultar con un asesor fiscal, laboral o inmobiliario certificado.';
@@ -657,7 +630,7 @@ export class Orchestrator {
         persistence_ms: 0,
         verifier_ms: verifierMs,
         total_ms: 0,
-        llm_model_used: llmModelUsed,
+        llm_model_used: `${this.llmProviderLabel}:${llmModelUsed}`,
         llm_path: llmPath,
         used_fallback_model: usedFallbackModel,
         retrieval_cache_hit: retrieval.cacheHit,
