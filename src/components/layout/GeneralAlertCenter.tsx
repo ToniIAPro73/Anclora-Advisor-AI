@@ -43,6 +43,7 @@ const INITIAL_FORM: ManualAlertForm = {
   recurrence: "none",
   leadDays: "7",
 };
+const ALERTS_PER_PAGE = 4;
 
 function getPermissionState(): PermissionState {
   if (typeof window === "undefined" || typeof Notification === "undefined") {
@@ -120,25 +121,31 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
   const [showComposer, setShowComposer] = useState(false);
   const [form, setForm] = useState<ManualAlertForm>(INITIAL_FORM);
   const [categoryFilter, setCategoryFilter] = useState<AlertCategoryFilter>("all");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const sortedAlerts = useMemo(() => sortGeneralAlerts(alerts), [alerts]);
   const filteredAlerts = useMemo(
     () => sortedAlerts.filter((alert) => categoryFilter === "all" || alert.category === categoryFilter),
     [categoryFilter, sortedAlerts]
   );
-  const groupedAlerts = useMemo(() => {
-    const order: Array<"overdue" | "today" | "week" | "later" | "resolved"> = ["overdue", "today", "week", "later", "resolved"];
-    return order
-      .map((group) => ({
-        group,
-        items: filteredAlerts.filter((alert) => getAlertGroupKey(alert) === group),
-      }))
-      .filter((entry) => entry.items.length > 0);
-  }, [filteredAlerts]);
   const unreadCount = useMemo(
     () => sortedAlerts.filter((alert) => alert.status === "pending" && !alert.read_at).length,
     [sortedAlerts]
   );
+  const totalPages = Math.max(1, Math.ceil(filteredAlerts.length / ALERTS_PER_PAGE));
+  const pagedAlerts = useMemo(() => {
+    const startIndex = (currentPage - 1) * ALERTS_PER_PAGE;
+    return filteredAlerts.slice(startIndex, startIndex + ALERTS_PER_PAGE);
+  }, [currentPage, filteredAlerts]);
+  const pagedGroups = useMemo(() => {
+    const order: Array<"overdue" | "today" | "week" | "later" | "resolved"> = ["overdue", "today", "week", "later", "resolved"];
+    return order
+      .map((group) => ({
+        group,
+        items: pagedAlerts.filter((alert) => getAlertGroupKey(alert) === group),
+      }))
+      .filter((entry) => entry.items.length > 0);
+  }, [pagedAlerts]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -150,6 +157,16 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [categoryFilter, isOpen]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   useEffect(() => {
     async function loadAlerts(initial = false) {
@@ -526,7 +543,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
             {error && <div className="advisor-alert advisor-alert-error mt-3">{error}</div>}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <div className="p-3">
             {reminders.length > 0 && (
               <div className="mb-3 space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
@@ -576,7 +593,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
               </div>
             ) : (
               <div className="space-y-3">
-                {groupedAlerts.map(({ group, items }) => (
+                {pagedGroups.map(({ group, items }) => (
                   <section key={group} className="space-y-2">
                     <div className="flex items-center justify-between gap-2 px-1">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
@@ -669,6 +686,33 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                     })}
                   </section>
                 ))}
+                {filteredAlerts.length > ALERTS_PER_PAGE && (
+                  <div className="flex items-center justify-between gap-3 rounded-2xl border px-3 py-2" style={{ borderColor: "var(--advisor-border)" }}>
+                    <button
+                      type="button"
+                      className="rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+                      style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                      onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      {locale === "en" ? "Previous" : "Anterior"}
+                    </button>
+                    <p className="text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>
+                      {locale === "en"
+                        ? `Page ${currentPage} of ${totalPages}`
+                        : `Página ${currentPage} de ${totalPages}`}
+                    </p>
+                    <button
+                      type="button"
+                      className="rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+                      style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                      onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      {locale === "en" ? "Next" : "Siguiente"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

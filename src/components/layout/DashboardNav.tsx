@@ -77,9 +77,9 @@ export function DashboardNav({ role }: DashboardNavProps) {
           <Image
             src="/brand/Logo-Advisor_1.png"
             alt="Anclora Advisor"
-            width={44}
-            height={44}
-            className="advisor-sidebar-logo-shell h-11 w-11 rounded-full object-contain"
+            width={64}
+            height={64}
+            className={`advisor-sidebar-logo-shell rounded-full object-contain ${collapsed ? "h-14 w-14" : "h-16 w-16"}`}
             style={{
               background: resolvedTheme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(22,41,68,0.05)",
               boxShadow: resolvedTheme === "dark" ? "0 10px 22px rgba(3,8,18,0.35)" : "0 10px 22px rgba(20,40,65,0.12)",
