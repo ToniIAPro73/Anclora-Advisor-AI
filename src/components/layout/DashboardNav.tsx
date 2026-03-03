@@ -73,35 +73,31 @@ export function DashboardNav({ role }: DashboardNavProps) {
       style={{ borderColor: "var(--sidebar-border)" }}
     >
       <div className="px-5 py-4 md:px-6 md:py-5">
-        <div className={`flex ${collapsed ? "items-center justify-center" : "flex-col items-center justify-center text-center"} gap-2`}>
+        <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3.5"}`}>
           <Image
             src="/brand/Logo-Advisor_1.png"
-            alt="Logo de Anclora Advisor"
-            width={120}
-            height={120}
-            priority
-            className={`object-contain ${collapsed ? "h-12 w-12" : "h-[120px] w-[120px]"}`}
+            alt="Anclora Advisor"
+            width={44}
+            height={44}
+            className="h-11 w-11 object-contain"
             style={{
-              display: "block",
-              objectFit: "contain",
-              objectPosition: "center",
               filter: resolvedTheme === "dark"
-                ? "drop-shadow(0 14px 26px rgba(3, 8, 18, 0.28))"
-                : "drop-shadow(0 16px 28px rgba(20, 40, 65, 0.12))",
+                ? "drop-shadow(0 10px 22px rgba(3,8,18,0.35))"
+                : "drop-shadow(0 10px 22px rgba(20,40,65,0.12))",
             }}
           />
           {!collapsed && (
-            <p
-              className="advisor-heading max-w-[210px] text-[31px] leading-[1.05]"
-              style={{
-                color: resolvedTheme === "dark" ? "#e8eef8" : "#162944",
-                textShadow: resolvedTheme === "dark"
-                  ? "0 12px 26px rgba(3, 8, 18, 0.24)"
-                  : "0 10px 22px rgba(255,255,255,0.58)",
-              }}
-            >
-              Anclora Advisor AI
-            </p>
+            <div className="pt-0.5">
+              <p className="advisor-heading text-[30px] leading-[0.95]" style={{ color: "var(--sidebar-text-strong)" }}>
+                ANCLORA
+              </p>
+              <p
+                className="mt-1 text-[11px] font-semibold uppercase"
+                style={{ color: "var(--sidebar-text-strong)", letterSpacing: "0.92em" }}
+              >
+                ADVISOR AI
+              </p>
+            </div>
           )}
         </div>
         <div className="mt-3 hidden md:flex md:justify-end">

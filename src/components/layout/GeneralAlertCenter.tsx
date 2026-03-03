@@ -442,20 +442,29 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
       </button>
 
       {isOpen && panelStyle && typeof document !== "undefined" && createPortal(
-        <div
-          ref={modalRef}
-          className="fixed z-[120] flex w-auto max-w-none flex-col overflow-hidden rounded-[28px] border"
-          style={{
-            top: Math.max(12, panelStyle.top - 28),
-            left: panelStyle.left,
-            right: "auto",
-            width: panelStyle.width,
-            maxHeight: "min(84vh, 50rem)",
-            borderColor: "var(--advisor-border)",
-            background: "var(--advisor-panel)",
-            boxShadow: "var(--shadow-soft)",
-          }}
-        >
+        <>
+          <div
+            className="fixed inset-0 z-[119]"
+            aria-hidden="true"
+            style={{
+              background: "linear-gradient(180deg, rgba(6, 16, 31, 0.08) 0%, rgba(6, 16, 31, 0.2) 100%)",
+              backdropFilter: "blur(3px)",
+            }}
+          />
+          <div
+            ref={modalRef}
+            className="fixed z-[120] flex w-auto max-w-none flex-col overflow-hidden rounded-[28px] border"
+            style={{
+              top: Math.max(12, panelStyle.top - 28),
+              left: panelStyle.left,
+              right: "auto",
+              width: panelStyle.width,
+              maxHeight: "min(84vh, 50rem)",
+              borderColor: "color-mix(in srgb, var(--advisor-border) 70%, rgba(102, 180, 255, 0.35))",
+              background: "linear-gradient(180deg, rgba(11, 28, 52, 0.97) 0%, rgba(10, 24, 45, 0.985) 100%)",
+              boxShadow: "0 26px 70px rgba(2, 8, 18, 0.48), 0 0 0 1px rgba(110, 174, 255, 0.08)",
+            }}
+          >
           <div className="border-b px-4 py-2" style={{ borderColor: "var(--advisor-border)" }}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -814,7 +823,8 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
               </div>
             </div>
           </div>
-        </div>,
+          </div>
+        </>,
         document.body
       )}
     </div>
