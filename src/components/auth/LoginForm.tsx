@@ -468,7 +468,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column",
     alignItems: "center",
     gap: "14px",
-    transform: "translateY(-72px)",
+    transform: "translateY(-48px)",
   },
   contentWrap: {
     width: "100%",
