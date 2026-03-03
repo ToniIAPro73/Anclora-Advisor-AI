@@ -54,7 +54,7 @@ function inferJurisdiction(title: string, url: string | null, domain: string): s
 }
 
 async function run() {
-  const bundlePath = path.join(process.cwd(), 'scripts', 'notebook_bundle_2026_expansion.json');
+  const bundlePath = path.join(process.cwd(), 'scripts', 'notebook_bundle_phase6_gold.json');
   if (!fs.existsSync(bundlePath)) {
     console.error(`Bundle not found at ${bundlePath}`);
     return;
