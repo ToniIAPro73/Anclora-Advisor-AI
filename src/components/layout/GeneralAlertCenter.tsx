@@ -482,7 +482,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
           <div className="border-b px-4 py-2" style={{ borderColor: "var(--advisor-border)" }}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="text-[1.45rem] font-semibold leading-none" style={{ color: "var(--text-primary)" }}>
+                <p className="advisor-heading text-2xl leading-none" style={{ color: "var(--text-primary)" }}>
                   {locale === "en" ? "Notifications" : "Notificaciones"}
                 </p>
                 <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em]" style={{ color: "var(--text-secondary)" }}>
@@ -642,15 +642,18 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                     return (
                       <div
                         key={`empty-slot-${index}`}
-                        className={`flex min-h-[54px] items-center px-4 ${index !== alertSlots.length - 1 ? "border-b" : ""}`}
+                        className={`min-h-[54px] px-4 ${index !== alertSlots.length - 1 ? "border-b" : ""}`}
                         style={{
                           borderColor: "var(--advisor-border)",
-                          background: "color-mix(in srgb, var(--advisor-panel) 92%, rgba(255,255,255,0.02))",
+                          background: "color-mix(in srgb, var(--advisor-panel) 94%, rgba(255,255,255,0.01))",
                         }}
-                      >
-                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                          {locale === "en" ? "No more alerts on this page" : "No hay más alertas en esta página"}
-                        </p>
+                    >
+                        <div
+                          className="h-full min-h-[54px] rounded-xl"
+                          style={{
+                            background: "linear-gradient(180deg, rgba(255,255,255,0.012) 0%, rgba(255,255,255,0.004) 100%)",
+                          }}
+                        />
                       </div>
                     );
                   }
@@ -660,7 +663,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                   return (
                     <article
                       key={alert.id}
-                      className={`flex min-h-[54px] items-start gap-2.5 px-4 py-1.5 ${index !== alertSlots.length - 1 ? "border-b" : ""}`}
+                      className={`flex min-h-[50px] items-start gap-2 px-3.5 py-1 ${index !== alertSlots.length - 1 ? "border-b" : ""}`}
                       style={{
                         borderColor: "var(--advisor-border)",
                         background: !alert.read_at && alert.status === "pending"
@@ -669,7 +672,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                       }}
                     >
                       <div
-                        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
+                        className="mt-0.5 flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold"
                         style={{ color: accent.color, background: accent.bg }}
                       >
                         {accent.icon}
@@ -679,24 +682,24 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-1.5">
                               <span
-                                className="rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.14em]"
+                                className="rounded-full px-1.5 py-0.5 text-[7px] font-semibold uppercase tracking-[0.14em]"
                                 style={{ background: accent.bg, color: accent.color }}
                               >
                                 {getGeneralAlertCategoryLabel(alert.category, locale)}
                               </span>
-                              <p className="line-clamp-1 text-[0.82rem] font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
+                              <p className="line-clamp-1 text-[0.78rem] font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
                                 {alert.title}
                               </p>
                             </div>
-                            <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug" style={{ color: "var(--text-secondary)" }}>
+                            <p className="mt-0.5 line-clamp-1 text-[10px] leading-snug" style={{ color: "var(--text-secondary)" }}>
                               {alert.message || dueLabel || (locale === "en" ? "Operational alert" : "Aviso operativo")}
                             </p>
-                            <div className="mt-1 flex flex-wrap gap-2 text-[8px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                            <div className="mt-1 flex flex-wrap gap-1.5 text-[7px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
                               <span>{alert.due_date ? formatDate(alert.due_date, locale) : getStatusLabel(alert.status, locale)}</span>
                               {dueLabel && <span>{dueLabel}</span>}
                             </div>
                           </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1">
+                          <div className="flex shrink-0 flex-col items-end gap-0.5">
                             {!alert.read_at && alert.status === "pending" && (
                               <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-[#e8c547]" />
                             )}
@@ -704,7 +707,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                               {!alert.read_at && (
                                 <button
                                   type="button"
-                                  className="rounded-xl border px-2 py-1 text-[9px] font-semibold"
+                                  className="rounded-xl border px-2 py-0.5 text-[8px] font-semibold"
                                   style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
                                   onClick={() => void toggleRead(alert, true).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al actualizar lectura"))}
                                 >
@@ -714,7 +717,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                               {(alert.source === "manual" || alert.source === "reminder") && alert.status === "pending" && (
                                 <button
                                   type="button"
-                                  className="rounded-xl border px-2 py-1 text-[9px] font-semibold"
+                                  className="rounded-xl border px-2 py-0.5 text-[8px] font-semibold"
                                   style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
                                   onClick={() => void resolveManualAlert(alert).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al resolver alerta"))}
                                 >
@@ -724,7 +727,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                               {alert.link_href && (
                                 <button
                                   type="button"
-                                  className="advisor-btn advisor-btn-primary px-2 py-1 text-[9px]"
+                                  className="advisor-btn advisor-btn-primary px-2 py-0.5 text-[8px]"
                                   onClick={() => {
                                     window.location.href = alert.link_href!;
                                     setIsOpen(false);
