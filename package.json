@@ -29,6 +29,7 @@
     "fiscal:workflow:v2:apply": "tsx scripts/apply-fiscal-workflow-v2.ts",
     "fiscal:workflow:v3:apply": "tsx scripts/apply-fiscal-workflow-v3.ts",
     "alerts:apply": "tsx scripts/apply-general-alerts.ts",
+    "alerts:seed:reminders": "tsx scripts/seed-general-alert-reminders.ts",
     "ops:apply": "tsx scripts/apply-operations-outbox-jobs.ts",
     "audit:apply": "tsx scripts/apply-app-audit-logs.ts",
     "chat:suggested-actions:apply": "tsx scripts/apply-chat-suggested-actions.ts",

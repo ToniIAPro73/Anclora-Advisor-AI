@@ -54,6 +54,16 @@ const sectionByPath: Record<string, Record<"es" | "en", SectionCopy>> = {
       subtitle: "Invoice generation with withholding and applicable rules.",
     },
   },
+  "/dashboard/alertas": {
+    es: {
+      title: "Centro de Alertas",
+      subtitle: "Alertas generales, recordatorios recurrentes y seguimiento operativo.",
+    },
+    en: {
+      title: "Alert Center",
+      subtitle: "General alerts, recurring reminders, and operational follow-up.",
+    },
+  },
   "/dashboard/admin": {
     es: {
       title: "Admin RAG",

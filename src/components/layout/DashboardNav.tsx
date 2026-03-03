@@ -28,6 +28,11 @@ const baseLinks = [
     label: { es: "Facturacion", en: "Invoicing" },
     subtitle: { es: "Facturas y retencion", en: "Invoices and withholding" },
   },
+  {
+    href: "/dashboard/alertas",
+    label: { es: "Alertas", en: "Alerts" },
+    subtitle: { es: "Centro y recurrencias", en: "Center and recurrences" },
+  },
 ];
 
 const adminLink = {
