@@ -364,7 +364,7 @@ export function GeneralAlertsWorkspace({
   }
 
   return (
-    <div className="grid h-full min-h-0 min-w-0 gap-4 2xl:grid-cols-[24rem_minmax(0,1fr)]">
+    <div className="grid min-h-full min-w-0 gap-4 pb-4 2xl:grid-cols-[24rem_minmax(0,1fr)]">
       <aside className="flex min-h-0 min-w-0 flex-col gap-4">
         <article
           className="advisor-card shrink-0 overflow-hidden"
@@ -837,7 +837,7 @@ export function GeneralAlertsWorkspace({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-6">
           <div className="space-y-3">
             {filteredAlerts.length === 0 && (
               <div className="advisor-card-muted p-4 text-sm" style={{ color: "var(--text-secondary)" }}>

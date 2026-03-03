@@ -12,26 +12,31 @@ const baseLinks = [
     href: "/dashboard/chat",
     label: { es: "Chat", en: "Chat" },
     subtitle: { es: "Asesoria RAG", en: "RAG advisory" },
+    emoji: "💬",
   },
   {
     href: "/dashboard/fiscal",
     label: { es: "Fiscal", en: "Tax" },
     subtitle: { es: "Impuestos y plazos", en: "Taxes and deadlines" },
+    emoji: "🧾",
   },
   {
     href: "/dashboard/laboral",
     label: { es: "Laboral", en: "Labor" },
     subtitle: { es: "Riesgos y acciones", en: "Risks and actions" },
+    emoji: "⚖️",
   },
   {
     href: "/dashboard/facturacion",
     label: { es: "Facturacion", en: "Invoicing" },
     subtitle: { es: "Facturas y retencion", en: "Invoices and withholding" },
+    emoji: "🧮",
   },
   {
     href: "/dashboard/alertas",
     label: { es: "Alertas", en: "Alerts" },
     subtitle: { es: "Centro y recurrencias", en: "Center and recurrences" },
+    emoji: "🔔",
   },
 ];
 
@@ -39,6 +44,7 @@ const adminLink = {
   href: "/dashboard/admin",
   label: { es: "Admin", en: "Admin" },
   subtitle: { es: "Ingesta y control RAG", en: "RAG ingest and control" },
+  emoji: "🛠️",
 };
 
 interface DashboardNavProps {
@@ -61,7 +67,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
 
   return (
     <aside
-      className={`advisor-sidebar w-full border-b transition-[width] duration-200 md:flex md:h-full md:flex-col md:border-b-0 md:border-r ${
+      className={`advisor-sidebar relative z-10 w-full border-b transition-[width] duration-200 md:flex md:h-full md:flex-col md:border-b-0 md:border-r ${
         collapsed ? "md:w-[92px]" : "md:w-[290px]"
       }`}
       style={{ borderColor: "var(--sidebar-border)" }}
@@ -69,11 +75,11 @@ export function DashboardNav({ role }: DashboardNavProps) {
       <div className="px-5 py-4 md:px-6 md:py-5">
         <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3.5"}`}>
           <Image
-            src="/brand/logo-Advisor.png"
+            src="/brand/Logo-Advisor_1.png"
             alt="Anclora Advisor"
             width={44}
             height={44}
-            className="advisor-sidebar-logo-shell h-11 w-11 rounded-full object-cover"
+            className="advisor-sidebar-logo-shell h-11 w-11 rounded-full object-contain"
             style={{
               background: resolvedTheme === "dark" ? "rgba(255,255,255,0.08)" : "rgba(22,41,68,0.05)",
               boxShadow: resolvedTheme === "dark" ? "0 10px 22px rgba(3,8,18,0.35)" : "0 10px 22px rgba(20,40,65,0.12)",
@@ -126,12 +132,13 @@ export function DashboardNav({ role }: DashboardNavProps) {
               key={link.href}
               href={link.href}
               title={collapsed ? link.label[locale] : undefined}
+              aria-label={collapsed ? link.label[locale] : undefined}
               className={`advisor-sidebar-link group px-4 py-3 text-sm ${collapsed ? "md:px-2 md:py-2.5" : ""}`}
               data-active={isActive}
               style={{ color: isActive ? "var(--sidebar-text-strong)" : "var(--sidebar-text)" }}
             >
               <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
-                <span className="font-semibold">{collapsed ? link.label[locale].slice(0, 1) : link.label[locale]}</span>
+                <span className={`font-semibold ${collapsed ? "text-lg leading-none" : ""}`}>{collapsed ? link.emoji : link.label[locale]}</span>
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${collapsed ? "hidden" : ""}`}
                   style={{ background: isActive ? "#1DAB89" : "var(--sidebar-dot-inactive)" }}

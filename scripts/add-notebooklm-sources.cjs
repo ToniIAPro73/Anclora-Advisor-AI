@@ -31,11 +31,105 @@ const DEFAULT_STATE_PATH = path.join(
   'browser_state',
   'state.json'
 );
+const DEFAULT_SYNC_STATE_PATH = path.join(
+  process.env.LOCALAPPDATA || os.tmpdir(),
+  'notebooklm-mcp',
+  'Data',
+  'sync_state.json'
+);
 
 const NOTEBOOK_GOVERNANCE = {
   fiscal: 'ANCLORA_NOTEBOOK_01_FISCALIDAD_AUTONOMO_ES_BAL',
   laboral: 'ANCLORA_NOTEBOOK_02_TRANSICION_RIESGO_LABORAL',
   mercado: 'ANCLORA_NOTEBOOK_03_MARCA_POSICIONAMIENTO',
+};
+
+const NOTEBOOK_SCOPE_RULES = {
+  fiscal: {
+    keywords: [
+      'autonomo',
+      'autónomo',
+      'iva',
+      'irpf',
+      'reta',
+      'deduccion',
+      'deducción',
+      'cuota cero',
+      'inspeccion',
+      'inspección',
+      'facturacion',
+      'facturación',
+      'tribut',
+      'baleares',
+      'balears',
+    ],
+    rejectKeywords: [
+      'despido',
+      'pluriactividad',
+      'contrato laboral',
+      'marca personal',
+      'posicionamiento',
+      'linkedin',
+      'inmobiliario',
+      'proptech',
+    ],
+  },
+  laboral: {
+    keywords: [
+      'pluriactividad',
+      'compatibilidad',
+      'contrato',
+      'despido',
+      'buena fe',
+      'excedencia',
+      'laboral',
+      'transicion',
+      'transición',
+      'conflicto',
+      'reputacional',
+      'riesgo',
+    ],
+    rejectKeywords: [
+      'iva',
+      'irpf',
+      'reta',
+      'cuota cero',
+      'deduccion',
+      'deducción',
+      'marca personal',
+      'posicionamiento',
+      'inmobiliario',
+      'proptech',
+    ],
+  },
+  mercado: {
+    keywords: [
+      'marca',
+      'posicionamiento',
+      'premium',
+      'usp',
+      'narrativa',
+      'autoridad',
+      'conversion',
+      'conversión',
+      'comercial',
+      'linkedin',
+      'inmobiliario',
+      'inmobiliaria',
+      'proptech',
+    ],
+    rejectKeywords: [
+      'despido',
+      'pluriactividad',
+      'contrato laboral',
+      'iva',
+      'irpf',
+      'reta',
+      'cuota cero',
+      'deduccion',
+      'deducción',
+    ],
+  },
 };
 
 function loadBundle(bundlePath) {
@@ -56,6 +150,38 @@ function hostnameOf(url) {
   } catch {
     return '';
   }
+}
+
+function normalizeUrl(url) {
+  return String(url || '').trim().replace(/\/+$/, '');
+}
+
+function getSyncKey(notebookId, url) {
+  return `${notebookId}::${normalizeUrl(url)}`;
+}
+
+function loadSyncState(syncStatePath) {
+  if (!fs.existsSync(syncStatePath)) {
+    return { synced: [] };
+  }
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(syncStatePath, 'utf8'));
+    return {
+      synced: Array.isArray(parsed.synced) ? parsed.synced : [],
+    };
+  } catch {
+    return { synced: [] };
+  }
+}
+
+function saveSyncState(syncStatePath, syncState) {
+  fs.mkdirSync(path.dirname(syncStatePath), { recursive: true });
+  fs.writeFileSync(syncStatePath, `${JSON.stringify(syncState, null, 2)}\n`, 'utf8');
+}
+
+function countKeywordHits(haystack, keywords) {
+  return keywords.filter((keyword) => haystack.includes(normalizeText(keyword))).length;
 }
 
 function validateBundle(bundle) {
@@ -86,9 +212,29 @@ function validateBundle(bundle) {
       if (!source.url) {
         continue;
       }
-      if (!source.reason_for_fit || !String(source.reason_for_fit).trim()) {
+      if (!source.reason_for_fit || String(source.reason_for_fit).trim().length < 24) {
         issues.push(
           `SOURCE_SCOPE_MISMATCH reason_for_fit missing for title="${source.title}" domain=${notebook.domain}`
+        );
+        continue;
+      }
+
+      const scope = NOTEBOOK_SCOPE_RULES[notebook.domain];
+      const haystack = normalizeText(
+        `${source.title || ''} ${String(source.content || '').slice(0, 2500)} ${source.reason_for_fit || ''}`
+      );
+      const keywordHits = countKeywordHits(haystack, scope.keywords);
+      const rejectHits = countKeywordHits(haystack, scope.rejectKeywords);
+
+      if (keywordHits < 2) {
+        issues.push(
+          `SOURCE_SCOPE_MISMATCH insufficient_scope_evidence title="${source.title}" domain=${notebook.domain} keyword_hits=${keywordHits}`
+        );
+      }
+
+      if (rejectHits >= Math.max(4, keywordHits * 2)) {
+        issues.push(
+          `SOURCE_SCOPE_MISMATCH closer_to_other_scope title="${source.title}" domain=${notebook.domain} keyword_hits=${keywordHits} reject_hits=${rejectHits}`
         );
       }
     }
@@ -137,7 +283,11 @@ async function ensureNotebookReady(page, notebook) {
     .waitFor({ timeout: 15000 });
 }
 
-async function sourceAlreadyPresent(page, source) {
+async function sourceAlreadyPresent(page, notebook, source, syncedKeys) {
+  if (syncedKeys.has(getSyncKey(notebook.notebook_id, source.url))) {
+    return true;
+  }
+
   const titleSnippet = source.title.split(':')[0].slice(0, 55).trim();
   const checks = [titleSnippet, hostnameOf(source.url)];
 
@@ -187,6 +337,7 @@ async function main() {
   const statePath = process.env.NOTEBOOKLM_STATE_PATH || DEFAULT_STATE_PATH;
   const headless = process.env.HEADLESS === '1';
   const dryRun = process.env.DRY_RUN === '1';
+  const syncStatePath = process.env.NOTEBOOKLM_SYNC_STATE_PATH || DEFAULT_SYNC_STATE_PATH;
   const maxSourcesRaw = process.env.NOTEBOOKLM_MAX_SOURCES;
   const maxSources = maxSourcesRaw ? Number(maxSourcesRaw) : Number.POSITIVE_INFINITY;
 
@@ -210,6 +361,7 @@ async function main() {
 
   console.log(`Bundle: ${path.basename(bundlePath)}`);
   console.log(`State: ${statePath}`);
+  console.log(`Sync state: ${syncStatePath}`);
   console.log(`Notebook count: ${bundle.length}`);
 
   if (dryRun) {
@@ -223,6 +375,8 @@ async function main() {
   }
 
   const browser = await launchBrowser(headless);
+  const syncState = loadSyncState(syncStatePath);
+  const syncedKeys = new Set(syncState.synced);
   const context = await browser.newContext({
     storageState: statePath,
     locale: 'es-ES',
@@ -243,8 +397,10 @@ async function main() {
         .slice(0, maxSources);
 
       for (const source of webSources) {
-        if (await sourceAlreadyPresent(page, source)) {
+        const syncKey = getSyncKey(notebook.notebook_id, source.url);
+        if (await sourceAlreadyPresent(page, notebook, source, syncedKeys)) {
           console.log(`   ⏭️  Skip existing: ${source.title}`);
+          syncedKeys.add(syncKey);
           skipped += 1;
           continue;
         }
@@ -252,10 +408,12 @@ async function main() {
         console.log(`   ➕ Adding: ${source.title}`);
         await addWebsiteSource(page, source);
         console.log(`   ✅ Added: ${source.title}`);
+        syncedKeys.add(syncKey);
         added += 1;
       }
     }
   } finally {
+    saveSyncState(syncStatePath, { synced: Array.from(syncedKeys).sort() });
     await context.close();
     await browser.close();
   }

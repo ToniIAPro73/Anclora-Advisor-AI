@@ -6,6 +6,7 @@ interface NotebookScope {
   notebookTitle: string;
   domain: NotebookDomain;
   keywords: string[];
+  rejectKeywords: string[];
 }
 
 const NOTEBOOK_SCOPES: Record<string, NotebookScope> = {
@@ -29,6 +30,16 @@ const NOTEBOOK_SCOPES: Record<string, NotebookScope> = {
       "baleares",
       "balears",
     ],
+    rejectKeywords: [
+      "despido",
+      "pluriactividad",
+      "contrato laboral",
+      "marca personal",
+      "posicionamiento",
+      "linkedin",
+      "inmobiliario",
+      "proptech",
+    ],
   },
   ANCLORA_NOTEBOOK_02_TRANSICION_RIESGO_LABORAL: {
     notebookTitle: "ANCLORA_NOTEBOOK_02_TRANSICION_RIESGO_LABORAL",
@@ -46,6 +57,18 @@ const NOTEBOOK_SCOPES: Record<string, NotebookScope> = {
       "conflicto",
       "reputacional",
       "riesgo",
+    ],
+    rejectKeywords: [
+      "iva",
+      "irpf",
+      "reta",
+      "cuota cero",
+      "deduccion",
+      "deducción",
+      "marca personal",
+      "posicionamiento",
+      "inmobiliario",
+      "proptech",
     ],
   },
   ANCLORA_NOTEBOOK_03_MARCA_POSICIONAMIENTO: {
@@ -65,6 +88,17 @@ const NOTEBOOK_SCOPES: Record<string, NotebookScope> = {
       "inmobiliario",
       "inmobiliaria",
       "proptech",
+    ],
+    rejectKeywords: [
+      "despido",
+      "pluriactividad",
+      "contrato laboral",
+      "iva",
+      "irpf",
+      "reta",
+      "cuota cero",
+      "deduccion",
+      "deducción",
     ],
   },
 };
@@ -120,6 +154,10 @@ function normalizeText(value: string): string {
     .replace(/\p{Diacritic}/gu, "");
 }
 
+function countKeywordHits(haystack: string, keywords: string[]): number {
+  return keywords.filter((keyword) => haystack.includes(normalizeText(keyword))).length;
+}
+
 function inferNotebookScope(notebookTitle: string): NotebookScope | null {
   return NOTEBOOK_SCOPES[notebookTitle] ?? null;
 }
@@ -149,7 +187,8 @@ export function validateNotebookScope(
       const haystack = normalizeText(
         `${source.title} ${source.content.slice(0, 2500)} ${source.reason_for_fit}`
       );
-      const keywordHits = scope.keywords.filter((keyword) => haystack.includes(normalizeText(keyword))).length;
+      const keywordHits = countKeywordHits(haystack, scope.keywords);
+      const rejectHits = countKeywordHits(haystack, scope.rejectKeywords);
 
       if (!source.reason_for_fit || source.reason_for_fit.trim().length < 24) {
         issues.push({
@@ -159,10 +198,17 @@ export function validateNotebookScope(
         continue;
       }
 
-      if (keywordHits === 0) {
+      if (keywordHits < 2) {
         issues.push({
           code: "SOURCE_SCOPE_MISMATCH",
-          message: `Source "${source.title}" does not match the thematic scope of ${notebookTitle}.`,
+          message: `Source "${source.title}" does not provide enough evidence for the thematic scope of ${notebookTitle}.`,
+        });
+      }
+
+      if (rejectHits >= Math.max(4, keywordHits * 2)) {
+        issues.push({
+          code: "SOURCE_SCOPE_MISMATCH",
+          message: `Source "${source.title}" appears closer to another notebook scope than to ${notebookTitle}.`,
         });
       }
     }

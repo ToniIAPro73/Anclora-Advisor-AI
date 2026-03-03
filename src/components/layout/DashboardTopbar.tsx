@@ -90,18 +90,18 @@ export function DashboardTopbar({ userEmail, role }: DashboardTopbarProps) {
 
   return (
     <header
-      className="z-10 shrink-0 border-b px-5 py-3 backdrop-blur md:px-6"
+      className="relative z-30 shrink-0 border-b px-5 py-3 backdrop-blur md:px-6"
       style={{
         borderColor: "var(--advisor-border)",
         background: "color-mix(in srgb, var(--advisor-panel) 84%, transparent)",
       }}
     >
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="advisor-heading text-2xl leading-none" style={{ color: "var(--text-primary)" }}>{section.title}</p>
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+        <div className="min-w-0">
+          <p className="advisor-heading truncate whitespace-nowrap text-2xl leading-none" style={{ color: "var(--text-primary)" }}>{section.title}</p>
           <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>{section.subtitle}</p>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-start gap-2 md:justify-end">
           <GeneralAlertCenter locale={locale} />
           <ThemeToggleGroup current={themeMode} onChange={setThemeMode} locale={locale} />
           <LocaleToggle current={locale} onChange={setLocale} locale={locale} />

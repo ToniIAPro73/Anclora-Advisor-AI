@@ -383,7 +383,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
 
       {isOpen && (
         <div
-          className="absolute right-0 z-30 mt-3 flex max-h-[min(80vh,42rem)] w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border"
+          className="absolute right-0 z-[80] mt-3 flex max-h-[min(80vh,42rem)] w-[24rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border"
           style={{
             borderColor: "var(--advisor-border)",
             background: "var(--advisor-panel)",

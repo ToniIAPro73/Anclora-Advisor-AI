@@ -144,7 +144,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
         <header style={styles.brandHeader}>
           <div style={{ ...styles.logoWrap, ...(isLight ? styles.logoWrapLight : styles.logoWrapDark) }}>
             <Image
-              src={isLight ? "/brand/logo-Advisor.png" : "/brand/Logo-Advisor_1.png"}
+              src="/brand/Logo-Advisor_1.png"
               alt="Logo de Anclora Advisor"
               width={84}
               height={84}

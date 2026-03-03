@@ -5,7 +5,6 @@ import type { GeneralAlertReminderRecord } from "@/lib/alerts/general-alert-remi
 import type { GeneralAlertRecord } from "@/lib/alerts/general-alerts";
 import { getAccessTokenFromCookies, getCurrentUserFromCookies } from "@/lib/auth/session";
 import { resolveLocale } from "@/lib/i18n/messages";
-import { uiText } from "@/lib/i18n/ui";
 import { createUserScopedSupabaseClient } from "@/lib/supabase/server-user";
 
 export default async function DashboardAlertasPage() {
@@ -34,29 +33,8 @@ export default async function DashboardAlertasPage() {
   ]);
 
   return (
-    <section className="flex h-full min-h-0 min-w-0 flex-col gap-3 overflow-hidden">
-      <article
-        className="advisor-card shrink-0 px-4 py-3"
-        style={{
-          background: "linear-gradient(90deg, color-mix(in srgb, var(--advisor-panel) 94%, rgba(29,171,137,0.12)) 0%, var(--advisor-panel) 100%)",
-        }}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--advisor-accent)" }}>
-              {uiText(locale, "page.alerts.title")}
-            </p>
-            <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-              {uiText(locale, "page.alerts.subtitle")}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="advisor-chip">{locale === "en" ? "Fiscal, labor, invoicing" : "Fiscal, laboral, facturacion"}</span>
-            <span className="advisor-chip">{locale === "en" ? "Browser notifications ready" : "Notificaciones de navegador listas"}</span>
-          </div>
-        </div>
-      </article>
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+    <section className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-4 pr-1">
         <GeneralAlertsWorkspace
           initialAlerts={(alertsData ?? []) as GeneralAlertRecord[]}
           initialReminders={(remindersData ?? []) as GeneralAlertReminderRecord[]}
