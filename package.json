@@ -28,6 +28,8 @@
     "invoice:workflow:v4:apply": "tsx scripts/apply-invoice-payment-v4.ts",
     "invoice:workflow:v5:apply": "tsx scripts/apply-invoice-partial-payments-v5.ts",
     "invoice:workflow:v6:apply": "tsx scripts/apply-invoice-rectifications-v6.ts",
+    "invoice:workflow:v7:apply": "tsx scripts/apply-invoice-verifactu-import-v7.ts",
+    "invoice:storage:apply": "tsx scripts/apply-invoice-import-storage.ts",
     "fiscal:templates:apply": "tsx scripts/apply-fiscal-templates.ts",
     "fiscal:workflow:v2:apply": "tsx scripts/apply-fiscal-workflow-v2.ts",
     "fiscal:workflow:v3:apply": "tsx scripts/apply-fiscal-workflow-v3.ts",

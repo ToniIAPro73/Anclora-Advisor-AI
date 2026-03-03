@@ -34,7 +34,7 @@ export default async function DashboardFacturacionPage({ searchParams }: Dashboa
   const { data } = await supabase
     .from("invoices")
     .select(
-      "id, client_name, client_nif, amount_base, iva_rate, irpf_retention, total_amount, issue_date, status, series, invoice_number, recipient_email, sent_at, paid_at, payment_method, payment_reference, payment_notes, invoice_type, rectifies_invoice_id, rectification_reason, created_at"
+      "id, client_name, client_nif, amount_base, iva_rate, irpf_retention, total_amount, issue_date, status, series, invoice_number, recipient_email, sent_at, paid_at, payment_method, payment_reference, payment_notes, invoice_type, rectifies_invoice_id, rectification_reason, verifactu_status, verifactu_submitted_at, verifactu_submission_id, verifactu_last_error, import_source, import_file_name, import_storage_path, import_confidence, imported_at, created_at"
     )
     .order("created_at", { ascending: false })
     .limit(60);

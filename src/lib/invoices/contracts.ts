@@ -2,9 +2,13 @@ import { z } from "zod";
 
 export const invoiceStatusValues = ["draft", "issued", "paid"] as const;
 export const invoiceTypeValues = ["standard", "rectificative"] as const;
+export const invoiceVerifactuStatusValues = ["not_sent", "queued", "submitted", "failed"] as const;
+export const invoiceImportSourceValues = ["manual", "pdf_import"] as const;
 
 export type InvoiceStatus = (typeof invoiceStatusValues)[number];
 export type InvoiceType = (typeof invoiceTypeValues)[number];
+export type InvoiceVerifactuStatus = (typeof invoiceVerifactuStatusValues)[number];
+export type InvoiceImportSource = (typeof invoiceImportSourceValues)[number];
 
 export interface InvoiceRecord {
   id: string;
@@ -27,6 +31,15 @@ export interface InvoiceRecord {
   invoice_type: string | null;
   rectifies_invoice_id: string | null;
   rectification_reason: string | null;
+  verifactu_status: InvoiceVerifactuStatus | string | null;
+  verifactu_submitted_at: string | null;
+  verifactu_submission_id: string | null;
+  verifactu_last_error: string | null;
+  import_source: InvoiceImportSource | string | null;
+  import_file_name: string | null;
+  import_storage_path: string | null;
+  import_confidence: number | null;
+  imported_at: string | null;
   created_at: string;
 }
 

@@ -6,6 +6,7 @@ import { useAppPreferences } from "@/components/providers/AppPreferencesProvider
 import type { AuditLogRecord } from "@/lib/audit/logs";
 import {
   type InvoicePaymentRecord,
+  type InvoiceVerifactuStatus,
   invoiceTypeValues,
   invoiceStatusValues,
   type InvoiceRecord,
@@ -75,6 +76,28 @@ type SendInvoiceResponse = {
     outboxId: string;
     status: "queued";
     mode: "queue";
+  };
+};
+
+type SendVerifactuResponse = {
+  success: boolean;
+  error?: string;
+  invoice?: InvoiceRecord;
+  submission?: {
+    jobId: string;
+    status: "queued";
+    mode: "queue";
+  };
+};
+
+type ImportInvoicePdfResponse = {
+  success: boolean;
+  error?: string;
+  invoice?: InvoiceRecord;
+  import?: {
+    fileName: string;
+    storagePath: string;
+    confidence: number;
   };
 };
 
@@ -176,6 +199,13 @@ function getStatusClass(status: string): string {
   return "bg-slate-100 text-slate-700 border-slate-200";
 }
 
+function getVerifactuStatusLabel(status: InvoiceVerifactuStatus | string | null | undefined, locale: "es" | "en"): string {
+  if (status === "submitted") return locale === "en" ? "Verifactu submitted" : "Verifactu enviado";
+  if (status === "queued") return locale === "en" ? "Verifactu queued" : "Verifactu en cola";
+  if (status === "failed") return locale === "en" ? "Verifactu failed" : "Verifactu fallido";
+  return locale === "en" ? "Verifactu pending" : "Verifactu pendiente";
+}
+
 function getInvoiceStatusLabel(status: InvoiceStatus | string, locale: "es" | "en"): string {
   if (status === "issued") return locale === "en" ? "Issued" : "Emitida";
   if (status === "paid") return locale === "en" ? "Paid" : "Pagada";
@@ -235,6 +265,8 @@ export function InvoiceWorkspace({
   const [submitting, setSubmitting] = useState(false);
   const [updatingInvoiceId, setUpdatingInvoiceId] = useState<string | null>(null);
   const [processingQueue, setProcessingQueue] = useState(false);
+  const [importingPdf, setImportingPdf] = useState(false);
+  const [pdfImportFile, setPdfImportFile] = useState<File | null>(null);
   const [submittingPaymentInvoiceId, setSubmittingPaymentInvoiceId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [okMessage, setOkMessage] = useState<string | null>(null);
@@ -255,6 +287,14 @@ export function InvoiceWorkspace({
   const paidCount = useMemo(() => invoices.filter((invoice) => invoice.status === "paid").length, [invoices]);
   const rectificativeCount = useMemo(
     () => invoices.filter((invoice) => invoice.invoice_type === "rectificative").length,
+    [invoices]
+  );
+  const importedCount = useMemo(
+    () => invoices.filter((invoice) => invoice.import_source === "pdf_import").length,
+    [invoices]
+  );
+  const verifactuSubmittedCount = useMemo(
+    () => invoices.filter((invoice) => invoice.verifactu_status === "submitted").length,
     [invoices]
   );
   const totalVolume = useMemo(
@@ -642,6 +682,37 @@ export function InvoiceWorkspace({
     }
   }
 
+  async function handleSendVerifactu(invoice: InvoiceRecord) {
+    setUpdatingInvoiceId(invoice.id);
+    setError(null);
+    setOkMessage(null);
+
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}/verifactu`, {
+        method: "POST",
+      });
+      const result = (await response.json()) as SendVerifactuResponse;
+
+      if (!response.ok || !result.success || !result.invoice || !result.submission) {
+        throw new Error(result.error ?? (isEn ? "Could not queue the Verifactu delivery" : "No se pudo encolar el envio a Verifactu"));
+      }
+
+      upsertInvoice(result.invoice);
+      await refreshInvoices();
+      await refreshOperations();
+      await refreshAuditLogs();
+      setOkMessage(
+        isEn
+          ? `Invoice queued for Verifactu. Job ${result.submission.jobId}.`
+          : `Factura encolada para Verifactu. Job ${result.submission.jobId}.`
+      );
+    } catch (verifactuError) {
+      setError(verifactuError instanceof Error ? verifactuError.message : (isEn ? "Error queueing Verifactu" : "Error al encolar Verifactu"));
+    } finally {
+      setUpdatingInvoiceId(null);
+    }
+  }
+
   async function handleProcessQueue() {
     setProcessingQueue(true);
     setError(null);
@@ -741,6 +812,46 @@ export function InvoiceWorkspace({
     }
   }
 
+  async function handleImportPdf() {
+    if (!pdfImportFile) {
+      setError(isEn ? "Select a PDF invoice first." : "Selecciona antes un PDF de factura.");
+      return;
+    }
+
+    setImportingPdf(true);
+    setError(null);
+    setOkMessage(null);
+
+    try {
+      const formData = new FormData();
+      formData.set("file", pdfImportFile);
+
+      const response = await fetch("/api/invoices/import-pdf", {
+        method: "POST",
+        body: formData,
+      });
+      const result = (await response.json()) as ImportInvoicePdfResponse;
+
+      if (!response.ok || !result.success || !result.invoice || !result.import) {
+        throw new Error(result.error ?? (isEn ? "Could not import the PDF invoice" : "No se pudo importar la factura PDF"));
+      }
+
+      upsertInvoice(result.invoice);
+      setPdfImportFile(null);
+      await refreshInvoices();
+      await refreshAuditLogs();
+      setOkMessage(
+        isEn
+          ? `PDF imported with confidence ${Math.round(result.import.confidence * 100)}%.`
+          : `PDF importado con confianza del ${Math.round(result.import.confidence * 100)}%.`
+      );
+    } catch (importError) {
+      setError(importError instanceof Error ? importError.message : (isEn ? "Error importing PDF" : "Error al importar PDF"));
+    } finally {
+      setImportingPdf(false);
+    }
+  }
+
   function openPrintableView(invoiceId: string) {
     window.open(`/api/invoices/${invoiceId}/pdf`, "_blank", "noopener,noreferrer");
   }
@@ -802,6 +913,61 @@ export function InvoiceWorkspace({
                 {isEn ? "Cancel" : "Cancelar"}
               </button>
             )}
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="advisor-card-muted p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">
+                {isEn ? "Feature: Verifactu" : "Feature: Verifactu"}
+              </p>
+              <p className="mt-1 text-sm text-[#162944]">
+                {verifactuSubmittedCount} {isEn ? "invoice(s) submitted" : "factura(s) enviadas"}
+              </p>
+              <p className="mt-1 text-xs text-[#3a4f67]">
+                {isEn ? "Queue invoices for compliant fiscal delivery." : "Encola facturas para entrega fiscal compatible."}
+              </p>
+            </div>
+            <div className="advisor-card-muted p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">
+                {isEn ? "Feature: PDF import" : "Feature: Importacion PDF"}
+              </p>
+              <p className="mt-1 text-sm text-[#162944]">
+                {importedCount} {isEn ? "invoice(s) imported" : "factura(s) importadas"}
+              </p>
+              <p className="mt-1 text-xs text-[#3a4f67]">
+                {isEn ? "Upload textual PDFs to create invoices automatically." : "Sube PDFs textuales para crear facturas automaticamente."}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 rounded-2xl border border-dashed border-[#b8c8de] bg-[#f8fbff] p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-[#162944]">{isEn ? "Import invoice PDF" : "Importar factura PDF"}</p>
+                <p className="mt-1 text-xs text-[#3a4f67]">
+                  {isEn
+                    ? "The app extracts textual fields from the PDF and creates the invoice automatically."
+                    : "La app extrae campos textuales del PDF y crea la factura automaticamente."}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={importingPdf}
+                className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
+                onClick={() => void handleImportPdf()}
+              >
+                {importingPdf ? (isEn ? "Importing..." : "Importando...") : (isEn ? "Import PDF" : "Importar PDF")}
+              </button>
+            </div>
+            <input
+              type="file"
+              accept="application/pdf"
+              className="advisor-input mt-3"
+              onChange={(event) => setPdfImportFile(event.target.files?.[0] ?? null)}
+            />
+            <p className="mt-2 text-xs text-[#3a4f67]">
+              {pdfImportFile
+                ? `${isEn ? "Selected" : "Seleccionado"}: ${pdfImportFile.name}`
+                : (isEn ? "Only textual PDF invoices are imported reliably." : "Solo se importan con fiabilidad facturas PDF textuales.")}
+            </p>
           </div>
           <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
             <div>
@@ -1237,6 +1403,14 @@ export function InvoiceWorkspace({
                       <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">
                         {getInvoiceTypeLabelLocalized(invoice.invoice_type, locale)}
                       </span>
+                      <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">
+                        {getVerifactuStatusLabel(invoice.verifactu_status, locale)}
+                      </span>
+                      {invoice.import_source === "pdf_import" && (
+                        <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">
+                          {isEn ? "Imported PDF" : "PDF importado"}
+                        </span>
+                      )}
                       {invoice.rectifies_invoice_id && (
                         <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">
                           <span className="break-all">{isEn ? "Rectifies" : "Rectifica"} {invoice.rectifies_invoice_id.slice(0, 8)}</span>
@@ -1261,8 +1435,22 @@ export function InvoiceWorkspace({
                       {isEn ? "Sent" : "Enviada"}: <strong>{invoice.sent_at ? formatDate(invoice.sent_at, locale) : (isEn ? "No" : "No")}</strong>
                     </p>
                     <p className="mt-1 text-xs text-[#3a4f67]">
+                      Verifactu: <strong>{getVerifactuStatusLabel(invoice.verifactu_status, locale)}</strong>
+                      {invoice.verifactu_submitted_at ? ` · ${formatDate(invoice.verifactu_submitted_at, locale)}` : ""}
+                    </p>
+                    {invoice.verifactu_last_error && (
+                      <p className="mt-1 text-xs text-red-700">
+                        Verifactu: <strong className="break-words">{invoice.verifactu_last_error}</strong>
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-[#3a4f67]">
                       {isEn ? "Paid" : "Cobrada"}: <strong>{invoice.paid_at ? formatDate(invoice.paid_at, locale) : (isEn ? "No" : "No")}</strong>
                     </p>
+                    {invoice.import_file_name && (
+                      <p className="mt-1 text-xs text-[#3a4f67]">
+                        {isEn ? "Imported file" : "Fichero importado"}: <strong className="break-words">{invoice.import_file_name}</strong>
+                      </p>
+                    )}
                     <p className="mt-1 text-xs text-[#3a4f67]">
                       {isEn ? "Method" : "Metodo"}: <strong className="break-words">{invoice.payment_method ?? (isEn ? "Not recorded" : "Sin registrar")}</strong>
                       {invoice.payment_reference ? ` · Ref ${invoice.payment_reference}` : ""}
@@ -1317,6 +1505,18 @@ export function InvoiceWorkspace({
                         onClick={() => handleSend(invoice)}
                       >
                         {isEn ? "Send" : "Enviar"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isBusy || invoice.verifactu_status === "queued" || invoice.verifactu_status === "submitted"}
+                        className="advisor-btn bg-amber-500 px-3 py-2 text-sm font-semibold text-[#162944]"
+                        onClick={() => void handleSendVerifactu(invoice)}
+                      >
+                        {invoice.verifactu_status === "submitted"
+                          ? (isEn ? "Submitted" : "Enviada")
+                          : invoice.verifactu_status === "queued"
+                            ? (isEn ? "Queued" : "En cola")
+                            : "Verifactu"}
                       </button>
                       {invoice.status === "draft" && (
                         <button

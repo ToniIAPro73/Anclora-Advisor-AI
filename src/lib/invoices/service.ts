@@ -21,6 +21,15 @@ export const INVOICE_SELECT_FIELDS = [
   "invoice_type",
   "rectifies_invoice_id",
   "rectification_reason",
+  "verifactu_status",
+  "verifactu_submitted_at",
+  "verifactu_submission_id",
+  "verifactu_last_error",
+  "import_source",
+  "import_file_name",
+  "import_storage_path",
+  "import_confidence",
+  "imported_at",
   "created_at",
 ].join(", ");
 

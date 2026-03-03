@@ -7,6 +7,7 @@ import { generateFiscalAlertsFromTemplates } from "@/lib/fiscal/generation";
 import type { InvoiceRecord } from "@/lib/invoices/contracts";
 import { deliverInvoiceByEmail } from "@/lib/invoices/delivery";
 import { buildInvoiceReference, INVOICE_SELECT_FIELDS } from "@/lib/invoices/service";
+import { isVerifactuConfigured, submitInvoiceToVerifactu } from "@/lib/invoices/verifactu";
 import { createSmtpEmailSender, isSmtpConfigured } from "@/lib/notifications/smtp";
 import {
   claimPendingJobs,
@@ -189,6 +190,55 @@ async function processGeneralAlertReminderGeneration(job: AppJobRecord): Promise
   });
 }
 
+async function processInvoiceVerifactuSubmission(job: AppJobRecord): Promise<void> {
+  if (!isVerifactuConfigured()) {
+    throw new Error("VERIFACTU_NOT_CONFIGURED");
+  }
+
+  const invoiceId = getString(job.payload, "invoiceId");
+  const supabase = createServiceSupabaseClient();
+  const { data, error } = await supabase
+    .from("invoices")
+    .select(INVOICE_SELECT_FIELDS)
+    .eq("id", invoiceId)
+    .eq("user_id", job.user_id)
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "INVOICE_NOT_FOUND");
+  }
+
+  const invoice = data as unknown as InvoiceRecord;
+  const submission = await submitInvoiceToVerifactu({
+    invoice,
+    userId: job.user_id,
+  });
+
+  const { error: updateError } = await supabase
+    .from("invoices")
+    .update({
+      verifactu_status: "submitted",
+      verifactu_submitted_at: submission.submittedAt,
+      verifactu_submission_id: submission.submissionId,
+      verifactu_last_error: null,
+      status: invoice.status === "draft" ? "issued" : invoice.status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", invoice.id)
+    .eq("user_id", job.user_id);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  await completeAppJob(job.id, {
+    invoiceId: invoice.id,
+    submissionId: submission.submissionId,
+    submittedAt: submission.submittedAt,
+    reference: buildInvoiceReference(invoice.series, invoice.invoice_number),
+  });
+}
+
 export async function processPendingAppJobs(params: {
   userId: string;
   limit?: number;
@@ -213,6 +263,12 @@ export async function processPendingAppJobs(params: {
         continue;
       }
 
+      if (job.job_kind === "invoice_verifactu_submission") {
+        await processInvoiceVerifactuSubmission(job);
+        completed += 1;
+        continue;
+      }
+
       if (job.job_kind === "fiscal_template_generation") {
         await processFiscalTemplateGeneration(job);
         completed += 1;
@@ -230,6 +286,7 @@ export async function processPendingAppJobs(params: {
       const message = error instanceof Error ? error.message : "UNKNOWN_JOB_ERROR";
       const retryable =
         message !== "SMTP_NOT_CONFIGURED" &&
+        message !== "VERIFACTU_NOT_CONFIGURED" &&
         message !== "INVOICE_NOT_FOUND" &&
         message !== "GENERAL_ALERT_REMINDER_NOT_FOUND";
 
@@ -241,6 +298,22 @@ export async function processPendingAppJobs(params: {
             message,
             keepQueued: retryable,
           });
+        }
+      }
+
+      if (job.job_kind === "invoice_verifactu_submission") {
+        const invoiceId = typeof job.payload.invoiceId === "string" ? job.payload.invoiceId : null;
+        if (invoiceId) {
+          const supabase = createServiceSupabaseClient();
+          await supabase
+            .from("invoices")
+            .update({
+              verifactu_status: "failed",
+              verifactu_last_error: message,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", invoiceId)
+            .eq("user_id", job.user_id);
         }
       }
 
