@@ -22,6 +22,7 @@ type GeneralAlertCenterProps = {
 };
 
 type PermissionState = "default" | "granted" | "denied" | "unsupported";
+type AlertCategoryFilter = "all" | GeneralAlertCategory;
 
 type ManualAlertForm = {
   title: string;
@@ -73,6 +74,39 @@ function formatDate(value: string, locale: "es" | "en"): string {
   }).format(new Date(value));
 }
 
+function startOfDay(value: Date): Date {
+  const next = new Date(value);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function getAlertGroupKey(alert: GeneralAlertRecord, now = new Date()): "overdue" | "today" | "week" | "later" | "resolved" {
+  if (alert.status === "resolved") {
+    return "resolved";
+  }
+
+  if (!alert.due_date) {
+    return "later";
+  }
+
+  const due = startOfDay(new Date(alert.due_date));
+  const base = startOfDay(now);
+  const diffDays = Math.round((due.getTime() - base.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return "overdue";
+  if (diffDays === 0) return "today";
+  if (diffDays <= 7) return "week";
+  return "later";
+}
+
+function getAlertGroupLabel(group: "overdue" | "today" | "week" | "later" | "resolved", locale: "es" | "en"): string {
+  if (group === "overdue") return locale === "en" ? "Overdue" : "Vencidas";
+  if (group === "today") return locale === "en" ? "Today" : "Hoy";
+  if (group === "week") return locale === "en" ? "This week" : "Esta semana";
+  if (group === "later") return locale === "en" ? "Later" : "Proximas";
+  return locale === "en" ? "Resolved" : "Resueltas";
+}
+
 export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const seenAlertIdsRef = useRef<Set<string>>(new Set());
@@ -85,8 +119,22 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
   const [error, setError] = useState<string | null>(null);
   const [showComposer, setShowComposer] = useState(false);
   const [form, setForm] = useState<ManualAlertForm>(INITIAL_FORM);
+  const [categoryFilter, setCategoryFilter] = useState<AlertCategoryFilter>("all");
 
   const sortedAlerts = useMemo(() => sortGeneralAlerts(alerts), [alerts]);
+  const filteredAlerts = useMemo(
+    () => sortedAlerts.filter((alert) => categoryFilter === "all" || alert.category === categoryFilter),
+    [categoryFilter, sortedAlerts]
+  );
+  const groupedAlerts = useMemo(() => {
+    const order: Array<"overdue" | "today" | "week" | "later" | "resolved"> = ["overdue", "today", "week", "later", "resolved"];
+    return order
+      .map((group) => ({
+        group,
+        items: filteredAlerts.filter((alert) => getAlertGroupKey(alert) === group),
+      }))
+      .filter((entry) => entry.items.length > 0);
+  }, [filteredAlerts]);
   const unreadCount = useMemo(
     () => sortedAlerts.filter((alert) => alert.status === "pending" && !alert.read_at).length,
     [sortedAlerts]
@@ -366,6 +414,24 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
+              {(["all", "fiscal", "laboral", "facturacion"] as const).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className="rounded-full border px-3 py-1.5 text-[11px] font-semibold transition"
+                  style={{
+                    borderColor: "var(--advisor-border)",
+                    background: categoryFilter === item ? "var(--advisor-accent)" : "transparent",
+                    color: categoryFilter === item ? "var(--text-on-accent)" : "var(--text-secondary)",
+                  }}
+                  onClick={() => setCategoryFilter(item)}
+                >
+                  {item === "all" ? (locale === "en" ? "All" : "Todas") : getGeneralAlertCategoryLabel(item, locale)}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
               {permission !== "granted" && permission !== "unsupported" && (
                 <button
                   type="button"
@@ -504,95 +570,105 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                 <span className="advisor-spinner" />
                 {locale === "en" ? "Loading alerts..." : "Cargando alertas..."}
               </div>
-            ) : sortedAlerts.length === 0 ? (
+            ) : filteredAlerts.length === 0 ? (
               <div className="rounded-xl border p-4 text-sm" style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}>
                 {locale === "en" ? "No active alerts." : "No hay alertas activas."}
               </div>
             ) : (
               <div className="space-y-3">
-                {sortedAlerts.map((alert) => {
-                  const dueLabel = getGeneralAlertDueLabel(alert.due_date, locale);
-                  return (
-                    <article
-                      key={alert.id}
-                      className={`rounded-2xl border p-3 ${!alert.read_at && alert.status === "pending" ? "ring-1 ring-[var(--advisor-accent)]" : ""}`}
-                      style={{ borderColor: "var(--advisor-border)" }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getPriorityBadgeClass(alert.priority)}`}>
-                              {getGeneralAlertPriorityLabel(alert.priority, locale)}
-                            </span>
-                            <span className="rounded-full border px-2 py-0.5 text-[11px] font-semibold" style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}>
-                              {getGeneralAlertCategoryLabel(alert.category, locale)}
-                            </span>
-                            <span className="rounded-full border px-2 py-0.5 text-[11px] font-semibold" style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}>
-                              {getStatusLabel(alert.status, locale)}
-                            </span>
-                          </div>
-                          <p className="mt-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                            {alert.title}
-                          </p>
-                          {alert.message && (
-                            <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                              {alert.message}
-                            </p>
-                          )}
-                          <div className="mt-2 flex flex-wrap gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
-                            {alert.due_date && <span>{formatDate(alert.due_date, locale)}</span>}
-                            {dueLabel && <span>{dueLabel}</span>}
-                            <span>
-                              {alert.source === "manual"
-                                ? (locale === "en" ? "Manual" : "Manual")
-                                : alert.source === "reminder"
-                                  ? (locale === "en" ? "Recurring" : "Recurrente")
-                                  : (locale === "en" ? "Automatic" : "Automatica")}
-                            </span>
-                          </div>
-                        </div>
-                        {!alert.read_at && alert.status === "pending" && (
-                          <span className="mt-1 h-2.5 w-2.5 rounded-full bg-[var(--advisor-accent)]" />
-                        )}
-                      </div>
-
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className="rounded-xl border px-3 py-2 text-xs font-semibold"
-                          style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
-                          onClick={() => void toggleRead(alert, !alert.read_at).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al actualizar lectura"))}
+                {groupedAlerts.map(({ group, items }) => (
+                  <section key={group} className="space-y-2">
+                    <div className="flex items-center justify-between gap-2 px-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                        {getAlertGroupLabel(group, locale)}
+                      </p>
+                      <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>{items.length}</span>
+                    </div>
+                    {items.map((alert) => {
+                      const dueLabel = getGeneralAlertDueLabel(alert.due_date, locale);
+                      return (
+                        <article
+                          key={alert.id}
+                          className={`rounded-2xl border p-3 ${!alert.read_at && alert.status === "pending" ? "ring-1 ring-[var(--advisor-accent)]" : ""}`}
+                          style={{ borderColor: "var(--advisor-border)" }}
                         >
-                          {alert.read_at
-                            ? (locale === "en" ? "Mark unread" : "Marcar no leida")
-                            : (locale === "en" ? "Mark read" : "Marcar leida")}
-                        </button>
-                        {(alert.source === "manual" || alert.source === "reminder") && alert.status === "pending" && (
-                          <button
-                            type="button"
-                            className="rounded-xl border px-3 py-2 text-xs font-semibold"
-                            style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
-                            onClick={() => void resolveManualAlert(alert).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al resolver alerta"))}
-                          >
-                            {locale === "en" ? "Resolve" : "Resolver"}
-                          </button>
-                        )}
-                        {alert.link_href && (
-                          <button
-                            type="button"
-                            className="advisor-btn advisor-btn-primary px-3 py-2 text-xs"
-                            onClick={() => {
-                              window.location.href = alert.link_href!;
-                              setIsOpen(false);
-                            }}
-                          >
-                            {locale === "en" ? "Open" : "Abrir"}
-                          </button>
-                        )}
-                      </div>
-                    </article>
-                  );
-                })}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getPriorityBadgeClass(alert.priority)}`}>
+                                  {getGeneralAlertPriorityLabel(alert.priority, locale)}
+                                </span>
+                                <span className="rounded-full border px-2 py-0.5 text-[11px] font-semibold" style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}>
+                                  {getGeneralAlertCategoryLabel(alert.category, locale)}
+                                </span>
+                                <span className="rounded-full border px-2 py-0.5 text-[11px] font-semibold" style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}>
+                                  {getStatusLabel(alert.status, locale)}
+                                </span>
+                              </div>
+                              <p className="mt-2 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                                {alert.title}
+                              </p>
+                              {alert.message && (
+                                <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                                  {alert.message}
+                                </p>
+                              )}
+                              <div className="mt-2 flex flex-wrap gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
+                                {alert.due_date && <span>{formatDate(alert.due_date, locale)}</span>}
+                                {dueLabel && <span>{dueLabel}</span>}
+                                <span>
+                                  {alert.source === "manual"
+                                    ? (locale === "en" ? "Manual" : "Manual")
+                                    : alert.source === "reminder"
+                                      ? (locale === "en" ? "Recurring" : "Recurrente")
+                                      : (locale === "en" ? "Automatic" : "Automatica")}
+                                </span>
+                              </div>
+                            </div>
+                            {!alert.read_at && alert.status === "pending" && (
+                              <span className="mt-1 h-2.5 w-2.5 rounded-full bg-[var(--advisor-accent)]" />
+                            )}
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                              style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                              onClick={() => void toggleRead(alert, !alert.read_at).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al actualizar lectura"))}
+                            >
+                              {alert.read_at
+                                ? (locale === "en" ? "Mark unread" : "Marcar no leida")
+                                : (locale === "en" ? "Mark read" : "Marcar leida")}
+                            </button>
+                            {(alert.source === "manual" || alert.source === "reminder") && alert.status === "pending" && (
+                              <button
+                                type="button"
+                                className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                                style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                                onClick={() => void resolveManualAlert(alert).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al resolver alerta"))}
+                              >
+                                {locale === "en" ? "Resolve" : "Resolver"}
+                              </button>
+                            )}
+                            {alert.link_href && (
+                              <button
+                                type="button"
+                                className="advisor-btn advisor-btn-primary px-3 py-2 text-xs"
+                                onClick={() => {
+                                  window.location.href = alert.link_href!;
+                                  setIsOpen(false);
+                                }}
+                              >
+                                {locale === "en" ? "Open" : "Abrir"}
+                              </button>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </section>
+                ))}
               </div>
             )}
           </div>
