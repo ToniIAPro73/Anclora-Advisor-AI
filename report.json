@@ -1,123 +1,85 @@
 {
-  "app_url": "https://ancloraadvisorai-ten.vercel.app/",
-  "run_mode": "remote",
+  "generated_at": "2026-03-03T10:56:18.151530Z",
   "generated_files": [
-    "manual-assets\\MANUAL_USUARIO_CODEX.docx",
-    "manual.screenshots.yml",
-    "report.json"
+    "artifacts\\AncoraAdvisorAI_Manual.docx"
   ],
   "screenshot_index": [
     {
-      "id": "login",
-      "title": "Pantalla de acceso",
-      "path": "/login",
-      "filename": "01-login.png",
-      "status": "captured",
+      "id": "01-login",
+      "section": "",
       "file": "manual-assets\\screenshots\\01-login.png",
-      "notes": null
+      "caption": "Pantalla de acceso",
+      "url": "https://ancloraadvisorai-ten.vercel.app/login"
     },
     {
-      "id": "dashboard_chat",
-      "title": "Dashboard principal y chat RAG",
-      "path": "/dashboard/chat",
-      "filename": "02-dashboard-chat.png",
-      "status": "captured",
+      "id": "02-dashboard-chat",
+      "section": "",
       "file": "manual-assets\\screenshots\\02-dashboard-chat.png",
-      "notes": null
+      "caption": "Dashboard principal y chat RAG",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/chat"
     },
     {
-      "id": "dashboard_fiscal",
-      "title": "Módulo fiscal",
-      "path": "/dashboard/fiscal",
-      "filename": "03-dashboard-fiscal.png",
-      "status": "captured",
+      "id": "03-dashboard-fiscal",
+      "section": "",
       "file": "manual-assets\\screenshots\\03-dashboard-fiscal.png",
-      "notes": null
+      "caption": "Módulo fiscal",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/fiscal"
     },
     {
-      "id": "dashboard_laboral",
-      "title": "Módulo laboral",
-      "path": "/dashboard/laboral",
-      "filename": "04-dashboard-laboral.png",
-      "status": "captured",
+      "id": "04-dashboard-laboral",
+      "section": "",
       "file": "manual-assets\\screenshots\\04-dashboard-laboral.png",
-      "notes": null
+      "caption": "Módulo laboral",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/laboral"
     },
     {
-      "id": "dashboard_facturacion",
-      "title": "Módulo de facturación",
-      "path": "/dashboard/facturacion",
-      "filename": "05-dashboard-facturacion.png",
-      "status": "captured",
+      "id": "05-dashboard-facturacion",
+      "section": "",
       "file": "manual-assets\\screenshots\\05-dashboard-facturacion.png",
-      "notes": null
+      "caption": "Módulo de facturación",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/facturacion"
     },
     {
-      "id": "dashboard_alertas",
-      "title": "Centro de alertas",
-      "path": "/dashboard/alertas",
-      "filename": "06-dashboard-alertas.png",
-      "status": "captured",
+      "id": "06-dashboard-alertas",
+      "section": "",
       "file": "manual-assets\\screenshots\\06-dashboard-alertas.png",
-      "notes": null
+      "caption": "Centro de alertas",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/alertas"
     },
     {
-      "id": "alerts_modal",
-      "title": "Panel rápido de notificaciones",
-      "path": "/dashboard/chat",
-      "filename": "07-alerts-modal.png",
-      "status": "captured",
+      "id": "07-alerts-modal",
+      "section": "",
       "file": "manual-assets\\screenshots\\07-alerts-modal.png",
-      "notes": null
+      "caption": "Panel rápido de notificaciones",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/chat"
     }
   ],
   "sections_added": [
-    "Getting Started",
-    "Navigation map",
-    "Task-based guides",
-    "Account/Profile",
-    "Glossary",
-    "FAQ",
-    "Troubleshooting",
-    "Support"
+    "intro",
+    "getting_started",
+    "navigation",
+    "chat",
+    "fiscal",
+    "laboral",
+    "facturacion",
+    "alertas",
+    "account",
+    "glossary",
+    "faq",
+    "troubleshooting",
+    "support"
   ],
   "gaps": [],
-  "sources_used": [
-    "src/components/auth/LoginForm.tsx",
-    "src/components/layout/DashboardNav.tsx",
-    "src/components/layout/DashboardTopbar.tsx",
-    "src/components/layout/GeneralAlertCenter.tsx",
-    "docs/FISCAL_MODULE_OPERATIVO.md",
-    "docs/LABOR_MODULE_OPERATIVO.md",
-    "docs/INVOICE_MODULE_OPERATIVO.md",
-    "docs/GENERAL_ALERTS.md"
-  ],
-  "glossary": [
-    {
-      "term": "RAG",
-      "definition": "Consulta asistida sobre la base documental fiscal, laboral y de mercado."
-    },
-    {
-      "term": "Serie",
-      "definition": "Prefijo operativo usado para numerar facturas."
-    },
-    {
-      "term": "Rectificativa",
-      "definition": "Factura que corrige una factura origen y queda vinculada a ella."
-    },
-    {
-      "term": "Recordatorio recurrente",
-      "definition": "Plantilla periódica que genera alertas futuras automáticamente."
-    },
-    {
-      "term": "SLA",
-      "definition": "Fecha objetivo de seguimiento en una mitigación laboral."
-    },
-    {
-      "term": "Verifactu",
-      "definition": "Integración prevista para envío de facturas al sistema Verifactu."
-    }
-  ],
-  "assumptions": [],
-  "generated_at": "2026-03-03T10:42:29.712393+00:00"
+  "sources_used": {
+    "template": "docs\\Free_Simple_ SAAS_Agreement_Template.docx",
+    "screenshot_plan": "manual.screenshots.yml",
+    "app_url": "https://ancloraadvisorai-ten.vercel.app"
+  },
+  "glossary": [],
+  "pending_validation": [
+    "Integración VeriFactu directa con AEAT",
+    "Importación masiva de facturas",
+    "Actualización de contraseña desde perfil",
+    "Correo de soporte soporte@anclora.ai"
+  ]
 }

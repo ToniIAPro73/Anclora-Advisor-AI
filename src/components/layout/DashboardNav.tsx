@@ -73,14 +73,18 @@ export function DashboardNav({ role }: DashboardNavProps) {
       style={{ borderColor: "var(--sidebar-border)" }}
     >
       <div className="px-5 py-4 md:px-6 md:py-5">
-        <div className={`flex ${collapsed ? "items-center justify-center" : "flex-col items-center justify-center text-center"} gap-2.5`}>
+        <div className={`flex ${collapsed ? "items-center justify-center" : "flex-col items-center justify-center text-center"} gap-2`}>
           <Image
             src="/brand/Logo-Advisor_1.png"
-            alt="Anclora Advisor"
-            width={84}
-            height={84}
-            className={`object-contain ${collapsed ? "h-14 w-14" : "h-[84px] w-[84px]"}`}
+            alt="Logo de Anclora Advisor"
+            width={120}
+            height={120}
+            priority
+            className={`object-contain ${collapsed ? "h-12 w-12" : "h-[120px] w-[120px]"}`}
             style={{
+              display: "block",
+              objectFit: "contain",
+              objectPosition: "center",
               filter: resolvedTheme === "dark"
                 ? "drop-shadow(0 14px 26px rgba(3, 8, 18, 0.28))"
                 : "drop-shadow(0 16px 28px rgba(20, 40, 65, 0.12))",

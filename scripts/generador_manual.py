@@ -16,6 +16,7 @@ import yaml
 from docx import Document
 from docx.enum.style import WD_STYLE_TYPE
 from docx.shared import Inches, Pt
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError, sync_playwright
 
 
@@ -25,6 +26,7 @@ DEFAULT_TEMPLATE = ROOT / "docs" / "Free_Simple_ SAAS_Agreement_Template.docx"
 DEFAULT_PLAN = ROOT / "manual.screenshots.yml"
 DEFAULT_OUTPUT = ROOT / "manual-assets" / "MANUAL_USUARIO_CODEX.docx"
 DEFAULT_SCREENSHOT_DIR = ROOT / "manual-assets" / "screenshots"
+DEFAULT_COVER = ROOT / "manual-assets" / "cover" / "manual-cover.png"
 DEFAULT_REPORT = ROOT / "report.json"
 AUTH_STATE = ROOT / ".auth" / "state.json"
 
@@ -355,6 +357,102 @@ def add_screenshot(doc: Document, caption_style: str, image_path: Path, caption:
     doc.add_paragraph(caption, style=caption_style)
 
 
+def find_font(preferred: list[str]) -> str | None:
+    font_dirs = [
+        Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts",
+        Path("/usr/share/fonts"),
+        Path("/usr/local/share/fonts"),
+    ]
+    for font_dir in font_dirs:
+        for name in preferred:
+            candidate = font_dir / name
+            if candidate.exists():
+                return str(candidate)
+    return None
+
+
+def build_manual_cover(cover_path: Path) -> Path:
+    ensure_directory(cover_path.parent)
+    width, height = 1800, 2550
+    image = Image.new("RGB", (width, height), "#0b1830")
+    draw = ImageDraw.Draw(image)
+
+    for y in range(height):
+        mix = y / max(height - 1, 1)
+        r = int(11 + (21 - 11) * mix)
+        g = int(24 + (47 - 24) * mix)
+        b = int(48 + (78 - 48) * mix)
+        draw.line((0, y, width, y), fill=(r, g, b))
+
+    glow = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow)
+    glow_draw.ellipse((180, 220, 1620, 1540), fill=(38, 197, 173, 40))
+    glow_draw.ellipse((350, 1180, 1450, 2300), fill=(90, 170, 255, 26))
+    glow = glow.filter(ImageFilter.GaussianBlur(120))
+    image = Image.alpha_composite(image.convert("RGBA"), glow)
+
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    overlay_draw = ImageDraw.Draw(overlay)
+    panel_bounds = (130, 250, width - 130, height - 250)
+    overlay_draw.rounded_rectangle(
+        panel_bounds,
+        radius=70,
+        fill=(8, 22, 44, 170),
+        outline=(70, 110, 150, 110),
+        width=3,
+    )
+    overlay_draw.line((220, 1420, width - 220, 1420), fill=(54, 191, 174, 90), width=2)
+    image = Image.alpha_composite(image, overlay)
+
+    title_font_path = find_font(["Georgia.ttf", "georgia.ttf", "GARA.TTF", "timesbd.ttf"])
+    body_font_path = find_font(["Arial.ttf", "arial.ttf", "segoeui.ttf"])
+    title_font = ImageFont.truetype(title_font_path, 104) if title_font_path else ImageFont.load_default()
+    subtitle_font = ImageFont.truetype(body_font_path, 46) if body_font_path else ImageFont.load_default()
+    tag_font = ImageFont.truetype(body_font_path, 52) if body_font_path else ImageFont.load_default()
+
+    logo_path = ROOT / "public" / "brand" / "logo-Advisor_1.png"
+    if logo_path.exists():
+        logo = Image.open(logo_path).convert("RGBA")
+        logo.thumbnail((330, 330))
+        logo_x = (width - logo.width) // 2
+        image.alpha_composite(logo, (logo_x, 430))
+
+    text_layer = ImageDraw.Draw(image)
+    title = "Manual de Usuario\nde Anclora Advisor AI"
+    title_box = text_layer.multiline_textbbox((0, 0), title, font=title_font, spacing=18, align="center")
+    title_w = title_box[2] - title_box[0]
+    title_x = (width - title_w) / 2
+    text_layer.multiline_text(
+        (title_x, 860),
+        title,
+        font=title_font,
+        fill=(236, 242, 250, 255),
+        spacing=18,
+        align="center",
+    )
+
+    subtitle = "Guía operativa, funcional y visual"
+    subtitle_box = text_layer.textbbox((0, 0), subtitle, font=subtitle_font)
+    subtitle_x = (width - (subtitle_box[2] - subtitle_box[0])) / 2
+    text_layer.text((subtitle_x, 1180), subtitle, font=subtitle_font, fill=(156, 203, 233, 255))
+
+    tag = "By Anclora Group"
+    tag_box = text_layer.textbbox((0, 0), tag, font=tag_font)
+    tag_x = (width - (tag_box[2] - tag_box[0])) / 2
+    text_layer.text((tag_x, 2010), tag, font=tag_font, fill=(41, 203, 176, 255))
+
+    image.convert("RGB").save(cover_path, format="PNG", optimize=True)
+    return cover_path
+
+
+def add_cover_page(doc: Document, cover_path: Path, caption_style: str) -> None:
+    if not cover_path.exists():
+        return
+    doc.add_picture(str(cover_path), width=Inches(6.5))
+    doc.add_paragraph("Portada. Manual de Usuario de Anclora Advisor AI.", style=caption_style)
+    doc.add_page_break()
+
+
 def build_glossary() -> list[dict[str, str]]:
     return [
         {"term": "RAG", "definition": "Consulta asistida sobre la base documental fiscal, laboral y de mercado."},
@@ -375,10 +473,14 @@ def assemble_manual(
     doc = Document(str(template_path))
     clear_document(doc)
     caption_style = ensure_caption_style(doc)
+    cover_path = build_manual_cover(DEFAULT_COVER)
 
     captured = {result.id: result for result in screenshot_results if result.absolute_path}
     glossary = build_glossary()
     report.glossary = glossary
+    report.generated_files.append(str(cover_path.relative_to(ROOT)))
+
+    add_cover_page(doc, cover_path, caption_style)
 
     add_heading(doc, "Manual de usuario - Anclora Advisor AI", 1)
     doc.add_paragraph(

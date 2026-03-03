@@ -37,6 +37,7 @@ Security contract
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import logging
 import os
@@ -1024,6 +1025,152 @@ def _add_faq(doc: Document, pairs: list[tuple[str, str]]) -> None:
         a_p.paragraph_format.space_after = Pt(8)
 
 
+def _build_cover_image(logo_path: Path, out_img: Path) -> None:
+    """Generate a professional A4 cover page image (1654×2339 px at 200 dpi)."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    W, H = 1654, 2339  # A4 at 200 dpi
+
+    # ── Background: dark navy gradient ──────────────────────────────────────
+    img = Image.new("RGB", (W, H))
+    draw = ImageDraw.Draw(img)
+    top_col = (22, 41, 68)    # #162944
+    bot_col = (8,  18, 34)    # #08121e
+    for y in range(H):
+        t = y / (H - 1)
+        r = int(top_col[0] + (bot_col[0] - top_col[0]) * t)
+        g = int(top_col[1] + (bot_col[1] - top_col[1]) * t)
+        b = int(top_col[2] + (bot_col[2] - top_col[2]) * t)
+        draw.line([(0, y), (W, y)], fill=(r, g, b))
+
+    # ── Decorative geometry ─────────────────────────────────────────────────
+    teal = (29, 171, 137)
+    # Top accent stripe
+    draw.rectangle([(0, 0), (W, 10)], fill=teal)
+    # Bottom accent bar
+    draw.rectangle([(0, H - 110), (W, H)], fill=teal)
+    # Large background circle (upper-right, very subtle)
+    cx, cy, cr = int(W * 1.05), int(H * 0.12), int(W * 0.68)
+    for offset in range(3):
+        o = offset * 28
+        draw.ellipse(
+            [(cx - cr - o, cy - cr - o), (cx + cr + o, cy + cr + o)],
+            outline=(255, 255, 255, 10), width=1,
+        )
+    # Diagonal accent lines (right side, very subtle)
+    for i in range(5):
+        x0 = int(W * 0.58) + i * 52
+        y1 = int(H * 0.38) - i * 35
+        if x0 < W and y1 > 10:
+            draw.line([(x0, 10), (W, y1)], fill=(255, 255, 255, 7), width=1)
+
+    # ── Logo ────────────────────────────────────────────────────────────────
+    if logo_path.exists():
+        try:
+            logo = Image.open(logo_path).convert("RGBA")
+            logo.thumbnail((310, 310), Image.LANCZOS)
+            lw, lh = logo.size
+            lx = (W - lw) // 2
+            ly = int(H * 0.12)
+            img.paste(logo, (lx, ly), logo)
+        except Exception as exc:
+            log.warning("Could not embed logo in cover: %s", exc)
+
+    # ── Fonts ────────────────────────────────────────────────────────────────
+    def _try_font(paths: list[str], size: int):
+        for p in paths:
+            try:
+                if Path(p).exists():
+                    return ImageFont.truetype(p, size)
+            except Exception:
+                pass
+        return ImageFont.load_default()
+
+    BOLD_PATHS = ["C:/Windows/Fonts/segoeuib.ttf", "C:/Windows/Fonts/arialbd.ttf"]
+    REG_PATHS  = ["C:/Windows/Fonts/segoeui.ttf",  "C:/Windows/Fonts/arial.ttf"]
+
+    f_sub   = _try_font(REG_PATHS,  52)
+    f_title = _try_font(BOLD_PATHS, 90)
+    f_tag   = _try_font(REG_PATHS,  42)
+    f_date  = _try_font(REG_PATHS,  32)
+
+    def _draw_centered(text: str, y: int, font, color: tuple) -> None:
+        bbox = draw.textbbox((0, 0), text, font=font)
+        tw = bbox[2] - bbox[0]
+        draw.text(((W - tw) // 2, y), text, font=font, fill=color)
+
+    # ── Text ─────────────────────────────────────────────────────────────────
+    _draw_centered("Manual de Usuario de",   int(H * 0.43), f_sub,   (190, 215, 240))
+    _draw_centered("Anclora Advisor AI",     int(H * 0.50), f_title, (255, 255, 255))
+
+    # Teal separator
+    sy = int(H * 0.625)
+    draw.line([(W // 2 - 165, sy), (W // 2 + 165, sy)], fill=teal, width=4)
+
+    _draw_centered("By Anclora Group",       int(H * 0.645), f_tag,  (138, 180, 212))
+
+    date_str = datetime.now().strftime("Versión 1.0  ·  %B %Y")
+    _draw_centered(date_str,                 int(H * 0.705), f_date, (80, 115, 155))
+
+    out_img.parent.mkdir(parents=True, exist_ok=True)
+    img.save(str(out_img), dpi=(200, 200))
+    log.info("Cover image built: %s", out_img)
+
+
+def _add_cover_page(doc: Document, cover_img_path: Path) -> None:
+    """
+    Insert the cover image as a full-bleed first page.
+
+    Technique: add the cover paragraph with an embedded sectPr (0 margins)
+    in its pPr — this ends Section 1 (cover only) and Section 2 (content)
+    inherits the template's document-level sectPr with normal margins.
+    """
+    body = doc.element.body
+
+    # Determine page dimensions from template sectPr
+    doc_sectPr = body.find(qn("w:sectPr"))
+    page_w_in, page_h_in = 8.27, 11.69  # A4 defaults
+    if doc_sectPr is not None:
+        pgSz = doc_sectPr.find(qn("w:pgSz"))
+        if pgSz is not None:
+            w_twips = pgSz.get(qn("w:w"))
+            h_twips = pgSz.get(qn("w:h"))
+            if w_twips:
+                page_w_in = int(w_twips) / 1440
+            if h_twips:
+                page_h_in = int(h_twips) / 1440
+
+    # Add the cover paragraph using python-docx API (handles drawing XML)
+    cover_para = doc.add_paragraph()
+    cover_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    cover_run = cover_para.add_run()
+    cover_run.add_picture(str(cover_img_path), width=Inches(page_w_in), height=Inches(page_h_in))
+
+    # Zero paragraph spacing
+    pPr = cover_para._p.get_or_add_pPr()
+    spacing = OxmlElement("w:spacing")
+    spacing.set(qn("w:before"), "0")
+    spacing.set(qn("w:after"), "0")
+    pPr.insert(0, spacing)
+
+    # Embed sectPr in the cover paragraph's pPr to create a 0-margin cover section
+    cover_sectPr = OxmlElement("w:sectPr")
+    if doc_sectPr is not None:
+        pgSz = doc_sectPr.find(qn("w:pgSz"))
+        if pgSz is not None:
+            cover_sectPr.append(copy.deepcopy(pgSz))
+    cover_pgMar = OxmlElement("w:pgMar")
+    for attr in ("w:top", "w:right", "w:bottom", "w:left", "w:header", "w:footer", "w:gutter"):
+        cover_pgMar.set(qn(attr), "0")
+    cover_sectPr.append(cover_pgMar)
+    pPr.append(cover_sectPr)
+
+    # Move the cover paragraph to be the very first element in body
+    cover_p_elem = cover_para._p
+    body.remove(cover_p_elem)
+    body.insert(0, cover_p_elem)
+
+
 def assemble_docx(
     template_path: Path,
     out_path: Path,
@@ -1046,25 +1193,10 @@ def assemble_docx(
                 body.remove(child)
 
     # ── Cover page ───────────────────────────────────────────────────────────
-    title_p = doc.add_paragraph("ANCLORA ADVISOR AI")
-    title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    if _style_exists(doc, "Heading 1"):
-        title_p.style = doc.styles["Heading 1"]
-    for run in title_p.runs:
-        run.font.size = Pt(28)
-        run.bold = True
-
-    subtitle_p = doc.add_paragraph("Manual de Usuario")
-    subtitle_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    subtitle_p.paragraph_format.space_after = Pt(4)
-    if _style_exists(doc, "Heading 2"):
-        subtitle_p.style = doc.styles["Heading 2"]
-
-    date_p = doc.add_paragraph(f"Versión 1.0 — {datetime.now().strftime('%B %Y')}")
-    date_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    date_p.paragraph_format.space_after = Pt(36)
-
-    doc.add_page_break()
+    cover_img = REPO_ROOT / "manual-assets" / "cover.png"
+    logo_path = REPO_ROOT / "public" / "brand" / "logo-Advisor_1.png"
+    _build_cover_image(logo_path, cover_img)
+    _add_cover_page(doc, cover_img)
 
     # ── Content ──────────────────────────────────────────────────────────────
     for section in sections:
