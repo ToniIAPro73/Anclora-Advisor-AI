@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "notebooklm": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "infra/mcp/notebooklm/node_modules/notebooklm-mcp/dist/index.js"
+      ],
+      "env": {
+        "NOTEBOOKLM_PROFILE": "standard"
+      }
+    }
+  }
+}

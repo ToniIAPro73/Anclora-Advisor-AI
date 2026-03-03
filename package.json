@@ -9,6 +9,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "type-check": "tsc --noEmit",
     "ingest": "tsx scripts/ingest-rag.ts",
+    "notebooklm:add-sources": "node scripts/add-notebooklm-sources.cjs",
     "backfill": "tsx scripts/backfill-embeddings.ts",
     "reingest-patch": "tsx scripts/reingest-patch.ts",
     "rag:infra:apply": "tsx scripts/apply-match-chunks-rpc.ts",

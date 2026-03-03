@@ -1,0 +1,17 @@
+# Node dependencies (installed locally, not committed)
+node_modules/
+
+# Real environment variables (NEVER commit)
+.env
+
+# Auth tokens stored by notebooklm-mcp
+# (these live in ~/.config/notebooklm-mcp/ not here, but just in case)
+*.token
+*.session
+
+# Logs (local only)
+logs/*.log
+logs/*.jsonl
+
+# npm lock (regenerated on install)
+package-lock.json
