@@ -132,3 +132,48 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   response.headers.set("x-request-id", requestId);
   return response;
 }
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const requestId = getRequestId(request.headers.get("x-request-id"));
+  const locale = resolveLocale(request.headers.get("accept-language"));
+  const auth = await getAuthenticatedContext();
+
+  if (!auth.accessToken) {
+    const response = NextResponse.json(
+      { success: false, error: t(locale, "api.chat.invalid_session") },
+      { status: 401 }
+    );
+    response.headers.set("x-request-id", requestId);
+    return response;
+  }
+
+  const { conversationId } = await context.params;
+  const supabase = createUserScopedSupabaseClient(auth.accessToken);
+  const { data, error } = await supabase
+    .from("conversations")
+    .delete()
+    .eq("id", conversationId)
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    const status = error?.code === "PGRST116" ? 404 : 500;
+    log(status === 404 ? "warn" : "error", "api_chat_conversation_delete_failed", requestId, {
+      conversationId,
+      error: error?.message ?? "unknown",
+    });
+    const response = NextResponse.json(
+      {
+        success: false,
+        error: status === 404 ? t(locale, "api.chat.conversation_not_found") : t(locale, "api.chat.db_error"),
+      },
+      { status }
+    );
+    response.headers.set("x-request-id", requestId);
+    return response;
+  }
+
+  const response = NextResponse.json({ success: true, deletedConversationId: data.id });
+  response.headers.set("x-request-id", requestId);
+  return response;
+}

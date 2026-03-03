@@ -96,6 +96,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     router.replace(`${pathname}?${next.toString()}`);
   }
 
+  function clearConversationInUrl() {
+    const next = new URLSearchParams(searchParams?.toString());
+    next.delete("c");
+    const serialized = next.toString();
+    router.replace(serialized ? `${pathname}?${serialized}` : pathname);
+  }
+
   async function refreshConversations(preferredConversationId?: string) {
     const response = await fetch("/api/chat/conversations");
     const result = (await response.json()) as {
@@ -223,6 +230,73 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setRenaming(false);
     } catch (renameError) {
       setConversationError(renameError instanceof Error ? renameError.message : uiText(locale, "chat.error.rename"));
+    } finally {
+      setConversationLoading(false);
+    }
+  }
+
+  async function handleDeleteConversation(conversationId: string) {
+    const targetConversation = conversations.find((item) => item.id === conversationId);
+    if (!targetConversation || conversationLoading || loading) {
+      return;
+    }
+
+    const confirmed = window.confirm(uiText(locale, "chat.delete_confirm"));
+    if (!confirmed) {
+      return;
+    }
+
+    setConversationLoading(true);
+    setConversationError(null);
+    setRenaming(false);
+    try {
+      const response = await fetch(`/api/chat/conversations/${conversationId}`, {
+        method: "DELETE",
+      });
+      const result = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        deletedConversationId?: string;
+      };
+
+      if (!response.ok || !result.success || !result.deletedConversationId) {
+        throw new Error(result.error ?? uiText(locale, "chat.error.delete"));
+      }
+
+      const remainingConversations = conversations.filter((item) => item.id !== result.deletedConversationId);
+      setConversations(remainingConversations);
+
+      if (activeConversationId !== result.deletedConversationId) {
+        return;
+      }
+
+      const nextConversation = remainingConversations[0] ?? null;
+      if (!nextConversation) {
+        setActiveConversationId(null);
+        replaceMessages([]);
+        clearConversationInUrl();
+        return;
+      }
+
+      const nextResponse = await fetch(`/api/chat/conversations/${nextConversation.id}`);
+      const nextResult = (await nextResponse.json()) as {
+        success: boolean;
+        error?: string;
+        messages?: ChatPersistedMessageRecord[];
+      };
+
+      if (!nextResponse.ok || !nextResult.success || !nextResult.messages) {
+        throw new Error(nextResult.error ?? uiText(locale, "chat.error.load"));
+      }
+
+      const nextMessages = nextResult.messages
+        .map(mapPersistedMessage)
+        .filter((message): message is ChatMessage => message !== null);
+      setActiveConversationId(nextConversation.id);
+      replaceMessages(nextMessages);
+      syncConversationInUrl(nextConversation.id);
+    } catch (deleteError) {
+      setConversationError(deleteError instanceof Error ? deleteError.message : uiText(locale, "chat.error.delete"));
     } finally {
       setConversationLoading(false);
     }
@@ -373,17 +447,27 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>{uiText(locale, "chat.active")}</p>
                     <p className="mt-1 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{formatConversationLabel(activeConversation, locale)}</p>
                   </div>
-                  <button
-                    type="button"
-                    className="advisor-btn px-3 py-2 text-xs"
-                    style={{ border: "1px solid var(--advisor-border)", background: "color-mix(in srgb, var(--advisor-panel) 92%, #ffffff)", color: "var(--text-primary)" }}
-                    onClick={() => {
-                      setRenameValue(formatConversationLabel(activeConversation, locale));
-                      setRenaming(true);
-                    }}
-                  >
-                    {uiText(locale, "chat.rename")}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="advisor-btn px-3 py-2 text-xs"
+                      style={{ border: "1px solid var(--advisor-border)", background: "color-mix(in srgb, var(--advisor-panel) 92%, #ffffff)", color: "var(--text-primary)" }}
+                      onClick={() => {
+                        setRenameValue(formatConversationLabel(activeConversation, locale));
+                        setRenaming(true);
+                      }}
+                    >
+                      {uiText(locale, "chat.rename")}
+                    </button>
+                    <button
+                      type="button"
+                      className="advisor-btn px-3 py-2 text-xs"
+                      style={{ border: "1px solid color-mix(in srgb, #ef4444 35%, var(--advisor-border))", background: "color-mix(in srgb, #ef4444 10%, var(--advisor-panel) 90%)", color: "#fecaca" }}
+                      onClick={() => handleDeleteConversation(activeConversation.id)}
+                    >
+                      {uiText(locale, "chat.delete")}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -402,20 +486,32 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               {conversations.map((conversation) => {
                 const isActive = conversation.id === activeConversationId;
                 return (
-                  <button
+                  <div
                     key={conversation.id}
-                    type="button"
-                    onClick={() => loadConversation(conversation.id)}
                     className={
-                      "w-full rounded-xl border p-3 text-left transition " +
+                      "rounded-xl border p-3 transition " +
                       (isActive
                         ? "border-[#1dab89] bg-[#eefbf6]"
                         : "border-[#d2dceb] bg-white hover:bg-[#f7faff]")
                     }
                   >
-                    <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{formatConversationLabel(conversation, locale)}</p>
-                    <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>{formatConversationDate(conversation.updated_at, locale)}</p>
-                  </button>
+                    <div className="flex items-start justify-between gap-3">
+                      <button type="button" onClick={() => loadConversation(conversation.id)} className="min-w-0 flex-1 text-left">
+                        <p className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{formatConversationLabel(conversation, locale)}</p>
+                        <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>{formatConversationDate(conversation.updated_at, locale)}</p>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={uiText(locale, "chat.delete")}
+                        disabled={conversationLoading || loading}
+                        className="rounded-lg px-2 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+                        style={{ color: "#b91c1c", background: "color-mix(in srgb, #ef4444 12%, white)" }}
+                        onClick={() => handleDeleteConversation(conversation.id)}
+                      >
+                        {uiText(locale, "chat.delete")}
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
