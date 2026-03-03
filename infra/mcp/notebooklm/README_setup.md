@@ -63,6 +63,14 @@ rm -rf node_modules
 npm install
 ```
 
+After reinstall, local runtime patches are reapplied automatically via `postinstall`.
+You can also force them manually:
+
+```bash
+cd infra/mcp/notebooklm
+npm run apply-patches
+```
+
 ## Rollback
 
 Pre-install snapshot is at:
@@ -81,11 +89,30 @@ To rollback:
 bash infra/mcp/notebooklm/healthcheck.sh
 ```
 
-Returns exit code 0 if the server starts correctly.
+Returns exit code 0 only if:
+- the MCP server starts
+- `notebooklm` is registered in `.mcp.json`
+- the saved `state.json` can open a real NotebookLM notebook without redirecting to Google login
+
+The auth probe is implemented in:
+
+```text
+infra/mcp/notebooklm/probe_auth.cjs
+```
 
 ## Logs
 
 Runtime logs: `infra/mcp/notebooklm/logs/notebooklm-mcp.log`
+
+## Re-auth robustness
+
+`setup_auth` now retries with an isolated persistent Chrome profile when the base profile is locked by another Chrome instance.
+
+This avoids a hard failure when:
+- your normal Chrome session is open
+- another MCP/browser automation already holds the base profile
+
+Even with that fallback, successful auth still depends on completing the Google login flow in the opened browser.
 
 ## Syncing website sources into NotebookLM
 

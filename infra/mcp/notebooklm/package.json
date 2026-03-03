@@ -4,6 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "apply-patches": "node apply_local_patches.cjs",
+    "postinstall": "node apply_local_patches.cjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

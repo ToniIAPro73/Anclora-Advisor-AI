@@ -90,7 +90,10 @@ npm run notebooklm:sync:strict
 ```
 
 Current operational caveat:
-- In this environment, `ask_question` is wired correctly but the underlying `notebooklm-mcp` browser session currently fails to launch its persistent Chrome context, so the strict MCP audit returns `Decision=NO-GO` until that server-side issue is fixed.
+- The strict audit depends on a valid NotebookLM auth state and on the MCP server being able to answer `ask_question`.
+- If the audit fails, first distinguish between a real NotebookLM/auth failure and a wrapper/protocol failure in the local script.
+- `setup_auth` now falls back to an isolated persistent Chrome profile if the base profile is locked.
+- Health validation should use `infra/mcp/notebooklm/probe_auth.cjs` or `bash infra/mcp/notebooklm/healthcheck.sh`, not just `get_health`, because cookie presence alone can still produce false positives.
 
 ## Recommended local commands
 

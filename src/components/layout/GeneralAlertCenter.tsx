@@ -16,6 +16,7 @@ import {
   type GeneralAlertPriority,
   type GeneralAlertRecord,
 } from "@/lib/alerts/general-alerts";
+import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
 
 type GeneralAlertCenterProps = {
   locale: "es" | "en";
@@ -80,7 +81,9 @@ function formatDate(value: string, locale: "es" | "en"): string {
 
 export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const seenAlertIdsRef = useRef<Set<string>>(new Set());
+  const { sidebarCollapsed } = useAppPreferences();
   const [isOpen, setIsOpen] = useState(false);
   const [alerts, setAlerts] = useState<GeneralAlertRecord[]>([]);
   const [reminders, setReminders] = useState<GeneralAlertReminderRecord[]>([]);
@@ -92,6 +95,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
   const [form, setForm] = useState<ManualAlertForm>(INITIAL_FORM);
   const [categoryFilter, setCategoryFilter] = useState<AlertCategoryFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number; right: number } | null>(null);
 
   const sortedAlerts = useMemo(() => sortGeneralAlerts(alerts), [alerts]);
   const filteredAlerts = useMemo(
@@ -102,6 +106,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
     () => sortedAlerts.filter((alert) => alert.status === "pending" && !alert.read_at).length,
     [sortedAlerts]
   );
+  const activeReminders = useMemo(() => reminders.filter((reminder) => reminder.is_active), [reminders]);
   const totalPages = Math.max(1, Math.ceil(filteredAlerts.length / ALERTS_PER_PAGE));
   const pagedAlerts = useMemo(() => {
     const startIndex = (currentPage - 1) * ALERTS_PER_PAGE;
@@ -127,6 +132,36 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    function updatePanelStyle() {
+      const triggerRect = triggerRef.current?.getBoundingClientRect();
+      if (!triggerRect) {
+        return;
+      }
+
+      const isDesktop = window.innerWidth >= 768;
+      const left = isDesktop ? (sidebarCollapsed ? 108 : 306) : 16;
+      setPanelStyle({
+        top: Math.round(triggerRect.bottom + 12),
+        left,
+        right: 16,
+      });
+    }
+
+    updatePanelStyle();
+    window.addEventListener("resize", updatePanelStyle);
+    window.addEventListener("scroll", updatePanelStyle, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePanelStyle);
+      window.removeEventListener("scroll", updatePanelStyle, true);
+    };
+  }, [isOpen, sidebarCollapsed]);
 
   useEffect(() => {
     async function loadAlerts(initial = false) {
@@ -351,6 +386,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
   return (
     <div className="relative" ref={panelRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="advisor-icon-toggle relative"
         aria-label={locale === "en" ? "Notifications" : "Notificaciones"}
@@ -367,10 +403,13 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
         )}
       </button>
 
-      {isOpen && (
+      {isOpen && panelStyle && (
         <div
-          className="absolute right-0 z-[80] mt-3 flex max-h-[min(84vh,46rem)] w-[48rem] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[28px] border"
+          className="fixed z-[120] flex w-auto max-w-none flex-col overflow-hidden rounded-[28px] border"
           style={{
+            top: panelStyle.top,
+            left: panelStyle.left,
+            right: panelStyle.right,
             borderColor: "var(--advisor-border)",
             background: "var(--advisor-panel)",
             boxShadow: "var(--shadow-soft)",
@@ -522,185 +561,185 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
             {error && <div className="advisor-alert advisor-alert-error mt-3">{error}</div>}
           </div>
 
-          <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[minmax(0,1fr)_18rem]">
-            <div className="min-h-0 border-r px-3 py-3" style={{ borderColor: "var(--advisor-border)" }}>
-              {isLoading ? (
-                <div className="flex items-center gap-2 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}>
-                  <span className="advisor-spinner" />
-                  {locale === "en" ? "Loading alerts..." : "Cargando alertas..."}
-                </div>
-              ) : filteredAlerts.length === 0 ? (
-                <div className="rounded-xl border p-4 text-sm" style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}>
-                  {locale === "en" ? "No active alerts." : "No hay alertas activas."}
-                </div>
-              ) : (
-                <div className="flex h-full min-h-0 flex-col">
-                  <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border" style={{ borderColor: "var(--advisor-border)" }}>
-                    {pagedAlerts.map((alert, index) => {
-                      const dueLabel = getGeneralAlertDueLabel(alert.due_date, locale);
-                      const accent = getCategoryAccent(alert.category as GeneralAlertCategory);
-                      return (
-                        <article
-                          key={alert.id}
-                          className={`flex items-start gap-4 px-5 py-4 ${index !== pagedAlerts.length - 1 ? "border-b" : ""}`}
-                          style={{
-                            borderColor: "var(--advisor-border)",
-                            background: !alert.read_at && alert.status === "pending"
-                              ? "color-mix(in srgb, var(--advisor-panel) 84%, #22306b)"
-                              : "transparent",
-                          }}
-                        >
-                          <div
-                            className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg font-bold"
-                            style={{ color: accent.color, background: accent.bg }}
-                          >
-                            {accent.icon}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                                  {getGeneralAlertCategoryLabel(alert.category, locale)}
-                                </p>
-                                <p className="mt-2 text-lg font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
-                                  {alert.title}
-                                </p>
-                                <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-                                  {alert.message || dueLabel || (locale === "en" ? "Operational alert" : "Aviso operativo")}
-                                </p>
-                                <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
-                                  <span>{alert.due_date ? formatDate(alert.due_date, locale) : getStatusLabel(alert.status, locale)}</span>
-                                  {dueLabel && <span>{dueLabel}</span>}
-                                </div>
-                              </div>
-                              <div className="flex shrink-0 flex-col items-end gap-3">
-                                {!alert.read_at && alert.status === "pending" && (
-                                  <span className="mt-1 h-3 w-3 rounded-full bg-[#e8c547]" />
-                                )}
-                                <div className="flex flex-wrap justify-end gap-2">
-                                  {!alert.read_at && (
-                                    <button
-                                      type="button"
-                                      className="rounded-xl border px-3 py-2 text-xs font-semibold"
-                                      style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
-                                      onClick={() => void toggleRead(alert, true).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al actualizar lectura"))}
-                                    >
-                                      {locale === "en" ? "Mark read" : "Marcar leída"}
-                                    </button>
-                                  )}
-                                  {(alert.source === "manual" || alert.source === "reminder") && alert.status === "pending" && (
-                                    <button
-                                      type="button"
-                                      className="rounded-xl border px-3 py-2 text-xs font-semibold"
-                                      style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
-                                      onClick={() => void resolveManualAlert(alert).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al resolver alerta"))}
-                                    >
-                                      {locale === "en" ? "Resolve" : "Resolver"}
-                                    </button>
-                                  )}
-                                  {alert.link_href && (
-                                    <button
-                                      type="button"
-                                      className="advisor-btn advisor-btn-primary px-3 py-2 text-xs"
-                                      onClick={() => {
-                                        window.location.href = alert.link_href!;
-                                        setIsOpen(false);
-                                      }}
-                                    >
-                                      {locale === "en" ? "Open" : "Abrir"}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
+          <div className="flex flex-col gap-4 px-4 py-4">
+            {isLoading ? (
+              <div className="flex items-center gap-2 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}>
+                <span className="advisor-spinner" />
+                {locale === "en" ? "Loading alerts..." : "Cargando alertas..."}
+              </div>
+            ) : filteredAlerts.length === 0 ? (
+              <div className="rounded-xl border p-4 text-sm" style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}>
+                {locale === "en" ? "No active alerts." : "No hay alertas activas."}
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--advisor-border)" }}>
+                {pagedAlerts.map((alert, index) => {
+                  const dueLabel = getGeneralAlertDueLabel(alert.due_date, locale);
+                  const accent = getCategoryAccent(alert.category as GeneralAlertCategory);
+                  return (
+                    <article
+                      key={alert.id}
+                      className={`flex min-h-[132px] items-start gap-4 px-5 py-4 ${index !== pagedAlerts.length - 1 ? "border-b" : ""}`}
+                      style={{
+                        borderColor: "var(--advisor-border)",
+                        background: !alert.read_at && alert.status === "pending"
+                          ? "color-mix(in srgb, var(--advisor-panel) 84%, #22306b)"
+                          : "transparent",
+                      }}
+                    >
+                      <div
+                        className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg font-bold"
+                        style={{ color: accent.color, background: accent.bg }}
+                      >
+                        {accent.icon}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                              {getGeneralAlertCategoryLabel(alert.category, locale)}
+                            </p>
+                            <p className="mt-2 text-lg font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
+                              {alert.title}
+                            </p>
+                            <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                              {alert.message || dueLabel || (locale === "en" ? "Operational alert" : "Aviso operativo")}
+                            </p>
+                            <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                              <span>{alert.due_date ? formatDate(alert.due_date, locale) : getStatusLabel(alert.status, locale)}</span>
+                              {dueLabel && <span>{dueLabel}</span>}
                             </div>
                           </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                  {filteredAlerts.length > ALERTS_PER_PAGE && (
-                    <div className="mt-3 flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        className="flex h-9 w-9 items-center justify-center rounded-full border text-lg font-semibold disabled:opacity-40"
-                        style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
-                        onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        ‹
-                      </button>
-                      {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                        <button
-                          key={page}
-                          type="button"
-                          className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition"
-                          style={{
-                            background: currentPage === page ? "#e8c547" : "transparent",
-                            color: currentPage === page ? "#18243d" : "var(--text-secondary)",
-                            border: currentPage === page ? "none" : "1px solid var(--advisor-border)",
-                          }}
-                          onClick={() => setCurrentPage(page)}
-                        >
-                          {page}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        className="flex h-9 w-9 items-center justify-center rounded-full border text-lg font-semibold disabled:opacity-40"
-                        style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
-                        onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                        disabled={currentPage === totalPages}
-                      >
-                        ›
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <aside className="min-h-0 overflow-y-auto px-4 py-3">
-              {reminders.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
-                    {locale === "en" ? "Recurring reminders" : "Recordatorios recurrentes"}
-                  </p>
-                  <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                    {locale === "en" ? "Always-on operational cadence." : "Cadencia operativa siempre activa."}
-                  </p>
-                  {reminders.map((reminder) => (
-                    <article
-                      key={reminder.id}
-                      className="rounded-2xl border p-3"
-                      style={{ borderColor: "var(--advisor-border)" }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                            {reminder.title}
-                          </p>
-                          <div className="mt-1 flex flex-wrap gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
-                            <span>{getGeneralAlertCategoryLabel(reminder.category, locale)}</span>
-                            <span>{getReminderRecurrenceLabel(reminder.recurrence, locale)}</span>
-                            <span>{locale === "en" ? `${reminder.lead_days} day(s) before` : `${reminder.lead_days} dia(s) antes`}</span>
+                          <div className="flex shrink-0 flex-col items-end gap-3">
+                            {!alert.read_at && alert.status === "pending" && (
+                              <span className="mt-1 h-3 w-3 rounded-full bg-[#e8c547]" />
+                            )}
+                            <div className="flex flex-wrap justify-end gap-2">
+                              {!alert.read_at && (
+                                <button
+                                  type="button"
+                                  className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                                  style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                                  onClick={() => void toggleRead(alert, true).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al actualizar lectura"))}
+                                >
+                                  {locale === "en" ? "Mark read" : "Marcar leída"}
+                                </button>
+                              )}
+                              {(alert.source === "manual" || alert.source === "reminder") && alert.status === "pending" && (
+                                <button
+                                  type="button"
+                                  className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                                  style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                                  onClick={() => void resolveManualAlert(alert).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al resolver alerta"))}
+                                >
+                                  {locale === "en" ? "Resolve" : "Resolver"}
+                                </button>
+                              )}
+                              {alert.link_href && (
+                                <button
+                                  type="button"
+                                  className="advisor-btn advisor-btn-primary px-3 py-2 text-xs"
+                                  onClick={() => {
+                                    window.location.href = alert.link_href!;
+                                    setIsOpen(false);
+                                  }}
+                                >
+                                  {locale === "en" ? "Open" : "Abrir"}
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          className="rounded-xl border px-3 py-2 text-xs font-semibold"
-                          style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
-                          onClick={() => void toggleReminder(reminder, !reminder.is_active).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al actualizar recordatorio"))}
-                        >
-                          {reminder.is_active
-                            ? (locale === "en" ? "Pause" : "Pausar")
-                            : (locale === "en" ? "Activate" : "Activar")}
-                        </button>
                       </div>
                     </article>
-                  ))}
-                </div>
-              )}
-            </aside>
+                  );
+                })}
+              </div>
+            )}
+
+            {filteredAlerts.length > ALERTS_PER_PAGE && (
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border text-lg font-semibold disabled:opacity-40"
+                  style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                >
+                  ‹
+                </button>
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition"
+                    style={{
+                      background: currentPage === page ? "#e8c547" : "transparent",
+                      color: currentPage === page ? "#18243d" : "var(--text-secondary)",
+                      border: currentPage === page ? "none" : "1px solid var(--advisor-border)",
+                    }}
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border text-lg font-semibold disabled:opacity-40"
+                  style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  ›
+                </button>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3" style={{ borderColor: "var(--advisor-border)" }}>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+                  {locale === "en" ? "Recurring reminders" : "Recordatorios recurrentes"}
+                </p>
+                <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                  {activeReminders.length > 0
+                    ? locale === "en"
+                      ? `${activeReminders.length} active reminders ready in the alerts center`
+                      : `${activeReminders.length} recordatorios activos listos en el centro de alertas`
+                    : locale === "en"
+                      ? "No active recurring reminders"
+                      : "No hay recordatorios recurrentes activos"}
+                </p>
+                {activeReminders[0] && (
+                  <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
+                    {activeReminders[0].title} · {getReminderRecurrenceLabel(activeReminders[0].recurrence, locale)}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {activeReminders[0] && (
+                  <button
+                    type="button"
+                    className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                    style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                    onClick={() => void toggleReminder(activeReminders[0], !activeReminders[0].is_active).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al actualizar recordatorio"))}
+                  >
+                    {activeReminders[0].is_active
+                      ? (locale === "en" ? "Pause next" : "Pausar siguiente")
+                      : (locale === "en" ? "Activate next" : "Activar siguiente")}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="advisor-btn advisor-btn-primary px-3 py-2 text-xs"
+                  onClick={() => {
+                    window.location.href = "/dashboard/alertas";
+                    setIsOpen(false);
+                  }}
+                >
+                  {locale === "en" ? "Open alerts center" : "Abrir centro de alertas"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

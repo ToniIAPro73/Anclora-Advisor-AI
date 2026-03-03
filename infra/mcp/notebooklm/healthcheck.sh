@@ -66,7 +66,19 @@ else
   log "NOTE: This is expected on first run before 'setup_auth' is called."
 fi
 
-# ── Check 5: No secrets en .env ───────────────────────────────────────────────
+# ── Check 5: Auth probe real contra NotebookLM ───────────────────────────────
+log "Running real NotebookLM auth probe..."
+PROBE_OUTPUT=$(node "$SCRIPT_DIR/probe_auth.cjs" 2>&1 || true)
+if echo "$PROBE_OUTPUT" | grep -q "AUTH_PROBE_OK"; then
+  log "OK: state.json opens NotebookLM successfully"
+else
+  log "FAIL: state.json does not grant real NotebookLM access"
+  echo "$PROBE_OUTPUT" | head -5 >> "$LOG_FILE"
+  log "FIX: run setup_auth again and complete Google login in the opened browser"
+  exit $FAIL
+fi
+
+# ── Check 6: No secrets en .env ───────────────────────────────────────────────
 if [ -f "$SCRIPT_DIR/.env" ]; then
   if grep -iE "LOGIN_PASSWORD|password|secret" "$SCRIPT_DIR/.env" &>/dev/null; then
     log "WARN: .env contains sensitive variables (LOGIN_PASSWORD/password/secret). Review immediately."
@@ -77,7 +89,7 @@ else
   log "OK: No .env file (using .env.example only)"
 fi
 
-# ── Check 6: claude mcp list ─────────────────────────────────────────────────
+# ── Check 7: claude mcp list ─────────────────────────────────────────────────
 log "Checking claude mcp list..."
 MCP_LIST=$(claude mcp list 2>/dev/null || echo "")
 if echo "$MCP_LIST" | grep -q "notebooklm"; then

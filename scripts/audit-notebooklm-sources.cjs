@@ -98,42 +98,79 @@ async function callMcpTool(name, args) {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    let stdout = '';
     let stderr = '';
+    let settled = false;
+    let buffer = '';
+
+    const settle = (callback) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      try {
+        callback();
+      } finally {
+        try {
+          child.kill();
+        } catch {}
+      }
+    };
 
     child.stdout.on('data', (chunk) => {
-      stdout += chunk.toString();
+      buffer += chunk.toString();
+
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          continue;
+        }
+
+        let payload;
+        try {
+          payload = JSON.parse(trimmed);
+        } catch {
+          continue;
+        }
+
+        if (payload.id !== 2) {
+          continue;
+        }
+
+        settle(() => {
+          if (!payload?.result?.content?.[0]?.text) {
+            throw new Error(`AUDIT_INVALID_RESPONSE tool=${name}`);
+          }
+
+          resolve({
+            text: payload.result.content[0].text,
+            stderr,
+          });
+        });
+        return;
+      }
     });
     child.stderr.on('data', (chunk) => {
       stderr += chunk.toString();
     });
-    child.on('error', reject);
+    child.on('error', (error) => {
+      settle(() => reject(error));
+    });
 
     const timeoutMs = Number(process.env.NOTEBOOKLM_AUDIT_TIMEOUT_MS || 90000);
     const timer = setTimeout(() => {
-      child.kill();
-      reject(new Error(`AUDIT_TIMEOUT tool=${name}`));
+      settle(() => reject(new Error(`AUDIT_TIMEOUT tool=${name}`)));
     }, timeoutMs);
 
     child.on('close', () => {
-      clearTimeout(timer);
-      try {
-        const lines = stdout
-          .split(/\r?\n/)
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .map((line) => JSON.parse(line));
-        const toolResponse = lines.find((line) => line.id === 2);
-        if (!toolResponse?.result?.content?.[0]?.text) {
-          throw new Error(`AUDIT_INVALID_RESPONSE tool=${name}`);
-        }
-        resolve({
-          text: toolResponse.result.content[0].text,
-          stderr,
-        });
-      } catch (error) {
-        reject(error);
+      if (settled) {
+        return;
       }
+
+      settle(() => reject(new Error(`AUDIT_MCP_CLOSED tool=${name}`)));
     });
 
     child.stdin.write(JSON.stringify({
@@ -156,6 +193,7 @@ async function callMcpTool(name, args) {
         arguments: args,
       },
     }) + '\n');
+    child.stdin.end();
   });
 }
 
