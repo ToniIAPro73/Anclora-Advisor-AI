@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-03-03T10:01:15.492938Z",
+  "generated_files": [
+    "artifacts\\AncoraAdvisorAI_Manual.docx"
+  ],
+  "screenshot_index": [
+    {
+      "id": "01-login",
+      "section": "",
+      "file": "manual-assets\\screenshots\\01-login.png",
+      "caption": "Pantalla de acceso",
+      "url": "https://ancloraadvisorai-ten.vercel.app/login"
+    },
+    {
+      "id": "02-dashboard-chat",
+      "section": "",
+      "file": "manual-assets\\screenshots\\02-dashboard-chat.png",
+      "caption": "Dashboard principal y chat RAG",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/chat"
+    },
+    {
+      "id": "03-dashboard-fiscal",
+      "section": "",
+      "file": "manual-assets\\screenshots\\03-dashboard-fiscal.png",
+      "caption": "Módulo fiscal",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/fiscal"
+    },
+    {
+      "id": "04-dashboard-laboral",
+      "section": "",
+      "file": "manual-assets\\screenshots\\04-dashboard-laboral.png",
+      "caption": "Módulo laboral",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/laboral"
+    },
+    {
+      "id": "05-dashboard-facturacion",
+      "section": "",
+      "file": "manual-assets\\screenshots\\05-dashboard-facturacion.png",
+      "caption": "Módulo de facturación",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/facturacion"
+    },
+    {
+      "id": "06-dashboard-alertas",
+      "section": "",
+      "file": "manual-assets\\screenshots\\06-dashboard-alertas.png",
+      "caption": "Centro de alertas",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/alertas"
+    },
+    {
+      "id": "07-alerts-modal",
+      "section": "",
+      "file": "manual-assets\\screenshots\\07-alerts-modal.png",
+      "caption": "Panel rápido de notificaciones",
+      "url": "https://ancloraadvisorai-ten.vercel.app/dashboard/chat"
+    }
+  ],
+  "sections_added": [
+    "intro",
+    "getting_started",
+    "navigation",
+    "chat",
+    "fiscal",
+    "laboral",
+    "facturacion",
+    "alertas",
+    "account",
+    "glossary",
+    "faq",
+    "troubleshooting",
+    "support"
+  ],
+  "gaps": [
+    "Pre-action 'click_role' on 'Notificaciones' failed: Locator.wait_for: Timeout 8000ms exceeded.\nCall log:\n  - waiting for get_by_role(\"button\", name=\"Notificaciones\").first to be visible\n",
+    "Pre-action 'wait_for_text' on '' failed: Locator.wait_for: Timeout 8000ms exceeded.\nCall log:\n  - waiting for get_by_text(\"Notificaciones\").first to be visible\n"
+  ],
+  "sources_used": {
+    "template": "docs\\Free_Simple_ SAAS_Agreement_Template.docx",
+    "screenshot_plan": "manual.screenshots.yml",
+    "app_url": "https://ancloraadvisorai-ten.vercel.app"
+  },
+  "glossary": [],
+  "pending_validation": [
+    "Integración VeriFactu directa con AEAT",
+    "Importación masiva de facturas",
+    "Actualización de contraseña desde perfil",
+    "Correo de soporte soporte@anclora.ai"
+  ]
+}

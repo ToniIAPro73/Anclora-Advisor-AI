@@ -15,6 +15,12 @@ test-results/
 # MCP setup backups (local only, not committed)
 setup_backups/
 
+# Manual builder auth state (contains live session tokens — never commit)
+.auth/
+
+# Manual builder outputs
+manual-assets/
+
 # MCP logs
 infra/mcp/notebooklm/logs/*.log
 infra/mcp/notebooklm/logs/*.jsonl
