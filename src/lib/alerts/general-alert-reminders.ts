@@ -37,8 +37,21 @@ export const createGeneralAlertReminderSchema = z.object({
 
 export const updateGeneralAlertReminderSchema = z
   .object({
+    category: z.enum(["fiscal", "laboral", "facturacion"]).optional(),
+    title: z.string().trim().min(3).max(255).optional(),
+    message: z.string().max(2000).transform((value) => value.trim()).nullable().optional(),
+    priority: z.enum(["low", "medium", "high", "critical"]).optional(),
+    recurrence: z.enum(generalAlertReminderRecurrenceValues).optional(),
+    anchorDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    leadDays: z.number().int().min(0).max(365).optional(),
+    linkHref: z.string().trim().max(500).nullable().optional(),
     isActive: z.boolean().optional(),
   })
+  .transform((value) => ({
+    ...value,
+    message: value.message === undefined ? undefined : value.message || null,
+    linkHref: value.linkHref === undefined ? undefined : value.linkHref || null,
+  }))
   .refine((value) => Object.values(value).some((item) => item !== undefined), {
     message: "At least one field must be provided",
   });

@@ -73,6 +73,7 @@ export function GeneralAlertsWorkspace({
   const [alerts, setAlerts] = useState(sortGeneralAlerts(initialAlerts));
   const [reminders, setReminders] = useState(initialReminders);
   const [form, setForm] = useState(INITIAL_FORM);
+  const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<FilterCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -101,6 +102,21 @@ export function GeneralAlertsWorkspace({
     reminders: reminders.filter((reminder) => reminder.is_active).length,
   }), [alerts, reminders]);
 
+  function loadReminderIntoForm(reminder: GeneralAlertReminderRecord) {
+    setForm({
+      title: reminder.title,
+      message: reminder.message ?? "",
+      category: reminder.category as GeneralAlertCategory,
+      priority: reminder.priority as GeneralAlertPriority,
+      dueDate: reminder.anchor_date,
+      recurrence: reminder.recurrence as GeneralAlertReminderRecurrence,
+      leadDays: String(reminder.lead_days),
+    });
+    setEditingReminderId(reminder.id);
+    setOkMessage(null);
+    setError(null);
+  }
+
   async function handleCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
@@ -108,7 +124,28 @@ export function GeneralAlertsWorkspace({
     setOkMessage(null);
 
     try {
-      if (form.recurrence === "none") {
+      if (editingReminderId) {
+        const response = await fetch(`/api/general-alert-reminders/${editingReminderId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: form.title,
+            message: form.message,
+            category: form.category,
+            priority: form.priority,
+            recurrence: form.recurrence === "none" ? "monthly" : form.recurrence,
+            anchorDate: form.dueDate || new Date().toISOString().slice(0, 10),
+            leadDays: Number.parseInt(form.leadDays, 10),
+            isActive: true,
+          }),
+        });
+        const result = (await response.json()) as { success: boolean; reminder?: GeneralAlertReminderRecord; error?: string };
+        if (!response.ok || !result.success || !result.reminder) {
+          throw new Error(result.error ?? "No se pudo actualizar el recordatorio");
+        }
+        setReminders((current) => current.map((item) => (item.id === result.reminder!.id ? result.reminder! : item)));
+        setOkMessage(locale === "en" ? "Recurring reminder updated." : "Recordatorio recurrente actualizado.");
+      } else if (form.recurrence === "none") {
         const response = await fetch("/api/general-alerts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -149,6 +186,7 @@ export function GeneralAlertsWorkspace({
       }
 
       setForm(INITIAL_FORM);
+      setEditingReminderId(null);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Error al guardar");
     } finally {
@@ -203,7 +241,9 @@ export function GeneralAlertsWorkspace({
       <div className="flex min-h-0 flex-col gap-4">
         <article className="advisor-card p-4">
           <h2 className="advisor-heading text-2xl" style={{ color: "var(--text-primary)" }}>
-            {locale === "en" ? "New alert or reminder" : "Nueva alerta o recordatorio"}
+            {editingReminderId
+              ? (locale === "en" ? "Edit recurring reminder" : "Editar recordatorio recurrente")
+              : (locale === "en" ? "New alert or reminder" : "Nueva alerta o recordatorio")}
           </h2>
           <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
             {locale === "en"
@@ -211,6 +251,21 @@ export function GeneralAlertsWorkspace({
               : "Crea alertas puntuales o recordatorios recurrentes para plazos, renovaciones y suscripciones."}
           </p>
           <form className="mt-4 space-y-3" onSubmit={handleCreate}>
+            {editingReminderId && (
+              <button
+                type="button"
+                className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                onClick={() => {
+                  setEditingReminderId(null);
+                  setForm(INITIAL_FORM);
+                  setError(null);
+                  setOkMessage(null);
+                }}
+              >
+                {locale === "en" ? "Cancel edit" : "Cancelar edicion"}
+              </button>
+            )}
             <input
               className="advisor-input"
               value={form.title}
@@ -276,7 +331,7 @@ export function GeneralAlertsWorkspace({
             {error && <div className="advisor-alert advisor-alert-error">{error}</div>}
             {okMessage && <div className="advisor-alert advisor-alert-success">{okMessage}</div>}
             <button type="submit" disabled={submitting} className="advisor-btn advisor-btn-primary advisor-btn-full">
-              {submitting ? (locale === "en" ? "Saving..." : "Guardando...") : (locale === "en" ? "Save" : "Guardar")}
+              {submitting ? (locale === "en" ? "Saving..." : "Guardando...") : editingReminderId ? (locale === "en" ? "Update reminder" : "Actualizar recordatorio") : (locale === "en" ? "Save" : "Guardar")}
             </button>
           </form>
         </article>
@@ -306,14 +361,24 @@ export function GeneralAlertsWorkspace({
                   </p>
                 )}
                 <div className="mt-3">
-                  <button
-                    type="button"
-                    className="rounded-xl border px-3 py-2 text-xs font-semibold"
-                    style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
-                    onClick={() => void toggleReminder(reminder, !reminder.is_active).catch((toggleError) => setError(toggleError instanceof Error ? toggleError.message : "Error al actualizar recordatorio"))}
-                  >
-                    {reminder.is_active ? (locale === "en" ? "Pause" : "Pausar") : (locale === "en" ? "Activate" : "Activar")}
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                      style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                      onClick={() => loadReminderIntoForm(reminder)}
+                    >
+                      {locale === "en" ? "Edit" : "Editar"}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                      style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                      onClick={() => void toggleReminder(reminder, !reminder.is_active).catch((toggleError) => setError(toggleError instanceof Error ? toggleError.message : "Error al actualizar recordatorio"))}
+                    >
+                      {reminder.is_active ? (locale === "en" ? "Pause" : "Pausar") : (locale === "en" ? "Activate" : "Activar")}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

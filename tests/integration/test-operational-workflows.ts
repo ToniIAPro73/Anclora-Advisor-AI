@@ -8,6 +8,7 @@ import {
   buildReminderRunAfter,
   getNextReminderOccurrence,
   getReminderRecurrenceLabel,
+  updateGeneralAlertReminderSchema,
 } from "../../src/lib/alerts/general-alert-reminders";
 import { createFiscalAlertSchema, sortFiscalAlerts } from "../../src/lib/fiscal/alerts";
 import { createFiscalTemplateSchema, getFiscalTemplateLabel } from "../../src/lib/fiscal/templates";
@@ -382,6 +383,19 @@ async function main(): Promise<void> {
     "recurring reminders compute the job execution time from lead days"
   );
   assert(getReminderRecurrenceLabel("yearly", "es") === "Anual", "recurring reminder label is localized");
+  const reminderPatch = updateGeneralAlertReminderSchema.parse({
+    title: "  Nuevo vencimiento  ",
+    message: "  Renovacion ajustada  ",
+    priority: "critical",
+    recurrence: "yearly",
+    anchorDate: "2026-12-01",
+    leadDays: 30,
+    linkHref: "/dashboard/alertas",
+    isActive: true,
+  });
+  assert(reminderPatch.title === "Nuevo vencimiento", "recurring reminder patch trims title");
+  assert(reminderPatch.message === "Renovacion ajustada", "recurring reminder patch trims message");
+  assert(reminderPatch.linkHref === "/dashboard/alertas", "recurring reminder patch keeps link href");
 
   console.log("Operational integration status: PASS");
 }

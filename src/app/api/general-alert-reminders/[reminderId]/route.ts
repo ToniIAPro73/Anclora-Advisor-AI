@@ -45,6 +45,45 @@ type RouteContext = {
   params: Promise<{ reminderId: string }>;
 };
 
+async function deletePendingReminderJobs(params: {
+  reminderId: string;
+  userId: string;
+  accessToken: string;
+}): Promise<void> {
+  const supabase = createUserScopedSupabaseClient(params.accessToken);
+  const { data, error } = await supabase
+    .from("app_jobs")
+    .select("id, payload")
+    .eq("job_kind", "general_alert_reminder_generation")
+    .eq("user_id", params.userId)
+    .in("status", ["pending", "running"])
+    .limit(200);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const idsToDelete = (data ?? [])
+    .filter((job) => {
+      const payload = job.payload as Record<string, unknown> | null;
+      return payload?.reminderId === params.reminderId;
+    })
+    .map((job) => job.id);
+
+  if (idsToDelete.length === 0) {
+    return;
+  }
+
+  const { error: deleteError } = await supabase
+    .from("app_jobs")
+    .delete()
+    .in("id", idsToDelete);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
+}
+
 export async function PATCH(request: NextRequest, context: RouteContext) {
   const requestId = getRequestId(request.headers.get("x-request-id"));
   const locale = getLocale(request);
@@ -73,7 +112,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const supabase = createUserScopedSupabaseClient(auth.accessToken);
   const { data: existing, error: existingError } = await supabase
     .from("general_alert_reminders")
-    .select("id, category, is_active, recurrence, anchor_date, lead_days")
+    .select("id, category, title, message, priority, recurrence, anchor_date, lead_days, link_href, is_active")
     .eq("id", reminderId)
     .single();
 
@@ -86,9 +125,33 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return response;
   }
 
-  const updatePayload: Record<string, boolean | string> = {
+  const updatePayload: Record<string, boolean | number | string | null> = {
     updated_at: new Date().toISOString(),
   };
+  if (payload.data.category !== undefined) {
+    updatePayload.category = payload.data.category;
+  }
+  if (payload.data.title !== undefined) {
+    updatePayload.title = payload.data.title;
+  }
+  if (payload.data.message !== undefined) {
+    updatePayload.message = payload.data.message;
+  }
+  if (payload.data.priority !== undefined) {
+    updatePayload.priority = payload.data.priority;
+  }
+  if (payload.data.recurrence !== undefined) {
+    updatePayload.recurrence = payload.data.recurrence;
+  }
+  if (payload.data.anchorDate !== undefined) {
+    updatePayload.anchor_date = payload.data.anchorDate;
+  }
+  if (payload.data.leadDays !== undefined) {
+    updatePayload.lead_days = payload.data.leadDays;
+  }
+  if (payload.data.linkHref !== undefined) {
+    updatePayload.link_href = payload.data.linkHref;
+  }
   if (payload.data.isActive !== undefined) {
     updatePayload.is_active = payload.data.isActive;
   }
@@ -110,48 +173,52 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return response;
   }
 
-  if (payload.data.isActive === true && existing.is_active === false) {
-    const { data: existingJobs, error: jobsError } = await supabase
-      .from("app_jobs")
-      .select("id")
-      .eq("job_kind", "general_alert_reminder_generation")
-      .in("status", ["pending", "running"])
-      .contains("payload", { reminderId })
-      .limit(1);
+  const scheduleFieldsChanged =
+    payload.data.recurrence !== undefined ||
+    payload.data.anchorDate !== undefined ||
+    payload.data.leadDays !== undefined ||
+    payload.data.isActive !== undefined;
 
-    if (jobsError) {
-      log("warn", "api_general_alert_reminders_patch_jobs_check_failed", requestId, {
+  if (scheduleFieldsChanged) {
+    try {
+      await deletePendingReminderJobs({
         reminderId,
-        error: jobsError.message,
-      });
-    }
-
-    if (!existingJobs || existingJobs.length === 0) {
-      const nextOccurrence = getNextReminderOccurrence({
-        anchorDate: existing.anchor_date,
-        recurrence: existing.recurrence as "monthly" | "quarterly" | "yearly",
-      });
-      await createAppJob({
         userId: auth.userId,
-        jobKind: "general_alert_reminder_generation",
-        payload: {
-          reminderId,
-          occurrenceDate: nextOccurrence,
-        },
-        runAfter: buildReminderRunAfter(nextOccurrence, existing.lead_days),
-        maxAttempts: 3,
+        accessToken: auth.accessToken,
+      });
+    } catch (jobsError) {
+      log("warn", "api_general_alert_reminders_patch_jobs_cleanup_failed", requestId, {
+        reminderId,
+        error: jobsError instanceof Error ? jobsError.message : "unknown",
       });
     }
+  }
+
+  if (data.is_active) {
+    const nextOccurrence = getNextReminderOccurrence({
+      anchorDate: data.anchor_date,
+      recurrence: data.recurrence as "monthly" | "quarterly" | "yearly",
+    });
+    await createAppJob({
+      userId: auth.userId,
+      jobKind: "general_alert_reminder_generation",
+      payload: {
+        reminderId,
+        occurrenceDate: nextOccurrence,
+      },
+      runAfter: buildReminderRunAfter(nextOccurrence, data.lead_days),
+      maxAttempts: 3,
+    });
   }
 
   try {
     await createAuditLog(supabase, {
       userId: auth.userId,
-      domain: getAuditDomain(existing.category),
+      domain: getAuditDomain(data.category),
       entityType: "general_alert_reminder",
       entityId: reminderId,
       action: "updated",
-      summary: `Recordatorio recurrente ${payload.data.isActive ? "activado" : "pausado"}`,
+      summary: "Recordatorio recurrente actualizado",
       metadata: payload.data,
     });
   } catch (auditError) {
