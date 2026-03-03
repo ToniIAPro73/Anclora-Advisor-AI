@@ -94,6 +94,18 @@ function buildPageWindow(currentPage: number, totalPages: number): number[] {
   return Array.from(pages).sort((left, right) => left - right);
 }
 
+function getLoadErrorMessage(error: unknown, locale: "es" | "en"): string {
+  if (!(error instanceof Error)) {
+    return locale === "en" ? "Unable to load alerts" : "No se pudieron cargar las alertas";
+  }
+
+  if (error.message === "Failed to fetch") {
+    return locale === "en" ? "Unable to connect to alerts service" : "No se pudo conectar con el servicio de alertas";
+  }
+
+  return error.message;
+}
+
 export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -174,16 +186,18 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
       }
 
       const isDesktop = window.innerWidth >= 768;
-      const dashboardLeft = isDesktop ? (sidebarCollapsed ? 96 : 288) : 16;
-      const dashboardRight = 16;
-      const availableWidth = Math.max(320, window.innerWidth - dashboardLeft - dashboardRight);
-      const preferredWidth = isDesktop ? (sidebarCollapsed ? 760 : 700) : availableWidth;
+      const mainRect = document.querySelector("main")?.getBoundingClientRect();
+      const containerLeft = mainRect?.left ?? 16;
+      const containerRight = mainRect?.right ?? (window.innerWidth - 16);
+      const containerWidth = Math.max(320, containerRight - containerLeft);
+      const sidePadding = isDesktop ? 18 : 12;
+      const availableWidth = Math.max(320, containerWidth - sidePadding * 2);
+      const preferredWidth = isDesktop ? 760 : availableWidth;
       const panelWidth = Math.min(preferredWidth, availableWidth);
-      const centeredLeft = dashboardLeft + Math.max(0, (availableWidth - panelWidth) / 2);
-      const requestedShift = isDesktop ? (sidebarCollapsed ? 35 : 90) : 0;
-      const minLeft = dashboardLeft + 8;
-      const maxLeft = window.innerWidth - dashboardRight - panelWidth;
-      const left = Math.round(Math.min(maxLeft, Math.max(minLeft, centeredLeft - requestedShift)));
+      const centeredLeft = containerLeft + (containerWidth - panelWidth) / 2;
+      const minLeft = containerLeft + sidePadding;
+      const maxLeft = containerRight - sidePadding - panelWidth;
+      const left = Math.round(Math.min(maxLeft, Math.max(minLeft, centeredLeft)));
       setPanelStyle({
         top: Math.round(triggerRect.bottom + 12),
         left,
@@ -257,7 +271,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
 
         seenAlertIdsRef.current = new Set(alertsResult.alerts.map((alert) => alert.id));
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : "Error al cargar alertas");
+        setError(getLoadErrorMessage(loadError, locale));
       } finally {
         setIsLoading(false);
       }
