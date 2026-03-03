@@ -34,16 +34,29 @@ export default async function DashboardAlertasPage() {
   ]);
 
   return (
-    <section className="flex h-full min-h-0 flex-col gap-3">
-      <article className="advisor-card shrink-0 p-4">
-        <h1 className="advisor-heading text-3xl" style={{ color: "var(--text-primary)" }}>
-          {uiText(locale, "page.alerts.title")}
-        </h1>
-        <p className="mt-2 text-sm" style={{ color: "var(--text-secondary)" }}>
-          {uiText(locale, "page.alerts.subtitle")}
-        </p>
+    <section className="flex h-full min-h-0 min-w-0 flex-col gap-3 overflow-hidden">
+      <article
+        className="advisor-card shrink-0 px-4 py-3"
+        style={{
+          background: "linear-gradient(90deg, color-mix(in srgb, var(--advisor-panel) 94%, rgba(29,171,137,0.12)) 0%, var(--advisor-panel) 100%)",
+        }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--advisor-accent)" }}>
+              {uiText(locale, "page.alerts.title")}
+            </p>
+            <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+              {uiText(locale, "page.alerts.subtitle")}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="advisor-chip">{locale === "en" ? "Fiscal, labor, invoicing" : "Fiscal, laboral, facturacion"}</span>
+            <span className="advisor-chip">{locale === "en" ? "Browser notifications ready" : "Notificaciones de navegador listas"}</span>
+          </div>
+        </div>
       </article>
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
         <GeneralAlertsWorkspace
           initialAlerts={(alertsData ?? []) as GeneralAlertRecord[]}
           initialReminders={(remindersData ?? []) as GeneralAlertReminderRecord[]}
