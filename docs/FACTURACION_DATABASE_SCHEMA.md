@@ -64,7 +64,7 @@ Tabla principal de facturas por usuario.
 | `rectifies_invoice_id` | `uuid` | sí |  | FK a `public.invoices(id)` |
 | `rectification_reason` | `text` | sí |  | Motivo rectificación |
 
-### Extensión v7 Verifactu e importación PDF
+### Extensión v7/v8 Verifactu e importación documental
 
 | Columna | Tipo | Nulo | Default | Notas |
 |---|---|---:|---|---|
@@ -72,9 +72,9 @@ Tabla principal de facturas por usuario.
 | `verifactu_submitted_at` | `timestamp` | sí |  | Fecha/hora de confirmación |
 | `verifactu_submission_id` | `text` | sí |  | Id externo de envío |
 | `verifactu_last_error` | `text` | sí |  | Último error conocido |
-| `import_source` | `text` | no | `'manual'` | `manual`, `pdf_import` |
-| `import_file_name` | `text` | sí |  | Nombre del PDF origen |
-| `import_storage_path` | `text` | sí |  | Ruta del PDF en Storage |
+| `import_source` | `text` | no | `'manual'` | `manual`, `pdf_import`, `image_import` |
+| `import_file_name` | `text` | sí |  | Nombre del documento origen |
+| `import_storage_path` | `text` | sí |  | Ruta del documento en Storage |
 | `import_confidence` | `numeric(5,2)` | sí |  | Confianza heurística de extracción |
 | `imported_at` | `timestamp` | sí |  | Fecha/hora de importación |
 
@@ -83,7 +83,7 @@ Tabla principal de facturas por usuario.
 | Constraint | Tipo | Definición |
 |---|---|---|
 | `invoices_verifactu_status_allowed` | `CHECK` | `verifactu_status in ('not_sent', 'queued', 'submitted', 'failed')` |
-| `invoices_import_source_allowed` | `CHECK` | `import_source in ('manual', 'pdf_import')` |
+| `invoices_import_source_allowed` | `CHECK` | `import_source in ('manual', 'pdf_import', 'image_import')` |
 
 ### Índices
 
@@ -231,14 +231,14 @@ Outbox de entregas por email. Asociada al envío de facturas.
 
 Uso:
 
-- guardar el PDF original importado
+- guardar el documento original importado
 - mantener trazabilidad del origen documental de la factura
 
 Configuración esperada:
 
 - bucket privado
 - `fileSizeLimit`: `10 MB`
-- `allowedMimeTypes`: `application/pdf`
+- `allowedMimeTypes`: `application/pdf`, `image/png`, `image/jpeg`, `image/webp`
 
 La ruta física se referencia desde:
 

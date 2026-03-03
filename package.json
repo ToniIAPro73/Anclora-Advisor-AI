@@ -29,6 +29,7 @@
     "invoice:workflow:v5:apply": "tsx scripts/apply-invoice-partial-payments-v5.ts",
     "invoice:workflow:v6:apply": "tsx scripts/apply-invoice-rectifications-v6.ts",
     "invoice:workflow:v7:apply": "tsx scripts/apply-invoice-verifactu-import-v7.ts",
+    "invoice:workflow:v8:apply": "tsx scripts/apply-invoice-image-import-v8.ts",
     "invoice:storage:apply": "tsx scripts/apply-invoice-import-storage.ts",
     "fiscal:templates:apply": "tsx scripts/apply-fiscal-templates.ts",
     "fiscal:workflow:v2:apply": "tsx scripts/apply-fiscal-workflow-v2.ts",
@@ -72,6 +73,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5.3.3",
+    "z-ai-web-dev-sdk": "^0.0.16",
     "zod": "^3.22.4"
   },
   "engines": {

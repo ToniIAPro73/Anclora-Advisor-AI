@@ -6,8 +6,9 @@ import { validateAccessToken } from "@/lib/auth/token";
 import type { InvoiceRecord } from "@/lib/invoices/contracts";
 import {
   buildInvoiceImportStoragePath,
+  getInvoiceImportSource,
   INVOICE_IMPORTS_BUCKET,
-  parseInvoicePdf,
+  parseInvoiceDocument,
 } from "@/lib/invoices/imports";
 import { calculateInvoiceTotals } from "@/lib/tools/invoice-calculator";
 import {
@@ -50,14 +51,18 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file");
 
-    if (!(file instanceof File) || file.type !== "application/pdf") {
-      const response = NextResponse.json({ success: false, error: "PDF_FILE_REQUIRED" }, { status: 400 });
+    if (!(file instanceof File)) {
+      const response = NextResponse.json({ success: false, error: "INVOICE_FILE_REQUIRED" }, { status: 400 });
       response.headers.set("x-request-id", requestId);
       return response;
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const parsed = parseInvoicePdf(buffer);
+    const parsed = await parseInvoiceDocument({
+      buffer,
+      fileName: file.name,
+      mimeType: file.type,
+    });
     const calculation = calculateInvoiceTotals({
       amountBase: parsed.amountBase,
       ivaRate: parsed.ivaRate,
@@ -71,7 +76,7 @@ export async function POST(request: NextRequest) {
     const storagePath = buildInvoiceImportStoragePath(auth.userId, file.name);
     const admin = createServiceSupabaseClient();
     const { error: uploadError } = await admin.storage.from(INVOICE_IMPORTS_BUCKET).upload(storagePath, buffer, {
-      contentType: "application/pdf",
+      contentType: file.type || "application/octet-stream",
       upsert: false,
     });
 
@@ -96,7 +101,7 @@ export async function POST(request: NextRequest) {
         recipient_email: parsed.recipientEmail ?? null,
         invoice_type: "standard",
         verifactu_status: "not_sent",
-        import_source: "pdf_import",
+        import_source: getInvoiceImportSource(parsed.importKind),
         import_file_name: file.name,
         import_storage_path: storagePath,
         import_confidence: parsed.confidence,
@@ -118,11 +123,14 @@ export async function POST(request: NextRequest) {
         entityType: "invoice_import",
         entityId: invoice.id,
         action: "created",
-        summary: `Factura importada desde PDF: ${file.name}`,
+        summary: `Factura importada desde documento: ${file.name}`,
         metadata: {
           fileName: file.name,
           storagePath,
           confidence: parsed.confidence,
+          engine: parsed.engine,
+          importKind: parsed.importKind,
+          warnings: parsed.warnings,
         },
       });
     } catch {
@@ -136,6 +144,9 @@ export async function POST(request: NextRequest) {
         fileName: file.name,
         storagePath,
         confidence: parsed.confidence,
+        engine: parsed.engine,
+        importKind: parsed.importKind,
+        warnings: parsed.warnings,
       },
     });
     response.headers.set("x-request-id", requestId);
@@ -146,7 +157,16 @@ export async function POST(request: NextRequest) {
       userId: auth.userId,
       error: message,
     });
-    const status = message === "PDF_FILE_REQUIRED" || message === "PDF_IMPORT_PARSE_FAILED" || message === "PDF_TEXT_EXTRACTION_FAILED" ? 400 : 500;
+    const status =
+      message === "INVOICE_FILE_REQUIRED" ||
+      message === "INVOICE_IMPORT_UNSUPPORTED_FILE" ||
+      message === "PDF_IMPORT_PARSE_FAILED" ||
+      message === "PDF_TEXT_EXTRACTION_FAILED" ||
+      message === "VLM_IMPORT_PARSE_FAILED" ||
+      message === "VLM_IMPORT_NOT_ENABLED" ||
+      message === "PDF_TO_IMAGE_CONVERSION_FAILED"
+        ? 400
+        : 500;
     const response = NextResponse.json({ success: false, error: message }, { status });
     response.headers.set("x-request-id", requestId);
     return response;

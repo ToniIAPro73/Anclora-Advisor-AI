@@ -3,7 +3,7 @@ import { z } from "zod";
 export const invoiceStatusValues = ["draft", "issued", "paid"] as const;
 export const invoiceTypeValues = ["standard", "rectificative"] as const;
 export const invoiceVerifactuStatusValues = ["not_sent", "queued", "submitted", "failed"] as const;
-export const invoiceImportSourceValues = ["manual", "pdf_import"] as const;
+export const invoiceImportSourceValues = ["manual", "pdf_import", "image_import"] as const;
 
 export type InvoiceStatus = (typeof invoiceStatusValues)[number];
 export type InvoiceType = (typeof invoiceTypeValues)[number];

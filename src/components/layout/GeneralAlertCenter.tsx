@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   getReminderRecurrenceLabel,
   type GeneralAlertReminderRecurrence,
@@ -79,9 +80,23 @@ function formatDate(value: string, locale: "es" | "en"): string {
   }).format(new Date(value));
 }
 
+function buildPageWindow(currentPage: number, totalPages: number): number[] {
+  const pages = new Set<number>();
+  pages.add(1);
+  pages.add(totalPages);
+
+  for (let page = currentPage - 1; page <= currentPage + 1; page += 1) {
+    if (page > 1 && page < totalPages) {
+      pages.add(page);
+    }
+  }
+
+  return Array.from(pages).sort((left, right) => left - right);
+}
+
 export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
-  const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
   const seenAlertIdsRef = useRef<Set<string>>(new Set());
   const { sidebarCollapsed } = useAppPreferences();
   const [isOpen, setIsOpen] = useState(false);
@@ -95,7 +110,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
   const [form, setForm] = useState<ManualAlertForm>(INITIAL_FORM);
   const [categoryFilter, setCategoryFilter] = useState<AlertCategoryFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number; right: number } | null>(null);
+  const [panelStyle, setPanelStyle] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const sortedAlerts = useMemo(() => sortGeneralAlerts(alerts), [alerts]);
   const filteredAlerts = useMemo(
@@ -112,9 +127,17 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
     const startIndex = (currentPage - 1) * ALERTS_PER_PAGE;
     return filteredAlerts.slice(startIndex, startIndex + ALERTS_PER_PAGE);
   }, [currentPage, filteredAlerts]);
+  const alertSlots = useMemo(
+    () => [...pagedAlerts, ...Array.from({ length: Math.max(0, ALERTS_PER_PAGE - pagedAlerts.length) }, () => null)],
+    [pagedAlerts]
+  );
+  const visiblePageNumbers = useMemo(() => buildPageWindow(currentPage, totalPages), [currentPage, totalPages]);
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const clickedTrigger = triggerRef.current?.contains(target);
+      const clickedModal = modalRef.current?.contains(target);
+      if (!clickedTrigger && !clickedModal) {
         setIsOpen(false);
       }
     }
@@ -134,6 +157,12 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
   }, [currentPage, totalPages]);
 
   useEffect(() => {
+    if (isOpen) {
+      setIsOpen(false);
+    }
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
     if (!isOpen) {
       return;
     }
@@ -145,11 +174,20 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
       }
 
       const isDesktop = window.innerWidth >= 768;
-      const left = isDesktop ? (sidebarCollapsed ? 108 : 306) : 16;
+      const dashboardLeft = isDesktop ? (sidebarCollapsed ? 96 : 288) : 16;
+      const dashboardRight = 16;
+      const availableWidth = Math.max(320, window.innerWidth - dashboardLeft - dashboardRight);
+      const preferredWidth = isDesktop ? (sidebarCollapsed ? 760 : 700) : availableWidth;
+      const panelWidth = Math.min(preferredWidth, availableWidth);
+      const centeredLeft = dashboardLeft + Math.max(0, (availableWidth - panelWidth) / 2);
+      const requestedShift = isDesktop ? (sidebarCollapsed ? 35 : 90) : 0;
+      const minLeft = dashboardLeft + 8;
+      const maxLeft = window.innerWidth - dashboardRight - panelWidth;
+      const left = Math.round(Math.min(maxLeft, Math.max(minLeft, centeredLeft - requestedShift)));
       setPanelStyle({
         top: Math.round(triggerRect.bottom + 12),
         left,
-        right: 16,
+        width: Math.round(panelWidth),
       });
     }
 
@@ -384,7 +422,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
   }
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div className="relative">
       <button
         ref={triggerRef}
         type="button"
@@ -403,32 +441,35 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
         )}
       </button>
 
-      {isOpen && panelStyle && (
+      {isOpen && panelStyle && typeof document !== "undefined" && createPortal(
         <div
+          ref={modalRef}
           className="fixed z-[120] flex w-auto max-w-none flex-col overflow-hidden rounded-[28px] border"
           style={{
-            top: panelStyle.top,
+            top: Math.max(12, panelStyle.top - 28),
             left: panelStyle.left,
-            right: panelStyle.right,
+            right: "auto",
+            width: panelStyle.width,
+            maxHeight: "min(84vh, 50rem)",
             borderColor: "var(--advisor-border)",
             background: "var(--advisor-panel)",
             boxShadow: "var(--shadow-soft)",
           }}
         >
-          <div className="border-b px-5 py-4" style={{ borderColor: "var(--advisor-border)" }}>
-            <div className="flex items-start justify-between gap-3">
+          <div className="border-b px-4 py-2" style={{ borderColor: "var(--advisor-border)" }}>
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
-                <p className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
+                <p className="text-[1.45rem] font-semibold leading-none" style={{ color: "var(--text-primary)" }}>
                   {locale === "en" ? "Notifications" : "Notificaciones"}
                 </p>
-                <p className="mt-1 text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+                <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em]" style={{ color: "var(--text-secondary)" }}>
                   {unreadCount} {locale === "en" ? "unread" : "sin leer"}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 <button
                   type="button"
-                  className="px-2 py-1 text-sm font-semibold"
+                  className="px-2 py-1 text-xs font-semibold"
                   style={{ color: "#e8c547" }}
                   onClick={() => void markCurrentPageAsRead().catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al marcar alertas"))}
                 >
@@ -436,7 +477,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                 </button>
                 <button
                   type="button"
-                  className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                  className="rounded-xl border px-3 py-1.5 text-[11px] font-semibold"
                   style={{
                     borderColor: "var(--advisor-border)",
                     color: "var(--text-secondary)",
@@ -448,12 +489,12 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               {(["all", "fiscal", "laboral", "facturacion"] as const).map((item) => (
                 <button
                   key={item}
                   type="button"
-                  className="rounded-full border px-4 py-2 text-xs font-semibold transition"
+                  className="rounded-full border px-3 py-1 text-[10px] font-semibold transition"
                   style={{
                     borderColor: "var(--advisor-border)",
                     background: categoryFilter === item ? "var(--advisor-accent)" : "transparent",
@@ -466,11 +507,11 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
               ))}
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-2 flex flex-wrap gap-2">
               {permission !== "granted" && permission !== "unsupported" && (
                 <button
                   type="button"
-                  className="advisor-btn advisor-btn-primary px-3 py-2 text-xs"
+                  className="advisor-btn advisor-btn-primary px-3 py-1 text-[11px]"
                   onClick={() => void requestBrowserNotifications()}
                 >
                   {locale === "en" ? "Enable browser notifications" : "Activar notificaciones del navegador"}
@@ -485,7 +526,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
             </div>
 
             {showComposer && (
-              <form className="mt-4 space-y-2" onSubmit={handleCreateAlert}>
+              <form className="mt-3 space-y-2" onSubmit={handleCreateAlert}>
                 <input
                   className="advisor-input"
                   value={form.title}
@@ -561,7 +602,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
             {error && <div className="advisor-alert advisor-alert-error mt-3">{error}</div>}
           </div>
 
-          <div className="flex flex-col gap-4 px-4 py-4">
+          <div className="flex flex-col gap-2 px-4 py-2">
             {isLoading ? (
               <div className="flex items-center gap-2 rounded-xl border p-3 text-sm" style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}>
                 <span className="advisor-spinner" />
@@ -573,13 +614,30 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
               </div>
             ) : (
               <div className="overflow-hidden rounded-2xl border" style={{ borderColor: "var(--advisor-border)" }}>
-                {pagedAlerts.map((alert, index) => {
+                {alertSlots.map((alert, index) => {
+                  if (!alert) {
+                    return (
+                      <div
+                        key={`empty-slot-${index}`}
+                        className={`flex min-h-[54px] items-center px-4 ${index !== alertSlots.length - 1 ? "border-b" : ""}`}
+                        style={{
+                          borderColor: "var(--advisor-border)",
+                          background: "color-mix(in srgb, var(--advisor-panel) 92%, rgba(255,255,255,0.02))",
+                        }}
+                      >
+                        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                          {locale === "en" ? "No more alerts on this page" : "No hay más alertas en esta página"}
+                        </p>
+                      </div>
+                    );
+                  }
+
                   const dueLabel = getGeneralAlertDueLabel(alert.due_date, locale);
                   const accent = getCategoryAccent(alert.category as GeneralAlertCategory);
                   return (
                     <article
                       key={alert.id}
-                      className={`flex min-h-[132px] items-start gap-4 px-5 py-4 ${index !== pagedAlerts.length - 1 ? "border-b" : ""}`}
+                      className={`flex min-h-[54px] items-start gap-2.5 px-4 py-1.5 ${index !== alertSlots.length - 1 ? "border-b" : ""}`}
                       style={{
                         borderColor: "var(--advisor-border)",
                         background: !alert.read_at && alert.status === "pending"
@@ -588,37 +646,42 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                       }}
                     >
                       <div
-                        className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg font-bold"
+                        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold"
                         style={{ color: accent.color, background: accent.bg }}
                       >
                         {accent.icon}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                              {getGeneralAlertCategoryLabel(alert.category, locale)}
-                            </p>
-                            <p className="mt-2 text-lg font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
-                              {alert.title}
-                            </p>
-                            <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span
+                                className="rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.14em]"
+                                style={{ background: accent.bg, color: accent.color }}
+                              >
+                                {getGeneralAlertCategoryLabel(alert.category, locale)}
+                              </span>
+                              <p className="line-clamp-1 text-[0.82rem] font-semibold leading-tight" style={{ color: "var(--text-primary)" }}>
+                                {alert.title}
+                              </p>
+                            </div>
+                            <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug" style={{ color: "var(--text-secondary)" }}>
                               {alert.message || dueLabel || (locale === "en" ? "Operational alert" : "Aviso operativo")}
                             </p>
-                            <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                            <div className="mt-1 flex flex-wrap gap-2 text-[8px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
                               <span>{alert.due_date ? formatDate(alert.due_date, locale) : getStatusLabel(alert.status, locale)}</span>
                               {dueLabel && <span>{dueLabel}</span>}
                             </div>
                           </div>
-                          <div className="flex shrink-0 flex-col items-end gap-3">
+                          <div className="flex shrink-0 flex-col items-end gap-1">
                             {!alert.read_at && alert.status === "pending" && (
-                              <span className="mt-1 h-3 w-3 rounded-full bg-[#e8c547]" />
+                              <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-[#e8c547]" />
                             )}
-                            <div className="flex flex-wrap justify-end gap-2">
+                            <div className="flex flex-wrap justify-end gap-1">
                               {!alert.read_at && (
                                 <button
                                   type="button"
-                                  className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                                  className="rounded-xl border px-2 py-1 text-[9px] font-semibold"
                                   style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
                                   onClick={() => void toggleRead(alert, true).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al actualizar lectura"))}
                                 >
@@ -628,7 +691,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                               {(alert.source === "manual" || alert.source === "reminder") && alert.status === "pending" && (
                                 <button
                                   type="button"
-                                  className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                                  className="rounded-xl border px-2 py-1 text-[9px] font-semibold"
                                   style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
                                   onClick={() => void resolveManualAlert(alert).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al resolver alerta"))}
                                 >
@@ -638,7 +701,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                               {alert.link_href && (
                                 <button
                                   type="button"
-                                  className="advisor-btn advisor-btn-primary px-3 py-2 text-xs"
+                                  className="advisor-btn advisor-btn-primary px-2 py-1 text-[9px]"
                                   onClick={() => {
                                     window.location.href = alert.link_href!;
                                     setIsOpen(false);
@@ -658,68 +721,78 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
             )}
 
             {filteredAlerts.length > ALERTS_PER_PAGE && (
-              <div className="flex items-center justify-center gap-2">
-                <button
-                  type="button"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border text-lg font-semibold disabled:opacity-40"
-                  style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  disabled={currentPage === 1}
-                >
-                  ‹
-                </button>
-                {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+              <div className="flex items-center justify-between gap-3 rounded-2xl border px-4 py-2" style={{ borderColor: "var(--advisor-border)" }}>
+                <div className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--text-muted)" }}>
+                  {locale === "en" ? `Page ${currentPage} of ${totalPages}` : `Página ${currentPage} de ${totalPages}`}
+                </div>
+                <div className="flex items-center gap-2">
                   <button
-                    key={page}
                     type="button"
-                    className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition"
-                    style={{
-                      background: currentPage === page ? "#e8c547" : "transparent",
-                      color: currentPage === page ? "#18243d" : "var(--text-secondary)",
-                      border: currentPage === page ? "none" : "1px solid var(--advisor-border)",
-                    }}
-                    onClick={() => setCurrentPage(page)}
+                    className="flex h-8 min-w-8 items-center justify-center rounded-full border px-3 text-sm font-semibold disabled:opacity-40"
+                    style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    disabled={currentPage === 1}
                   >
-                    {page}
+                    <span aria-hidden="true">‹</span>
+                    <span className="sr-only">{locale === "en" ? "Previous page" : "Página anterior"}</span>
                   </button>
-                ))}
-                <button
-                  type="button"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border text-lg font-semibold disabled:opacity-40"
-                  style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
-                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  ›
-                </button>
+                  {visiblePageNumbers.map((page, index) => {
+                    const previousPage = visiblePageNumbers[index - 1];
+                    const needsGap = previousPage && page - previousPage > 1;
+                    return (
+                      <div key={page} className="flex items-center gap-2">
+                        {needsGap && (
+                          <span className="px-1 text-sm" style={{ color: "var(--text-muted)" }}>
+                            …
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className="flex h-8 min-w-8 items-center justify-center rounded-full px-3 text-sm font-semibold transition"
+                          style={{
+                            background: currentPage === page ? "#e8c547" : "transparent",
+                            color: currentPage === page ? "#18243d" : "var(--text-secondary)",
+                            border: currentPage === page ? "none" : "1px solid var(--advisor-border)",
+                          }}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    className="flex h-8 min-w-8 items-center justify-center rounded-full border px-3 text-sm font-semibold disabled:opacity-40"
+                    style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <span aria-hidden="true">›</span>
+                    <span className="sr-only">{locale === "en" ? "Next page" : "Página siguiente"}</span>
+                  </button>
+                </div>
               </div>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3" style={{ borderColor: "var(--advisor-border)" }}>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-1.5" style={{ borderColor: "var(--advisor-border)" }}>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "var(--text-muted)" }}>
                   {locale === "en" ? "Recurring reminders" : "Recordatorios recurrentes"}
                 </p>
-                <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
+                <p className="truncate text-[11px]" style={{ color: "var(--text-secondary)" }}>
                   {activeReminders.length > 0
-                    ? locale === "en"
-                      ? `${activeReminders.length} active reminders ready in the alerts center`
-                      : `${activeReminders.length} recordatorios activos listos en el centro de alertas`
+                    ? `${activeReminders.length} · ${activeReminders[0]?.title ?? ""} · ${activeReminders[0] ? getReminderRecurrenceLabel(activeReminders[0].recurrence, locale) : ""}`
                     : locale === "en"
                       ? "No active recurring reminders"
                       : "No hay recordatorios recurrentes activos"}
                 </p>
-                {activeReminders[0] && (
-                  <p className="mt-1 text-xs" style={{ color: "var(--text-muted)" }}>
-                    {activeReminders[0].title} · {getReminderRecurrenceLabel(activeReminders[0].recurrence, locale)}
-                  </p>
-                )}
               </div>
               <div className="flex flex-wrap gap-2">
                 {activeReminders[0] && (
                   <button
                     type="button"
-                    className="rounded-xl border px-3 py-2 text-xs font-semibold"
+                    className="rounded-xl border px-3 py-1 text-[11px] font-semibold"
                     style={{ borderColor: "var(--advisor-border)", color: "var(--text-secondary)" }}
                     onClick={() => void toggleReminder(activeReminders[0], !activeReminders[0].is_active).catch((actionError) => setError(actionError instanceof Error ? actionError.message : "Error al actualizar recordatorio"))}
                   >
@@ -730,7 +803,7 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
                 )}
                 <button
                   type="button"
-                  className="advisor-btn advisor-btn-primary px-3 py-2 text-xs"
+                  className="advisor-btn advisor-btn-primary px-3 py-1 text-[11px]"
                   onClick={() => {
                     window.location.href = "/dashboard/alertas";
                     setIsOpen(false);
@@ -741,7 +814,8 @@ export function GeneralAlertCenter({ locale }: GeneralAlertCenterProps) {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

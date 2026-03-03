@@ -98,6 +98,9 @@ type ImportInvoicePdfResponse = {
     fileName: string;
     storagePath: string;
     confidence: number;
+    engine: "pdf_text" | "vlm_vision";
+    importKind: "pdf" | "image";
+    warnings: string[];
   };
 };
 
@@ -290,7 +293,7 @@ export function InvoiceWorkspace({
     [invoices]
   );
   const importedCount = useMemo(
-    () => invoices.filter((invoice) => invoice.import_source === "pdf_import").length,
+    () => invoices.filter((invoice) => invoice.import_source === "pdf_import" || invoice.import_source === "image_import").length,
     [invoices]
   );
   const verifactuSubmittedCount = useMemo(
@@ -814,7 +817,7 @@ export function InvoiceWorkspace({
 
   async function handleImportPdf() {
     if (!pdfImportFile) {
-      setError(isEn ? "Select a PDF invoice first." : "Selecciona antes un PDF de factura.");
+      setError(isEn ? "Select a document or invoice image first." : "Selecciona antes un documento o imagen de factura.");
       return;
     }
 
@@ -833,7 +836,7 @@ export function InvoiceWorkspace({
       const result = (await response.json()) as ImportInvoicePdfResponse;
 
       if (!response.ok || !result.success || !result.invoice || !result.import) {
-        throw new Error(result.error ?? (isEn ? "Could not import the PDF invoice" : "No se pudo importar la factura PDF"));
+        throw new Error(result.error ?? (isEn ? "Could not import the invoice document" : "No se pudo importar el documento de factura"));
       }
 
       upsertInvoice(result.invoice);
@@ -842,11 +845,11 @@ export function InvoiceWorkspace({
       await refreshAuditLogs();
       setOkMessage(
         isEn
-          ? `PDF imported with confidence ${Math.round(result.import.confidence * 100)}%.`
-          : `PDF importado con confianza del ${Math.round(result.import.confidence * 100)}%.`
+          ? `${result.import.importKind === "image" ? "Image" : "Document"} imported with ${result.import.engine === "vlm_vision" ? "VLM" : "text parser"} at ${Math.round(result.import.confidence * 100)}% confidence.`
+          : `${result.import.importKind === "image" ? "Imagen" : "Documento"} importado con ${result.import.engine === "vlm_vision" ? "VLM" : "parser textual"} y confianza del ${Math.round(result.import.confidence * 100)}%.`
       );
     } catch (importError) {
-      setError(importError instanceof Error ? importError.message : (isEn ? "Error importing PDF" : "Error al importar PDF"));
+      setError(importError instanceof Error ? importError.message : (isEn ? "Error importing document" : "Error al importar el documento"));
     } finally {
       setImportingPdf(false);
     }
@@ -928,24 +931,24 @@ export function InvoiceWorkspace({
             </div>
             <div className="advisor-card-muted p-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-[#3a4f67]">
-                {isEn ? "Feature: PDF import" : "Feature: Importacion PDF"}
+                {isEn ? "Feature: Document import" : "Feature: Importacion documental"}
               </p>
               <p className="mt-1 text-sm text-[#162944]">
                 {importedCount} {isEn ? "invoice(s) imported" : "factura(s) importadas"}
               </p>
               <p className="mt-1 text-xs text-[#3a4f67]">
-                {isEn ? "Upload textual PDFs to create invoices automatically." : "Sube PDFs textuales para crear facturas automaticamente."}
+                {isEn ? "Upload PDFs or images; textual parsing and VLM are combined automatically." : "Sube PDFs o imagenes; parsing textual y VLM se combinan automaticamente."}
               </p>
             </div>
           </div>
           <div className="mt-4 rounded-2xl border border-dashed border-[#b8c8de] bg-[#f8fbff] p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-[#162944]">{isEn ? "Import invoice PDF" : "Importar factura PDF"}</p>
+                <p className="text-sm font-semibold text-[#162944]">{isEn ? "Import invoice document" : "Importar documento de factura"}</p>
                 <p className="mt-1 text-xs text-[#3a4f67]">
                   {isEn
-                    ? "The app extracts textual fields from the PDF and creates the invoice automatically."
-                    : "La app extrae campos textuales del PDF y crea la factura automaticamente."}
+                    ? "The app uses text parsing for textual PDFs and VLM for images or scanned PDFs when enabled."
+                    : "La app usa parsing textual para PDFs textuales y VLM para imagenes o PDFs escaneados cuando esta activado."}
                 </p>
               </div>
               <button
@@ -954,19 +957,19 @@ export function InvoiceWorkspace({
                 className="advisor-btn border border-[#b8c8de] bg-white px-3 py-2 text-sm font-semibold text-[#162944]"
                 onClick={() => void handleImportPdf()}
               >
-                {importingPdf ? (isEn ? "Importing..." : "Importando...") : (isEn ? "Import PDF" : "Importar PDF")}
+                {importingPdf ? (isEn ? "Importing..." : "Importando...") : (isEn ? "Import document" : "Importar documento")}
               </button>
             </div>
             <input
               type="file"
-              accept="application/pdf"
+              accept="application/pdf,image/png,image/jpeg,image/webp"
               className="advisor-input mt-3"
               onChange={(event) => setPdfImportFile(event.target.files?.[0] ?? null)}
             />
             <p className="mt-2 text-xs text-[#3a4f67]">
               {pdfImportFile
                 ? `${isEn ? "Selected" : "Seleccionado"}: ${pdfImportFile.name}`
-                : (isEn ? "Only textual PDF invoices are imported reliably." : "Solo se importan con fiabilidad facturas PDF textuales.")}
+                : (isEn ? "Supports PDF, PNG, JPG and WEBP. Images require the VLM import path." : "Soporta PDF, PNG, JPG y WEBP. Las imagenes requieren la ruta VLM de importacion.")}
             </p>
           </div>
           <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
@@ -1406,9 +1409,11 @@ export function InvoiceWorkspace({
                       <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">
                         {getVerifactuStatusLabel(invoice.verifactu_status, locale)}
                       </span>
-                      {invoice.import_source === "pdf_import" && (
+                      {(invoice.import_source === "pdf_import" || invoice.import_source === "image_import") && (
                         <span className="rounded-full border border-[#d2dceb] px-2 py-0.5 text-xs font-semibold text-[#3a4f67]">
-                          {isEn ? "Imported PDF" : "PDF importado"}
+                          {invoice.import_source === "image_import"
+                            ? (isEn ? "Imported image" : "Imagen importada")
+                            : (isEn ? "Imported PDF" : "PDF importado")}
                         </span>
                       )}
                       {invoice.rectifies_invoice_id && (

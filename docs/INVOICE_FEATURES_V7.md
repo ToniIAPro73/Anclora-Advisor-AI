@@ -16,14 +16,15 @@ Se añaden dos features nuevas al módulo `/dashboard/facturacion`.
   - `VERIFACTU_API_TOKEN`
   - `VERIFACTU_SYSTEM_ID`
 
-## 2. Importacion de facturas PDF
+## 2. Importacion documental de facturas
 
 - Nueva ruta: `POST /api/invoices/import-pdf`
 - Bucket privado Supabase: `invoice-imports`
 - La app:
-  - sube el PDF original al bucket
-  - extrae texto del PDF
-  - intenta detectar cliente, NIF, fecha, base, IVA, IRPF y total
+  - sube el documento original al bucket
+  - si el PDF es textual, intenta parsearlo sin OCR
+  - si el documento es una imagen, o el PDF no ofrece texto fiable, puede usar un VLM
+  - intenta detectar cliente/destinatario, NIF, fecha, base, IVA, IRPF y total
   - crea automaticamente una factura en estado `issued`
 - Modelo ampliado en `invoices`:
   - `import_source`
@@ -35,9 +36,11 @@ Se añaden dos features nuevas al módulo `/dashboard/facturacion`.
 ## Provisioning
 
 1. `npm run invoice:workflow:v7:apply`
-2. `npm run invoice:storage:apply`
+2. `npm run invoice:workflow:v8:apply`
+3. `npm run invoice:storage:apply`
 
 ## Limitaciones
 
 - Verifactu requiere endpoint/token reales.
-- La importacion PDF es fiable para PDFs textuales; no hace OCR de documentos escaneados.
+- El fallback VLM requiere `INVOICE_IMPORT_VLM_ENABLED=true`, `ZAI_API_KEY` y opcionalmente `ZAI_VISION_MODEL`.
+- El fallback VLM para PDFs escaneados necesita conversión del PDF a imagen mediante `pdftoppm` o `magick` disponible en el host.
