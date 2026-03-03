@@ -3,7 +3,7 @@ import { createServiceSupabaseClient } from "@/lib/supabase/server-admin";
 export const APP_JOB_STATUS_VALUES = ["pending", "running", "completed", "failed"] as const;
 export type AppJobStatus = (typeof APP_JOB_STATUS_VALUES)[number];
 
-export const APP_JOB_KIND_VALUES = ["invoice_email_delivery", "fiscal_template_generation"] as const;
+export const APP_JOB_KIND_VALUES = ["invoice_email_delivery", "fiscal_template_generation", "general_alert_reminder_generation"] as const;
 export type AppJobKind = (typeof APP_JOB_KIND_VALUES)[number];
 
 export interface AppJobRecord {

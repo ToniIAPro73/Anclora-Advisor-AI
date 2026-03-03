@@ -1,3 +1,14 @@
+import {
+  buildSystemAlertCandidates,
+  sortGeneralAlerts,
+  type GeneralAlertRecord,
+} from "../../src/lib/alerts/general-alerts";
+import {
+  buildNextReminderOccurrence,
+  buildReminderRunAfter,
+  getNextReminderOccurrence,
+  getReminderRecurrenceLabel,
+} from "../../src/lib/alerts/general-alert-reminders";
 import { createFiscalAlertSchema, sortFiscalAlerts } from "../../src/lib/fiscal/alerts";
 import { createFiscalTemplateSchema, getFiscalTemplateLabel } from "../../src/lib/fiscal/templates";
 import { deliverInvoiceByEmail } from "../../src/lib/invoices/delivery";
@@ -233,6 +244,144 @@ async function main(): Promise<void> {
   assert(laborAction.evidenceLinks?.[0]?.label === "Contrato", "labor action schema trims evidence labels");
   assert(laborAction.evidenceLinks?.[0]?.fileName === "contrato.pdf", "labor action schema keeps evidence file name");
   assert(laborAction.evidenceLinks?.[0]?.storagePath === "user/action/contrato.pdf", "labor action schema keeps evidence storage path");
+
+  const systemAlerts = buildSystemAlertCandidates({
+    fiscalAlerts: [
+      {
+        id: "fa-1",
+        alert_type: "iva",
+        description: "Presentar modelo 303",
+        due_date: "2026-03-20",
+        priority: "high",
+        status: "pending",
+        workflow_status: "pending",
+        presented_at: null,
+        template_id: null,
+        period_key: "2026Q1",
+        source: "template",
+        tax_regime: "general",
+        tax_model: "303",
+        created_at: "2026-03-01T10:00:00.000Z",
+      },
+    ],
+    laborActions: [
+      {
+        id: "la-1",
+        assessment_id: "assess-1",
+        title: "Revisar exclusividad",
+        description: "Validar clausulas contractuales",
+        status: "pending",
+        due_date: "2026-03-05",
+        sla_due_at: "2026-03-04",
+        owner_name: "Toni",
+        owner_email: "toni@demo.com",
+        evidence_notes: null,
+        closure_notes: null,
+        checklist_items: null,
+        evidence_links: null,
+        started_at: null,
+        completed_at: null,
+        last_follow_up_at: null,
+        created_at: "2026-03-01T10:00:00.000Z",
+        updated_at: "2026-03-01T10:00:00.000Z",
+      },
+    ],
+    invoices: [
+      {
+        ...invoice,
+        id: "inv-alert-1",
+        status: "issued",
+        issue_date: "2026-01-15",
+        paid_at: null,
+      },
+    ],
+    now: new Date("2026-03-03T09:00:00.000Z"),
+  });
+  assert(systemAlerts.length === 3, "general alert builder aggregates fiscal, labor and invoice candidates");
+  assert(systemAlerts.some((alert) => alert.category === "fiscal"), "general alert builder includes fiscal candidates");
+  assert(systemAlerts.some((alert) => alert.category === "laboral"), "general alert builder includes labor candidates");
+  assert(systemAlerts.some((alert) => alert.category === "facturacion"), "general alert builder includes invoicing candidates");
+
+  const orderedGeneralAlerts = sortGeneralAlerts<GeneralAlertRecord>([
+    {
+      id: "g-low",
+      user_id: "user-1",
+      source_key: "manual:g-low",
+      source: "manual",
+      source_entity_type: "general_alert",
+      source_entity_id: null,
+      category: "facturacion",
+      title: "Seguimiento bajo",
+      message: null,
+      priority: "low",
+      status: "pending",
+      due_date: "2026-03-12",
+      link_href: null,
+      metadata: null,
+      read_at: null,
+      browser_notified_at: null,
+      created_at: "2026-03-01T10:00:00.000Z",
+      updated_at: "2026-03-01T10:00:00.000Z",
+    },
+    {
+      id: "g-critical",
+      user_id: "user-1",
+      source_key: "manual:g-critical",
+      source: "manual",
+      source_entity_type: "general_alert",
+      source_entity_id: null,
+      category: "fiscal",
+      title: "Seguimiento critico",
+      message: null,
+      priority: "critical",
+      status: "pending",
+      due_date: "2026-03-04",
+      link_href: null,
+      metadata: null,
+      read_at: null,
+      browser_notified_at: null,
+      created_at: "2026-03-01T09:00:00.000Z",
+      updated_at: "2026-03-01T09:00:00.000Z",
+    },
+    {
+      id: "g-resolved",
+      user_id: "user-1",
+      source_key: "manual:g-resolved",
+      source: "manual",
+      source_entity_type: "general_alert",
+      source_entity_id: null,
+      category: "laboral",
+      title: "Seguimiento resuelto",
+      message: null,
+      priority: "high",
+      status: "resolved",
+      due_date: "2026-03-02",
+      link_href: null,
+      metadata: null,
+      read_at: "2026-03-01T11:00:00.000Z",
+      browser_notified_at: null,
+      created_at: "2026-03-01T08:00:00.000Z",
+      updated_at: "2026-03-01T11:00:00.000Z",
+    },
+  ]);
+  assert(orderedGeneralAlerts[0]?.id === "g-critical", "general alerts sort pending critical alerts first");
+  assert(orderedGeneralAlerts[2]?.id === "g-resolved", "general alerts place resolved items after pending ones");
+
+  const nextOccurrence = getNextReminderOccurrence({
+    anchorDate: "2026-01-15",
+    recurrence: "monthly",
+    from: new Date("2026-03-03T09:00:00.000Z"),
+  });
+  assert(nextOccurrence === "2026-03-15", "recurring reminders roll forward to the next monthly occurrence");
+  assert(
+    buildNextReminderOccurrence("2026-03-15", "quarterly") === "2026-06-15",
+    "recurring reminders compute the following quarterly occurrence"
+  );
+  assert(
+    buildReminderRunAfter("2026-03-15", 10) === "2026-03-05T08:00:00.000Z",
+    "recurring reminders compute the job execution time from lead days"
+  );
+  assert(getReminderRecurrenceLabel("yearly", "es") === "Anual", "recurring reminder label is localized");
 
   console.log("Operational integration status: PASS");
 }

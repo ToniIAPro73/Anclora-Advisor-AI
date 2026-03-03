@@ -1,0 +1,37 @@
+
+=================================
+Testing [fiscal]: "Cuáles son los plazos y requisitos oficiales de la resolución de Cuota Cero en Baleares para 2026?"
+Chunks retrieved: 2
+
+  --- Match 1 ---
+  Similarity: 0.7
+  Title: Cuota cero en Baleares para nuevos autónomos - Gestron
+  Snippet: para negocios que estén consolidados. Es decir, para autónomos que lleven más de 3 años con la activ...
+
+  --- Match 2 ---
+  Similarity: 0.6
+  Title: Cuota cero en Baleares para nuevos autónomos - Gestron
+  Snippet: sentarse por los interesados a través de los siguientes canales: De forma telemática a través del po...
+
+=================================
+Testing [laboral]: "Qué indica la jurisprudencia específica del TSJ de Baleares (STSJIB) sobre la audiencia previa en el despido disciplinario?"
+Chunks retrieved: 3
+
+  --- Match 1 ---
+  Similarity: 0.703401214492543
+  Title: STS 1250/2024: Obligatoriedad de la Audiencia Previa en Despidos
+  Snippet: Sentencia histórica del Tribunal Supremo: A partir del 18 de noviembre de 2024, es obligatorio conce...
+
+  --- Match 2 ---
+  Similarity: 0.45454545454545453
+  Title: Despido disciplinario por transgresión de la buena fe contractual o el abuso de confianza.
+  Snippet: comportamiento negligente del trabajador, conculcando el mínimo deber de diligencia. 7. La deslealta...
+
+=================================
+Testing [mercado]: "Cuáles son los requisitos legales exactos, seguros necesarios y las sanciones del ROAIIB fijados en la ley para 2026?"
+Chunks retrieved: 1
+
+  --- Match 1 ---
+  Similarity: 0.08333333333333333
+  Title: Personal Branding for Real Estate Agents: Stand Out & Sell - CNK Consulting Vietnam
+  Snippet: asking for a transaction. When customers need to learn about legal issues, planning or market trends...

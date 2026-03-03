@@ -1,3 +1,8 @@
+import {
+  buildNextReminderOccurrence,
+  buildReminderRunAfter,
+  type GeneralAlertReminderRecord,
+} from "@/lib/alerts/general-alert-reminders";
 import { generateFiscalAlertsFromTemplates } from "@/lib/fiscal/generation";
 import type { InvoiceRecord } from "@/lib/invoices/contracts";
 import { deliverInvoiceByEmail } from "@/lib/invoices/delivery";
@@ -5,6 +10,7 @@ import { buildInvoiceReference, INVOICE_SELECT_FIELDS } from "@/lib/invoices/ser
 import { createSmtpEmailSender, isSmtpConfigured } from "@/lib/notifications/smtp";
 import {
   claimPendingJobs,
+  createAppJob,
   completeAppJob,
   failAppJob,
   listUserIdsWithPendingJobs,
@@ -93,6 +99,96 @@ async function processInvoiceEmailDelivery(job: AppJobRecord): Promise<void> {
   });
 }
 
+async function processGeneralAlertReminderGeneration(job: AppJobRecord): Promise<void> {
+  const reminderId = getString(job.payload, "reminderId");
+  const occurrenceDate = getString(job.payload, "occurrenceDate");
+
+  const supabase = createServiceSupabaseClient();
+  const { data, error } = await supabase
+    .from("general_alert_reminders")
+    .select("id, user_id, category, title, message, priority, recurrence, anchor_date, lead_days, link_href, is_active, last_generated_for, created_at, updated_at")
+    .eq("id", reminderId)
+    .eq("user_id", job.user_id)
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "GENERAL_ALERT_REMINDER_NOT_FOUND");
+  }
+
+  const reminder = data as GeneralAlertReminderRecord;
+  if (!reminder.is_active) {
+    await completeAppJob(job.id, {
+      reminderId,
+      skipped: true,
+      reason: "inactive",
+    });
+    return;
+  }
+
+  const sourceKey = `reminder:${reminder.id}:${occurrenceDate}`;
+  const { error: alertError } = await supabase.from("general_alerts").upsert(
+    {
+      user_id: job.user_id,
+      source_key: sourceKey,
+      source: "reminder",
+      source_entity_type: "general_alert_reminder",
+      source_entity_id: reminder.id,
+      category: reminder.category,
+      title: reminder.title,
+      message: reminder.message,
+      priority: reminder.priority,
+      status: "pending",
+      due_date: occurrenceDate,
+      link_href: reminder.link_href,
+      metadata: {
+        reminderId: reminder.id,
+        recurrence: reminder.recurrence,
+        generatedFor: occurrenceDate,
+      },
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,source_key" }
+  );
+
+  if (alertError) {
+    throw new Error(alertError.message);
+  }
+
+  const { error: reminderUpdateError } = await supabase
+    .from("general_alert_reminders")
+    .update({
+      last_generated_for: occurrenceDate,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", reminder.id)
+    .eq("user_id", job.user_id);
+
+  if (reminderUpdateError) {
+    throw new Error(reminderUpdateError.message);
+  }
+
+  const nextOccurrenceDate = buildNextReminderOccurrence(
+    occurrenceDate,
+    reminder.recurrence as "monthly" | "quarterly" | "yearly"
+  );
+  await createAppJob({
+    userId: job.user_id,
+    jobKind: "general_alert_reminder_generation",
+    payload: {
+      reminderId: reminder.id,
+      occurrenceDate: nextOccurrenceDate,
+    },
+    runAfter: buildReminderRunAfter(nextOccurrenceDate, reminder.lead_days),
+    maxAttempts: 3,
+  });
+
+  await completeAppJob(job.id, {
+    reminderId: reminder.id,
+    generatedFor: occurrenceDate,
+    nextOccurrenceDate,
+  });
+}
+
 export async function processPendingAppJobs(params: {
   userId: string;
   limit?: number;
@@ -123,10 +219,19 @@ export async function processPendingAppJobs(params: {
         continue;
       }
 
+      if (job.job_kind === "general_alert_reminder_generation") {
+        await processGeneralAlertReminderGeneration(job);
+        completed += 1;
+        continue;
+      }
+
       throw new Error(`Unsupported job kind: ${job.job_kind}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "UNKNOWN_JOB_ERROR";
-      const retryable = message !== "SMTP_NOT_CONFIGURED" && message !== "INVOICE_NOT_FOUND";
+      const retryable =
+        message !== "SMTP_NOT_CONFIGURED" &&
+        message !== "INVOICE_NOT_FOUND" &&
+        message !== "GENERAL_ALERT_REMINDER_NOT_FOUND";
 
       if (job.job_kind === "invoice_email_delivery") {
         const outboxId = typeof job.payload.outboxId === "string" ? job.payload.outboxId : null;

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 /* eslint-disable no-unused-vars */
 import type { ReactNode } from "react";
+import { GeneralAlertCenter } from "@/components/layout/GeneralAlertCenter";
 import { useAppPreferences, type ThemeMode } from "@/components/providers/AppPreferencesProvider";
 import type { AppRole } from "@/lib/auth/roles";
 import { uiText } from "@/lib/i18n/ui";
@@ -91,6 +92,7 @@ export function DashboardTopbar({ userEmail, role }: DashboardTopbarProps) {
           <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>{section.subtitle}</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <GeneralAlertCenter locale={locale} />
           <ThemeToggleGroup current={themeMode} onChange={setThemeMode} locale={locale} />
           <LocaleToggle current={locale} onChange={setLocale} locale={locale} />
           <span className="advisor-chip">{uiText(locale, "common.role")}: {role}</span>
