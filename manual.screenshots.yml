@@ -6,53 +6,46 @@ meta:
     width: 1440
     height: 900
   root_selector_default: main
-
 screenshots:
-  - id: login
-    title: Pantalla de acceso
-    path: /login
-    filename: 01-login.png
-    root_selector: main
-    auth_required: false
-
-  - id: dashboard_chat
-    title: Dashboard principal y chat RAG
-    path: /dashboard/chat
-    filename: 02-dashboard-chat.png
-    root_selector: main
-
-  - id: dashboard_fiscal
-    title: Módulo fiscal
-    path: /dashboard/fiscal
-    filename: 03-dashboard-fiscal.png
-    root_selector: main
-
-  - id: dashboard_laboral
-    title: Módulo laboral
-    path: /dashboard/laboral
-    filename: 04-dashboard-laboral.png
-    root_selector: main
-
-  - id: dashboard_facturacion
-    title: Módulo de facturación
-    path: /dashboard/facturacion
-    filename: 05-dashboard-facturacion.png
-    root_selector: main
-
-  - id: dashboard_alertas
-    title: Centro de alertas
-    path: /dashboard/alertas
-    filename: 06-dashboard-alertas.png
-    root_selector: main
-
-  - id: alerts_modal
-    title: Panel rápido de notificaciones
-    path: /dashboard/chat
-    filename: 07-alerts-modal.png
-    root_selector: body
-    actions:
-      - type: click_role
-        role: button
-        name: Notificaciones
-      - type: wait_for_text
-        text: Notificaciones
+- id: login
+  title: Pantalla de acceso
+  path: /login
+  filename: 01-login.png
+  root_selector: main
+  auth_required: false
+- id: dashboard_chat
+  title: Dashboard principal y chat RAG
+  path: /dashboard/chat
+  filename: 02-dashboard-chat.png
+  root_selector: main
+- id: dashboard_fiscal
+  title: Módulo fiscal
+  path: /dashboard/fiscal
+  filename: 03-dashboard-fiscal.png
+  root_selector: main
+- id: dashboard_laboral
+  title: Módulo laboral
+  path: /dashboard/laboral
+  filename: 04-dashboard-laboral.png
+  root_selector: main
+- id: dashboard_facturacion
+  title: Módulo de facturación
+  path: /dashboard/facturacion
+  filename: 05-dashboard-facturacion.png
+  root_selector: main
+- id: dashboard_alertas
+  title: Centro de alertas
+  path: /dashboard/alertas
+  filename: 06-dashboard-alertas.png
+  root_selector: main
+- id: alerts_modal
+  title: Panel rápido de notificaciones
+  path: /dashboard/chat
+  filename: 07-alerts-modal.png
+  root_selector: body
+  actions:
+  - type: click_role
+    role: button
+    name: Notificaciones
+  - type: wait_for_selector
+    selector: p:text-is("Notificaciones")

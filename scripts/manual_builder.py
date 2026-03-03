@@ -80,6 +80,29 @@ POST_LOGIN_PATH = "/dashboard/chat"
 NETWORK_IDLE_TIMEOUT = 20_000   # ms
 NAV_TIMEOUT = 60_000             # ms
 
+# ─── .env.local loader ────────────────────────────────────────────────────────
+
+def _load_env_local() -> None:
+    """
+    Load variables from .env.local into os.environ (only if not already set).
+    Does NOT override existing shell environment variables.
+    Supports KEY=VALUE and KEY="VALUE" (strips surrounding quotes).
+    """
+    env_file = REPO_ROOT / ".env.local"
+    if not env_file.exists():
+        return
+    for line in env_file.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, raw_val = line.partition("=")
+        key = key.strip()
+        val = raw_val.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = val
+    log.debug("Loaded .env.local")
+
+
 # ─── Manual content ───────────────────────────────────────────────────────────
 
 MANUAL_SECTIONS: list[dict[str, Any]] = [
@@ -861,6 +884,13 @@ def take_screenshots(
             try:
                 page.goto(base_url + url, timeout=NAV_TIMEOUT, wait_until="domcontentloaded")
 
+                # Detect auth redirect — session may have expired or been cleared
+                # (e.g. visiting /login can invalidate Supabase tokens in some setups)
+                if shot.get("auth_required", True) and "/login" in page.url:
+                    log.warning("  Auth redirect detected for %s — re-authenticating", sid)
+                    ensure_auth(page, plan, auth_state, assets_dir)
+                    page.goto(base_url + url, timeout=NAV_TIMEOUT, wait_until="domcontentloaded")
+
                 # Wait for network idle
                 try:
                     page.wait_for_load_state("networkidle", timeout=NETWORK_IDLE_TIMEOUT)
@@ -1143,6 +1173,7 @@ def write_report(
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    _load_env_local()
     args = parse_args()
 
     plan = load_plan(args.plan)

@@ -219,10 +219,27 @@ def login_if_needed(page: Page, app_url: str, report: BuilderReport) -> None:
 
     page.goto(f"{app_url.rstrip('/')}/login", wait_until="domcontentloaded")
     wait_stable(page, "main")
-    page.get_by_label("Correo electrónico").fill(user)
-    page.get_by_label("Contraseña").fill(password)
+    page.locator("#email").fill(user)
+    page.locator("#password").fill(password)
     page.get_by_role("button", name="Entrar al dashboard").click()
-    page.wait_for_url(re.compile(r".*/dashboard/.*"), timeout=20_000)
+    try:
+        page.wait_for_url(re.compile(r".*/dashboard/.*"), timeout=20_000)
+    except PlaywrightTimeoutError as exc:
+        page.wait_for_timeout(2_000)
+        if "/login" in page.url:
+            body_text = page.locator("body").inner_text()
+            auth_error = None
+            for pattern in (
+                "Invalid login credentials",
+                "Credenciales inválidas",
+                "Invalid Refresh Token",
+            ):
+                if pattern in body_text:
+                    auth_error = pattern
+                    break
+            if auth_error:
+                raise RuntimeError(f"Autenticación remota rechazada: {auth_error}") from exc
+        raise RuntimeError("No se completó la redirección al dashboard tras el login.") from exc
     wait_stable(page, "main")
     report.assumptions.append("Se realizó autenticación UI y se guardó storageState en ./.auth/state.json.")
 
@@ -233,7 +250,7 @@ def run_actions(page: Page, actions: list[dict[str, Any]]) -> None:
         if action_type == "click_role":
             page.get_by_role(action["role"], name=action["name"]).click()
         elif action_type == "wait_for_text":
-            page.get_by_text(action["text"]).wait_for(state="visible", timeout=10_000)
+            page.get_by_text(action["text"], exact=action.get("exact", True)).first.wait_for(state="visible", timeout=10_000)
         elif action_type == "click_selector":
             page.locator(action["selector"]).first.click()
         elif action_type == "wait_for_selector":
