@@ -200,6 +200,40 @@ function applyAuthManagerPatch(source) {
     );
   }
 
+  if (!next.includes('async performLogin(page, sendProgress, targetUrl = NOTEBOOKLM_AUTH_URL)')) {
+    next = replaceOrFail(
+      next,
+      `    async performLogin(page, sendProgress) {`,
+      `    async performLogin(page, sendProgress, targetUrl = NOTEBOOKLM_AUTH_URL) {`,
+      'performLogin signature'
+    );
+
+    next = replaceOrFail(
+      next,
+      `            // Navigate to Google login (redirects to NotebookLM after auth)
+            await page.goto(NOTEBOOKLM_AUTH_URL, { timeout: 60000 });`,
+      `            // Navigate to a real notebook target. If auth is missing, Google redirects
+            // to sign-in and then back to that notebook on success.
+            await page.goto(targetUrl, { timeout: 60000 });`,
+      'performLogin target navigation'
+    );
+
+    next = replaceOrFail(
+      next,
+      `            // Perform login with progress updates
+            const loginSuccess = await this.performLogin(page, sendProgress);
+            if (loginSuccess) {
+                const verificationUrl = await this.getVerificationNotebookUrl();
+                const verified = await this.verifyNotebookAccess(page, verificationUrl);`,
+      `            // Perform login with progress updates
+            const verificationUrl = await this.getVerificationNotebookUrl();
+            const loginSuccess = await this.performLogin(page, sendProgress, verificationUrl);
+            if (loginSuccess) {
+                const verified = await this.verifyNotebookAccess(page, verificationUrl);`,
+      'performSetup verification target'
+    );
+  }
+
   return next;
 }
 
