@@ -1,0 +1,78 @@
+[
+  {
+    "notebook_id": "ee081687-f43c-4384-aea8-f4884f5c9a4f",
+    "notebook_title": "ANCLORA_NOTEBOOK_01_FISCALIDAD_AUTONOMO_ES_BAL",
+    "domain": "fiscal",
+    "sources": [
+      {
+        "title": "Cuota cero de autónomos para emprendedores - CAIB",
+        "url": "https://www.caib.es/sites/quotazero/es/ayudas_2024_autonomos_cuota_cero/",
+        "content": "Cuota cero de autónomos para emprendedores. Las personas autónomas que se den de alta en el RETA o en la mutualidad de previsión social alternativa entre el 1 de enero de 2024 y el 31 de diciembre de 2025 pueden beneficiarse de una subvención del 100% de la cuota. Para el ciclo 2026, la convocatoria específica de solicitudes se abrirá en el periodo del 10 de mayo al 10 de junio de 2026. Es requisito indispensable estar al corriente de las obligaciones con la ATIB y la Seguridad Social."
+      },
+      {
+        "title": "La convocatoria de cuota cero para autónomos recién llegados comenzará el 10 de mayo en las Islas Baleares",
+        "url": "https://www.diarioeconomia.com/2026/02/24/la-convocatoria-de-cuota-cero-para-autonomos-recien-llegados-comenzara-el-10-de-mayo-en-las-islas-baleares/",
+        "content": "Confirmado: la Conselleria de Empresa de Baleares activará la ventana de solicitud de la Cuota Cero 2026 el 10 de mayo. Los nuevos autónomos podrán solicitar el reembolso íntegro de sus cuotas del primer año. El presupuesto se asignará por orden de llegada hasta agotar fondos."
+      },
+      {
+        "title": "Obligatoriedad del Software de Facturación Homologado Verifactu en 2026",
+        "url": "https://www.analizza.es/obligatoriedad-del-software-homologado-verifactu-en-2026-todo-lo-que-debes-saber/",
+        "content": "El sistema Verifactu será de obligado cumplimiento para autónomos en España a partir del 1 de julio de 2026. Todas las facturas deberán ser generadas por software homologado que garantice la integridad y el envío automático a la AEAT. Las sanciones por incumplimiento pueden alcanzar los 50.000 euros."
+      },
+      {
+        "title": "año 2026: plazos de pago voluntario y de gestión de domiciliaciones - ATIB",
+        "url": "https://www.atib.es/TL/domiciliacion/PREVISIO%20DOMI%202026_s.pdf",
+        "content": "Calendario ATIB 2026: IBI e IAE en Palma del 15 de septiembre al 1 de diciembre. IVTM en Palma del 16 de marzo al 1 de junio. Otros municipios como Andratx y Calviá tienen el periodo de IBI e IAE del 1 de octubre al 1 de diciembre de 2026."
+      },
+      {
+        "title": "Deducciones autonómicas Baleares 2026 | Guía Completa",
+        "url": "https://taxdown.es/deduccion-comunidad/autonomicas-renta-baleares/",
+        "content": "Deducciones IRPF Baleares 2026: Se mantienen las ayudas por arrendamiento de vivienda habitual para menores de 36 años, con un límite de 530 euros. También deducciones por gastos en libros de texto y conciliación familiar."
+      }
+    ]
+  },
+  {
+    "notebook_id": "60ee15f1-57b9-49c5-a229-9c8253d0b61b",
+    "notebook_title": "ANCLORA_NOTEBOOK_02_TRANSICION_RIESGO_LABORAL",
+    "domain": "laboral",
+    "sources": [
+      {
+        "title": "STS 1250/2024: Obligatoriedad de la Audiencia Previa en Despidos",
+        "url": "https://gestolasa.es/audiencia-previa-despidos-disciplinarios/",
+        "content": "Sentencia histórica del Tribunal Supremo: A partir del 18 de noviembre de 2024, es obligatorio conceder un trámite de audiencia previa al trabajador antes de proceder a un despido disciplinario. Basado en el Art. 7 del Convenio 158 de la OIT. La omisión de este paso conlleva la improcedencia formal del despido."
+      },
+      {
+        "title": "TSJ Baleares: Exigibilidad de audiencia previa antes de la STS",
+        "url": "https://ignasibeltran.com/2025/03/19/la-audiencia-previa-si-puede-ser-exigible-con-anterioridad-a-la-sts-18-11-24/",
+        "content": "La sentencia STSJIB 82/2025 de Baleares confirma que en el archipiélago la audiencia previa ya era exigible incluso antes de la doctrina unificada del Supremo, reforzando la protección del trabajador local."
+      },
+      {
+        "title": "Registro Horario Digital Obligatorio 2026",
+        "url": "https://www.wolterskluwer.com/es-es/expert-insights/novedades-laborales-2026",
+        "content": "En 2026 entra en vigor el nuevo Real Decreto de Registro de Jornada. Los sistemas deben ser digitales y permitir el acceso remoto en tiempo real a la Inspección de Trabajo. El control de las pausas efectivas (café, tabaco) será crítico para evitar fraudes en la jornada."
+      }
+    ]
+  },
+  {
+    "notebook_id": "411ac8f4-e24a-4a07-954c-da2571408b5d",
+    "notebook_title": "ANCLORA_NOTEBOOK_03_MARCA_POSICIONAMIENTO",
+    "domain": "mercado",
+    "sources": [
+      {
+        "title": "Mallorca Residential Market Insight 2026 - Knight Frank",
+        "url": "https://www.knightfrank.co.uk/research/article/2025/12/mallorcas-set-to-be-the-spotlight-in-2026",
+        "content": "Previsiones 2026: Port Andratx se mantiene como el eje de ultra-lujo con precios de 9.000 €/m2. El perfil del comprador gira hacia el HNWI joven que busca eficiencia energética y sistemas PropTech integrados (IA predictiva para ROI)."
+      },
+      {
+        "title": "ROAIIB: Registro Obligatorio de Agentes Inmobiliarios Baleares",
+        "url": "https://www.caib.es/seucaib/es/tramites/tramite/6142531",
+        "content": "Desde finales de 2024, es obligatorio estar inscrito en el ROAIIB para ejercer como agente inmobiliario en Baleares. Requiere seguro de responsabilidad civil y aval bancario. Operar sin registro in 2026 puede acarrear sanciones de hasta 30.000 euros."
+      },
+      {
+        "title": "PropTech Trends 2026: IA y ROI Predictivo",
+        "url": "https://oril.co/blog/proptech-trends-2026-how-real-estate-technology-is-changing/",
+        "content": "La tendencia dominante en 2026 es el uso de IA para el análisis predictivo del retorno de inversión (ROI). Los inversores ya no solo miran el precio actual, sino la proyección de escasez y plusvalía generada por modelos de datos."
+      }
+    ]
+  }
+]

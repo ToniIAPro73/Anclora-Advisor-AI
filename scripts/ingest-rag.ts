@@ -54,7 +54,7 @@ function inferJurisdiction(title: string, url: string | null, domain: string): s
 }
 
 async function run() {
-  const bundlePath = path.join(process.cwd(), 'scripts', 'notebook_bundle_v1.json');
+  const bundlePath = path.join(process.cwd(), 'scripts', 'notebook_bundle_2026_expansion.json');
   if (!fs.existsSync(bundlePath)) {
     console.error(`Bundle not found at ${bundlePath}`);
     return;
@@ -72,81 +72,54 @@ async function run() {
       
       const sUrl = source.url || '';
 
-      // Check for existing document
-      const { data: existingDoc } = await supabase
+      const { data: newDoc, error: insertError } = await supabase
         .from('rag_documents')
-        .select('id')
-        .eq('title', source.title)
-        .eq('source_url', sUrl)
-        .maybeSingle();
-
-      let docId: string;
-      if (existingDoc) {
-        docId = existingDoc.id;
-        console.log(`      💡 Document already exists (ID: ${docId}).`);
-      } else {
-        const { data: newDoc, error: insertError } = await supabase
-          .from('rag_documents')
-          .insert({
-            title: source.title,
-            category: notebook.domain,
-            source_url: sUrl,
-            doc_metadata: {
-              notebook_id: notebook.notebook_id,
-              notebook_title: notebook.notebook_title,
-              source_type: sUrl ? 'web_page' : 'generated_text',
-              jurisdiction: inferJurisdiction(source.title, sUrl, notebook.domain),
-              topic: inferTopic(source.title, notebook.domain),
-              chunking_strategy: 'structured_v1',
-            },
-          })
-          .select()
-          .single();
-        
-        if (insertError) {
-          console.error(`      ❌ Error inserting document: ${insertError.message}`);
-          continue;
-        }
-        docId = newDoc.id;
-        console.log(`      ✅ New document created (ID: ${docId}).`);
+        .insert({
+          title: source.title,
+          category: notebook.domain,
+          source_url: sUrl,
+          doc_metadata: {
+            notebook_id: notebook.notebook_id,
+            notebook_title: notebook.notebook_title,
+            source_type: sUrl ? 'web_page' : 'generated_text',
+            jurisdiction: inferJurisdiction(source.title, sUrl, notebook.domain),
+            topic: inferTopic(source.title, notebook.domain),
+            chunking_strategy: 'structured_v1',
+          },
+        })
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error(`      ❌ Error inserting document: ${insertError.message}`);
+        continue;
       }
-
+      const docId = newDoc.id;
       totalDocs++;
 
       const normalizedContent = normalizeText(source.content);
       const chunks = chunkStructuredText(normalizedContent);
-      console.log(`      ✨ Created ${chunks.length} chunks`);
-
-      // Avoid duplicates: check if chunks already exist for this doc
-      const { count } = await supabase
+      
+      const { error: chunkError } = await supabase
         .from('rag_chunks')
-        .select('*', { count: 'exact', head: true })
-        .eq('document_id', docId);
+        .insert(chunks.map(content => ({
+          document_id: docId,
+          content,
+          embedding: null,
+          token_count: Math.ceil(content.length / 4)
+        })));
 
-      if (count && count > 0) {
-        console.log(`      ⚠️  Chunks already exist for this document (${count}). Skipping insertion.`);
+      if (chunkError) {
+         console.error(`      ❌ Error inserting chunks: ${chunkError.message}`);
       } else {
-        const { error: chunkError } = await supabase
-          .from('rag_chunks')
-          .insert(chunks.map(content => ({
-            document_id: docId,
-            content,
-            embedding: null, // To be backfilled
-            token_count: Math.ceil(content.length / 4)
-          })));
-
-        if (chunkError) {
-           console.error(`      ❌ Error inserting chunks: ${chunkError.message}`);
-        } else {
-           totalChunks += chunks.length;
-           console.log(`      ✅ ${chunks.length} chunks inserted (pending embeddings).`);
-        }
+         totalChunks += chunks.length;
+         console.log(`      ✅ ${chunks.length} chunks inserted (pending embeddings).`);
       }
     }
   }
 
-  console.log(`\n✅ Pre-ingestion complete!`);
-  console.log(`   Summary: ${totalDocs} documents entries verified, ${totalChunks} chunks inserted.`);
+  console.log(`\n✅ 2026 Expansion Ingestion complete!`);
+  console.log(`   Summary: ${totalDocs} new documents, ${totalChunks} chunks inserted.`);
 }
 
 run().catch(console.error);
