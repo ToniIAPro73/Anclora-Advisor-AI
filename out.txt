@@ -1,0 +1,7 @@
+Testing query: "qué gastos puedo deducirme de mi actividad como autónomo en las islas baleares?"
+Chunks retrieved: 1
+
+--- Match 1 ---
+Similarity: 0.42857142857142855
+Title: Cuota cero en Baleares para nuevos autónomos - Gestron
+Content preview: Software facturación 0 Escuela emprendedores 1 Conócenos 2 Llámanos GRATIS al 900 100 162 tel:900 100 162 Acceso al área de cliente Por favor, selecci...

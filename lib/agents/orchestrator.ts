@@ -188,7 +188,7 @@ interface RetrievalCascadeResult {
   cacheHit: boolean;
 }
 
-async function retrieveWithCascade(
+export async function retrieveWithCascade(
   query: string,
   primaryCategory: DbCategory,
   allowGlobalFallback: boolean,

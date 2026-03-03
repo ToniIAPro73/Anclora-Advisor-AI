@@ -1,0 +1,7 @@
+Testing query: "qué gastos puedo deducirme de mi actividad como autónomo en las islas baleares?"
+Vec size: 384
+Final chunks retrieved: 1
+
+--- Match 1 ---
+Similarity: 0.42857142857142855
+Title: Cuota cero en Baleares para nuevos autónomos - Gestron

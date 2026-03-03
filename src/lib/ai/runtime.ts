@@ -1,6 +1,6 @@
 export type AIRuntimeProfile = "local" | "cloudflare" | "groq-cloudflare";
 export type ChatProvider = "ollama" | "cloudflare" | "groq";
-export type EmbeddingProvider = "ollama" | "cloudflare";
+export type EmbeddingProvider = "ollama" | "cloudflare" | "xenova";
 
 type ChatModelSet = {
   primary: string;
@@ -153,6 +153,17 @@ function buildLocalConfig(): AIRuntimeConfig {
   };
 }
 
+function buildXenovaEmbeddingConfig(): EmbeddingRuntimeConfig {
+  return {
+    provider: "xenova",
+    label: "xenova",
+    baseUrl: "local",
+    apiKey: null,
+    model: readEnv("XENOVA_EMBED_MODEL") ?? "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+    expectedDimension: parsePositiveInteger("EMBEDDING_EXPECTED_DIMENSION", 384),
+  };
+}
+
 function buildCloudflareConfig(): AIRuntimeConfig {
   const apiKey = requireEnv("CLOUDFLARE_API_TOKEN");
   const baseUrl = buildCloudflareBaseUrl();
@@ -201,7 +212,9 @@ function buildGroqCloudflareConfig(): AIRuntimeConfig {
         guard: readEnv("GROQ_MODEL_GUARD") ?? fastModel,
       },
     },
-    embeddings: buildCloudflareEmbeddingConfig(cloudflareBaseUrl, cloudflareApiKey),
+    embeddings: readEnv("USE_CLOUDFLARE_EMBEDDINGS") === "true" 
+      ? buildCloudflareEmbeddingConfig(cloudflareBaseUrl, cloudflareApiKey)
+      : buildXenovaEmbeddingConfig(),
   };
 }
 
@@ -385,8 +398,29 @@ async function generateEmbeddingWithOpenAICompatible(
   return embedding;
 }
 
+let xenovaPipeline: any = null;
+
+async function generateEmbeddingWithXenova(
+  config: EmbeddingRuntimeConfig,
+  text: string
+): Promise<number[]> {
+  if (!xenovaPipeline) {
+    const { pipeline } = await import("@xenova/transformers");
+    xenovaPipeline = await pipeline("feature-extraction", config.model);
+  }
+  const output = await xenovaPipeline(text, { pooling: "mean", normalize: true });
+  const embedding = Array.from(output.data);
+  if (!Array.isArray(embedding) || embedding.length === 0) {
+    throw new Error(`${config.label} embeddings returned empty embedding`);
+  }
+  return embedding as number[];
+}
+
 export async function generateEmbeddingVector(text: string): Promise<number[]> {
   const runtime = getAIRuntimeConfig();
+  if (runtime.embeddings.provider === "xenova") {
+    return generateEmbeddingWithXenova(runtime.embeddings, text);
+  }
   if (runtime.embeddings.provider === "ollama") {
     return generateEmbeddingWithOllama(runtime.embeddings, text);
   }
