@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-type AuthMode = "login" | "signup";
+type AuthMode = "login" | "signup" | "forgot" | "reset";
 
 interface LoginFormProps {
   nextPath: string;
@@ -19,11 +19,43 @@ export function LoginForm({ nextPath }: LoginFormProps) {
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const isLight = resolvedTheme === "light";
+
+  useEffect(() => {
+    const syncRecoveredSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        await syncServerSession(data.session.access_token).catch(() => undefined);
+      }
+    };
+
+    const search = new URLSearchParams(window.location.search);
+    if (search.get("mode") === "reset") {
+      setMode("reset");
+      setMessage("Introduce tu nueva contraseña para completar la recuperación.");
+      void syncRecoveredSession();
+    }
+
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setMode("reset");
+        setError(null);
+        setMessage("Introduce tu nueva contraseña para completar la recuperación.");
+        if (session?.access_token) {
+          void syncServerSession(session.access_token).catch(() => undefined);
+        }
+      }
+    });
+
+    return () => {
+      subscription.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const syncServerSession = async (accessToken: string) => {
     const response = await fetch("/api/auth/session", {
@@ -43,6 +75,41 @@ export function LoginForm({ nextPath }: LoginFormProps) {
     setMessage(null);
 
     try {
+      if (mode === "forgot") {
+        const redirectTo = `${window.location.origin}/login?mode=reset`;
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+        if (resetError) {
+          throw new Error(resetError.message);
+        }
+        setMessage("Te hemos enviado un enlace para restablecer tu contraseña.");
+        return;
+      }
+
+      if (mode === "reset") {
+        if (password.length < 6) {
+          throw new Error("La nueva contraseña debe tener al menos 6 caracteres.");
+        }
+        if (password !== confirmPassword) {
+          throw new Error("Las contraseñas no coinciden.");
+        }
+
+        const { error: updateError } = await supabase.auth.updateUser({ password });
+        if (updateError) {
+          throw new Error(updateError.message);
+        }
+
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          await syncServerSession(data.session.access_token);
+        }
+
+        setMessage("Contraseña actualizada. Ya puedes entrar al dashboard.");
+        setMode("login");
+        setPassword("");
+        setConfirmPassword("");
+        return;
+      }
+
       if (mode === "login") {
         const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError || !data.session) {
@@ -93,17 +160,28 @@ export function LoginForm({ nextPath }: LoginFormProps) {
           <section style={{ ...styles.card, ...(isLight ? styles.cardLight : styles.cardDark) }} aria-label="Formulario de acceso">
             <div style={styles.cardHeader}>
               <h1 style={{ ...styles.cardTitle, ...(isLight ? styles.cardTitleLight : styles.cardTitleDark) }}>
-                {mode === "login" ? "Bienvenido de nuevo" : "Crear cuenta"}
+                {mode === "login"
+                  ? "Bienvenido de nuevo"
+                  : mode === "signup"
+                    ? "Crear cuenta"
+                    : mode === "forgot"
+                      ? "Recuperar acceso"
+                      : "Nueva contraseña"}
               </h1>
               <p style={styles.cardSubtitle}>
                 {mode === "login"
                   ? "Accede a tu asesoramiento fiscal y laboral"
-                  : "Empieza a gestionar tu actividad como autónomo"}
+                  : mode === "signup"
+                    ? "Empieza a gestionar tu actividad como autónomo"
+                    : mode === "forgot"
+                      ? "Te enviaremos un enlace seguro para restablecer tu contraseña"
+                      : "Define una contraseña nueva para tu cuenta"}
               </p>
             </div>
 
             {/* Mode tabs */}
-            <div style={{ ...styles.tabs, ...(isLight ? styles.tabsLight : styles.tabsDark) }} role="tablist">
+            {(mode === "login" || mode === "signup") && (
+              <div style={{ ...styles.tabs, ...(isLight ? styles.tabsLight : styles.tabsDark) }} role="tablist">
               <button
                 id="tab-login"
                 role="tab"
@@ -126,7 +204,8 @@ export function LoginForm({ nextPath }: LoginFormProps) {
               >
                 Crear cuenta
               </button>
-            </div>
+              </div>
+            )}
 
             {/* Form */}
             <form id="panel-form" role="tabpanel" onSubmit={handleSubmit} style={styles.form} noValidate>
@@ -147,9 +226,10 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 />
               </div>
 
-              <div style={styles.fieldGroup}>
+              {mode !== "forgot" && (
+                <div style={styles.fieldGroup}>
                 <label htmlFor="password" className="advisor-label">
-                  Contraseña
+                  {mode === "reset" ? "Nueva contraseña" : "Contraseña"}
                 </label>
                 <div style={styles.passwordWrap}>
                   <input
@@ -206,7 +286,63 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                     )}
                   </button>
                 </div>
-              </div>
+                </div>
+              )}
+
+              {mode === "reset" && (
+                <div style={styles.fieldGroup}>
+                  <label htmlFor="confirmPassword" className="advisor-label">
+                    Confirmar contraseña
+                  </label>
+                  <input
+                    id="confirmPassword"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="advisor-input login-auth-input"
+                    placeholder="Repite tu nueva contraseña"
+                    required
+                    minLength={6}
+                    style={isLight ? styles.loginInputLight : styles.loginInputDark}
+                  />
+                </div>
+              )}
+
+              {mode === "login" && (
+                <div style={styles.inlineActions}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("forgot");
+                      setError(null);
+                      setMessage(null);
+                      setPassword("");
+                    }}
+                    style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark) }}
+                  >
+                    Olvidé mi contraseña
+                  </button>
+                </div>
+              )}
+
+              {(mode === "forgot" || mode === "reset") && (
+                <div style={styles.inlineActions}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("login");
+                      setError(null);
+                      setMessage(null);
+                      setPassword("");
+                      setConfirmPassword("");
+                    }}
+                    style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark) }}
+                  >
+                    Volver a iniciar sesión
+                  </button>
+                </div>
+              )}
 
               {error && (
                 <div role="alert" className="advisor-alert advisor-alert-error">
@@ -242,7 +378,13 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                     Procesando…
                   </>
                 ) : (
-                  mode === "login" ? "Entrar al dashboard" : "Crear mi cuenta"
+                  mode === "login"
+                    ? "Entrar al dashboard"
+                    : mode === "signup"
+                      ? "Crear mi cuenta"
+                      : mode === "forgot"
+                        ? "Enviar enlace de recuperación"
+                        : "Guardar nueva contraseña"
                 )}
               </button>
             </form>
@@ -325,8 +467,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: "20px",
-    transform: "translateY(-30px)",
+    gap: "14px",
+    transform: "translateY(-72px)",
   },
   contentWrap: {
     width: "100%",
@@ -338,12 +480,12 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: "column" as const,
     alignItems: "center",
     justifyContent: "center",
-    gap: "6px",
+    gap: "2px",
     textAlign: "center" as const,
   },
   logoWrap: {
-    width: "136px",
-    height: "136px",
+    width: "120px",
+    height: "120px",
     flexShrink: 0,
     lineHeight: 0,
   },
@@ -354,7 +496,7 @@ const styles: Record<string, React.CSSProperties> = {
     filter: "drop-shadow(0 16px 28px rgba(20, 40, 65, 0.12))",
   },
   logoText: {
-    fontSize: "42px",
+    fontSize: "40px",
     fontWeight: "700",
     fontFamily: "'Playfair Display', Georgia, serif",
     letterSpacing: "0.01em",
@@ -461,6 +603,25 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column" as const,
     gap: "16px",
+  },
+  inlineActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    marginTop: "-4px",
+  },
+  linkButton: {
+    border: "none",
+    background: "transparent",
+    padding: 0,
+    fontSize: "13px",
+    fontWeight: "500",
+    cursor: "pointer",
+  },
+  linkButtonDark: {
+    color: "#9ed7c5",
+  },
+  linkButtonLight: {
+    color: "var(--advisor-primary)",
   },
 
   fieldGroup: {
