@@ -54,11 +54,13 @@ function inferJurisdiction(title: string, url: string | null, domain: string): s
 }
 
 async function run() {
-  const bundlePath = path.join(process.cwd(), 'scripts', 'notebook_bundle_phase6_gold.json');
+  const bundleFile = process.env.BUNDLE_PATH ?? path.join('scripts', 'notebook_bundle_phase6_gold.json');
+  const bundlePath = path.isAbsolute(bundleFile) ? bundleFile : path.join(process.cwd(), bundleFile);
   if (!fs.existsSync(bundlePath)) {
     console.error(`Bundle not found at ${bundlePath}`);
     return;
   }
+  console.log(`📂 Using bundle: ${path.basename(bundlePath)}`);
 
   const notebooks: Notebook[] = JSON.parse(fs.readFileSync(bundlePath, 'utf8'));
   let totalDocs = 0;

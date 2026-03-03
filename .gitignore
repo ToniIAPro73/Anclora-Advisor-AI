@@ -11,3 +11,16 @@ tsconfig.tsbuildinfo
 artifacts/
 playwright-report/
 test-results/
+
+# MCP setup backups (local only, not committed)
+setup_backups/
+
+# MCP logs
+infra/mcp/notebooklm/logs/*.log
+infra/mcp/notebooklm/logs/*.jsonl
+infra/mcp/notebooklm/.env
+infra/mcp/notebooklm/package-lock.json
+
+.vercel
+.claude/
+CLAUDE.md

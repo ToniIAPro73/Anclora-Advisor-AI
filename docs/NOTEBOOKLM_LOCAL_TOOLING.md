@@ -33,12 +33,14 @@ There are now two separate flows:
 1. RAG ingestion into Supabase
    - command: `npm run ingest`
    - script: [ingest-rag.ts](/c:/Users/Usuario/Workspace/01_Proyectos/anclora-advisor-ai/scripts/ingest-rag.ts)
-   - source bundle can be overridden with `BUNDLE_PATH`
+   - default bundle remains `scripts/notebook_bundle_phase6_gold.json`
+   - use `BUNDLE_PATH` only when you intentionally want a dated bundle such as `phase7_2026`
 
 2. Website sync into NotebookLM notebooks
    - command: `npm run notebooklm:add-sources`
    - script: [add-notebooklm-sources.cjs](/c:/Users/Usuario/Workspace/01_Proyectos/anclora-advisor-ai/scripts/add-notebooklm-sources.cjs)
    - uses Playwright plus the saved NotebookLM browser state
+   - current dated sync bundle: [notebook_bundle_phase7_2026.json](/c:/Users/Usuario/Workspace/01_Proyectos/anclora-advisor-ai/scripts/notebook_bundle_phase7_2026.json)
 
 ## Auth model
 
