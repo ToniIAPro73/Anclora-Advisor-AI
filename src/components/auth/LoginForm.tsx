@@ -144,10 +144,10 @@ export function LoginForm({ nextPath }: LoginFormProps) {
         <header style={styles.brandHeader}>
           <div style={{ ...styles.logoWrap, ...(isLight ? styles.logoWrapLight : styles.logoWrapDark) }}>
             <Image
-              src="/brand/Logo-Advisor_1.png"
+              src="/brand/logo-Advisor_1.png"
               alt="Logo de Anclora Advisor"
-              width={84}
-              height={84}
+              width={96}
+              height={64}
               priority
               style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", objectPosition: "center" }}
             />
@@ -484,8 +484,8 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "center" as const,
   },
   logoWrap: {
-    width: "120px",
-    height: "120px",
+    width: "96px",
+    height: "64px",
     flexShrink: 0,
     lineHeight: 0,
   },

@@ -75,12 +75,14 @@ export function DashboardNav({ role }: DashboardNavProps) {
       <div className="px-5 py-4 md:px-6 md:py-5">
         <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3.5"}`}>
           <Image
-            src="/brand/Logo-Advisor_1.png"
+            src="/brand/logo-Advisor_1.png"
             alt="Anclora Advisor"
-            width={44}
-            height={44}
-            className="h-11 w-11 object-contain"
+            width={collapsed ? 63 : 72}
+            height={collapsed ? 42 : 48}
+            className="object-contain"
             style={{
+              width: collapsed ? 63 : 72,
+              height: collapsed ? 42 : 48,
               filter: resolvedTheme === "dark"
                 ? "drop-shadow(0 10px 22px rgba(3,8,18,0.35))"
                 : "drop-shadow(0 10px 22px rgba(20,40,65,0.12))",
