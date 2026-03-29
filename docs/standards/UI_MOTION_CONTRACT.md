@@ -64,3 +64,22 @@ Una superficie no está lista si:
 - introduce una nueva semántica de movimiento sin contrato
 - rompe contraste o focus visible
 - genera solapes o desplazamientos innecesarios
+
+## Validación visual obligatoria
+
+- Esta validación aplica a todas las aplicaciones del ecosistema Anclora, sin excepción:
+  - internas
+  - premium
+  - ultra premium
+  - portfolio/showcase
+- Antes de subir cambios que afecten a cards, botones, frames o cualquier superficie con motion, hay que validarlos visualmente en entorno real al menos en:
+  - escritorio
+  - móvil
+- La validación mínima debe confirmar:
+  - que la surface no pierde bordes, sombra ni legibilidad al elevarse
+  - que no invade ni pisa superficies hermanas
+  - que no provoca clipping dentro de grids, carruseles, modales o contenedores densos
+  - que el hover, focus y active mantienen coherencia visual con su bloque
+  - que el comportamiento sigue siendo estable en desktop y mobile
+- Si una surface funciona bien en escritorio pero rompe layout o jerarquía en móvil, no cumple el contrato.
+- Si la verificación visual falla o no puede completarse en ambos viewports obligatorios, el cambio no debe darse por válido ni subirse sin avisarlo explícitamente.
