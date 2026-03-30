@@ -18,9 +18,10 @@ Aplicaciones internas:
 - `anclora-advisor-ai`
 - `anclora-nexus`
 - `anclora-content-generator-ai`
-- `anclora-impulso` como repositorio fuente de contratos base y consumidor del patrón interno
+- `anclora-impulso` como repositorio fuente de contratos base
 
 Aplicaciones premium:
+- `anclora-impulso`
 - `Boveda-Anclora/dashboard`
 - `anclora-synergi`
 - `anclora-data-lab`
@@ -29,9 +30,7 @@ Aplicaciones ultra premium:
 - `anclora-private-estates`
 
 Fuera de alcance en esta fase:
-- `anclora-portfolio`
-- `anclora-azure-bay-landing`
-- `anclora-playa-viva-uniestate`
+- ninguno
 
 ## Fuentes auditadas
 
@@ -62,6 +61,7 @@ Por grupo:
 - `ANCLORA_INTERNAL_APP_CONTRACT.md`
 - `ANCLORA_PREMIUM_APP_CONTRACT.md`
 - `ANCLORA_ULTRA_PREMIUM_APP_CONTRACT.md`
+- `ANCLORA_PORTFOLIO_SHOWCASE_CONTRACT.md`
 
 Documentos de apoyo no normativos:
 - `ANCLORA_INTERNAL_APPS_GAP_ANALYSIS.md`
@@ -93,11 +93,14 @@ Al crear una app nueva:
 | `anclora-advisor-ai` | Interna | `es`, `en` | `dark/light/system` | Base + interno |
 | `anclora-nexus` | Interna | `es`, `en`, `de`, `ru` | `dark` operativo | Base + interno |
 | `anclora-content-generator-ai` | Interna | `es`, `en` | `dark/light/system` | Base + interno |
-| `anclora-impulso` | Interna | `es`, `en` | `dark/light` | Base + interno |
+| `anclora-impulso` | Premium | `es`, `en` | `dark/light` | Base + premium |
 | `Boveda-Anclora/dashboard` | Premium | `es`, `en`, `de` | `dark/light` | Base + premium |
 | `anclora-synergi` | Premium | `es`, `en`, `de` | tema editorial único | Base + premium |
 | `anclora-data-lab` | Premium | `es`, `en`, `de` | `dark/light/system` | Base + premium |
 | `anclora-private-estates` | Ultra premium | `es`, `en`, `de`, `fr` | premium multi-theme | Base + ultra premium |
+| `anclora-portfolio` | Portfolio / showcase | `es`, `en` | tema editorial único o dual diseñado | Base + portfolio |
+| `anclora-azure-bay-landing` | Portfolio / showcase | `es`, `en` | tema editorial único | Base + portfolio |
+| `anclora-playa-viva-uniestate` | Portfolio / showcase | `es`, `en` | tema editorial único | Base + portfolio |
 
 ## Política de excepciones
 
