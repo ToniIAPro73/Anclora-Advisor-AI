@@ -9,12 +9,29 @@ Aplicación de asesoría fiscal, laboral y mercado inmobiliario para autónomos 
 - Supabase PostgreSQL + pgvector
 - Anthropic Claude + Ollama Mistral
 
+## Branding canónico
+
+- Familia visual: `Internal` · baseline de referencia interna del ecosistema Anclora
+- Tipografía display: `Cormorant Garamond`
+- Tipografía body: `Source Sans 3`
+- Accent placeholder: `#1dab89` mint · base placeholder: `#162944` navy
+- Prefijo de componentes: `advisor-` · prefijo de assets: `advisor_`
+- Assets finales (icono + paleta): pendientes — se sustituirán cuando el usuario los entregue
+- Módulo de branding: `src/lib/advisor-brand.ts`
+
+Lectura mínima antes de tocar interfaz:
+
+1. `docs/standards/ANCLORA_INTERNAL_APP_CONTRACT.md`
+2. `docs/standards/UI_MOTION_CONTRACT.md`
+3. `docs/standards/MODAL_CONTRACT.md`
+4. `docs/standards/LOCALIZATION_CONTRACT.md`
+
 ## Quick Start
 
-\\\ash
+```bash
 npm install
 npm run dev
-\\\
+```
 
 Accede a: http://localhost:3000
 
@@ -23,13 +40,3 @@ Accede a: http://localhost:3000
 1. Editar .env.local con credenciales Supabase
 2. npm install
 3. npm run dev
-
-## Contratos UX/UI
-
-Lectura mínima antes de tocar interfaz:
-
-1. `docs/standards/ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`
-2. `docs/standards/ANCLORA_INTERNAL_APP_CONTRACT.md`
-3. `docs/standards/UI_MOTION_CONTRACT.md`
-4. `docs/standards/MODAL_CONTRACT.md`
-5. `docs/standards/LOCALIZATION_CONTRACT.md`

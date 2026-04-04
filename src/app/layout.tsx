@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from "react";
 import { AppPreferencesProvider } from "@/components/providers/AppPreferencesProvider";
 import { AppPreferencesScript } from "@/components/providers/AppPreferencesScript";
+import { ADVISOR_BRAND } from "@/lib/advisor-brand";
 import './globals.css';
 
 const displayFont = Cormorant_Garamond({
@@ -18,8 +19,9 @@ const bodyFont = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: 'Anclora Advisor AI · Anclora Group',
-  description: 'Plataforma de asesoramiento fiscal, laboral y de mercado para autónomos — Anclora Group',
+  title: ADVISOR_BRAND.name,
+  description: ADVISOR_BRAND.description,
+  icons: { icon: ADVISOR_BRAND.faviconPath },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
