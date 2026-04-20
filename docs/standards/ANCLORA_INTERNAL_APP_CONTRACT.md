@@ -7,10 +7,34 @@ Unificar la UX/UI de las aplicaciones internas sin borrar la identidad de cada p
 - `anclora-advisor-ai`
 - `anclora-nexus`
 - `anclora-content-generator-ai`
-- `anclora-impulso`
 
 Nota:
 - `anclora-group` no forma parte de este contrato. Se gobierna como `Entidad Matriz` con branding propio.
+
+## Piezas canónicas del design system
+
+Toda aplicación interna debe componer su UI desde capas reales de `anclora-design-system`:
+
+- `tokens` y `themes` para tema, contraste, foreground y estados
+- `foundations` para tipografía, spacing, radius, border y elevation
+- `components` para:
+  - button
+  - input
+  - select
+  - textarea
+  - dialog
+  - card
+  - badge
+  - tabs
+- `patterns` para:
+  - shell autenticado
+  - toolbar de filtros
+  - tablas/listas operativas
+  - formularios densos
+  - colas y paneles laterales
+
+Regla:
+- si una surface interna no existe aún en `anclora-design-system`, primero se promueve allí como pieza compartida o pattern, y después se consume en la app.
 
 ## Invariantes de grupo
 
@@ -101,10 +125,6 @@ Nota:
   - `dark/light/system`
 - El tema ya está maduro; la deuda principal es cerrar i18n visible y completa.
 
-### `anclora-impulso`
-- Mantener las decisiones locales de nutrición y salud dentro de la gramática interna.
-- El verde puede seguir siendo acento primario de dominio siempre que conserve semántica de acción principal del grupo.
-
 ## Gate de aceptación
 
 Una feature interna no está lista si:
@@ -114,3 +134,4 @@ Una feature interna no está lista si:
 - deja textos visibles fuera de i18n cuando la app requiere localización
 - usa un hover o elevación arbitraria que rompa el bloque
 - cambia el foreground o la legibilidad de una familia de botón entre temas sin documentarlo como variante real
+- resuelve un botón, modal, tabla o shell con una implementación local cuando ya existe una pieza canónica en `anclora-design-system`

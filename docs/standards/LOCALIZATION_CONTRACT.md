@@ -3,6 +3,16 @@
 ## Objetivo
 Garantizar que cada aplicación del ecosistema respete su cobertura real de idiomas y que ninguna feature nueva introduzca mezcla de idioma, deuda de traducción o layouts rotos por expansión de copy.
 
+## Fuente ejecutable
+
+La localización visible debe apoyarse en piezas reales de `anclora-design-system` cuando existan:
+- `components` para selector o toggle de idioma
+- `patterns` para preferencias visibles de `locale + theme`
+- `foundations` para spacing, wrap y legibilidad en labels, CTAs, tabs y headings
+
+Regla:
+- el contrato fija cobertura y cumplimiento; el design system fija cómo se ve y se comporta la capa de selección e i18n visible.
+
 ## Regla base
 - El contrato de localización se adapta al número de idiomas objetivo de cada app, no a la cantidad de locales que pueda haber en helpers internos.
 

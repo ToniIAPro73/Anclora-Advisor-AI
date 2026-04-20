@@ -11,13 +11,46 @@ Regla de publicación:
 - Cada aplicación debe incluir en su propio `docs/standards/` los contratos que le apliquen.
 - Si un contrato se modifica a nivel ecosistema, la bóveda y las aplicaciones afectadas deben actualizarse en la misma ronda.
 
+## Modelo de autoridad
+
+- La bóveda gobierna:
+  - clasificación del ecosistema
+  - contratos
+  - alcance
+  - excepciones
+  - criterios de cumplimiento
+- `anclora-design-system` gobierna la implementación ejecutable de:
+  - `taxonomy`
+  - `tokens`
+  - `themes`
+  - `foundations`
+  - `components`
+  - `patterns`
+  - `assets`
+- Una app no debe inventar una tercera fuente de verdad local para botones, cards, modales, shell, tipografía o tokens si ya existe una pieza canónica en `anclora-design-system`.
+
+## Capas reales del design system
+
+Las decisiones visuales y de composición deben apoyarse en estas capas reales del repo `anclora-design-system`:
+
+- `taxonomy`: clasificación de producto y vocabulario de variantes
+- `tokens`: tokens primitivos y semánticos
+- `themes`: combinaciones de tema por familia y producto
+- `foundations`: color, tipografía, spacing, radius, elevation, iconografía y reglas base
+- `components`: primitivas y componentes canónicos reutilizables
+- `patterns`: shells, bloques, funnels, overlays y composiciones recurrentes
+- `assets`: logos, favicons y recursos de marca
+
+Regla práctica:
+- si el cambio afecta implementación visual, primero se busca la pieza en `anclora-design-system`
+- si el cambio afecta alcance, clasificación o excepciones, primero se consulta la bóveda
+
 ## Alcance de esta fase
 
 Aplicaciones internas:
 - `anclora-advisor-ai`
 - `anclora-nexus`
 - `anclora-content-generator-ai`
-- `anclora-impulso` como repositorio fuente de contratos base
 
 Aplicaciones premium:
 - `anclora-impulso`
@@ -49,7 +82,7 @@ Contratos implícitos pero claros en código y UX:
 - patrón `locale + theme toggles` en `anclora-data-lab`
 - patrón premium editorial en `anclora-synergi`
 - patrón ultra premium oro/teal en `anclora-private-estates`
-- patrón de botones/cards/modales de `anclora-impulso` para producto interno denso
+- patrón de botones/cards/modales de `anclora-impulso` para producto premium de `fitness_wellness`
 - patrón dark-only + switcher de idioma en `anclora-private-estates-landing` (emergente, 2026-04-05)
 
 ## Contratos canónicos del ecosistema
@@ -72,34 +105,46 @@ Branding transversal:
 - `ANCLORA_BRANDING_TYPOGRAPHY.md`
 - `ANCLORA_BRANDING_FAVICON_SPEC.md`
 
+Mapeo obligatorio hacia `anclora-design-system`:
+- contratos de branding -> `assets`, `tokens`, `themes`, `foundations`
+- contratos de grupo -> `taxonomy`, `themes`, `components`, `patterns`
+- motion -> `tokens`, `foundations`, `components`
+- modales -> `components`, `patterns`
+- localización -> `patterns`, `components`, `foundations`
+
 Documentos de apoyo no normativos:
 - `ANCLORA_INTERNAL_APPS_GAP_ANALYSIS.md`
 
 ## Orden de lectura obligatorio
 
 Al tocar botones, cards, shells, tablas o bloques interactivos:
-1. `ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`
-2. contrato del grupo aplicable
-3. `UI_MOTION_CONTRACT.md`
-4. `LOCALIZATION_CONTRACT.md`
+1. pieza equivalente en `anclora-design-system` (`components` o `patterns`)
+2. `ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`
+3. contrato del grupo aplicable
+4. `UI_MOTION_CONTRACT.md`
+5. `LOCALIZATION_CONTRACT.md`
 
 Al tocar tema, tokens o variantes visuales de botones:
-1. `ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`
-2. contrato del grupo aplicable
-3. `CONTRACT_CONDITION_CATALOG.md`
-4. `UI_MOTION_CONTRACT.md`
+1. capa equivalente en `anclora-design-system` (`tokens`, `themes`, `foundations`)
+2. `ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`
+3. contrato del grupo aplicable
+4. `CONTRACT_CONDITION_CATALOG.md`
+5. `UI_MOTION_CONTRACT.md`
 
 Al tocar modales:
-1. `ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`
-2. contrato del grupo aplicable
-3. `MODAL_CONTRACT.md`
-4. `LOCALIZATION_CONTRACT.md`
+1. primitive o pattern equivalente en `anclora-design-system`
+2. `ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`
+3. contrato del grupo aplicable
+4. `MODAL_CONTRACT.md`
+5. `LOCALIZATION_CONTRACT.md`
 
 Al crear una app nueva:
 1. clasificarla como `interna`, `premium` o `ultra premium`
-2. copiar a `docs/standards/` el set base y el contrato de grupo
-3. leer la capa de branding correspondiente
-4. documentar cualquier excepción local antes de implementar componentes nuevos
+2. clasificar además `domain`, `product_archetype`, `system_role` y `ecosystem_clusters`
+3. copiar a `docs/standards/` el set base y el contrato de grupo
+4. partir de `anclora-design-system` para `tokens`, `themes`, `components` y `patterns`
+5. leer la capa de branding correspondiente
+6. documentar cualquier excepción local antes de implementar componentes nuevos
 
 ## Mapa de asignación por aplicación
 
