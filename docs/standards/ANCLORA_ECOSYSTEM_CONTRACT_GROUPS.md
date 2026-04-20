@@ -6,6 +6,12 @@ Definir el marco contractual UX/UI del ecosistema Anclora y fijar una ruta únic
 Ruta canónica:
 - `docs/standards/`
 
+## Autoridad
+
+- Registro operativo: `docs/governance/contracts-registry.json`
+- Inventario de repos Anclora: `docs/governance/ecosystem-repos.json`
+- Fuente ejecutable de UI: `anclora-design-system`
+
 Regla de publicación:
 - La bóveda debe mantener una copia maestra de estos contratos en `docs/standards/`.
 - Cada aplicación debe incluir en su propio `docs/standards/` los contratos que le apliquen.
@@ -61,7 +67,7 @@ Aplicaciones premium:
 
 Aplicaciones ultra premium:
 - `anclora-private-estates`
-- `anclora-private-estates-landing` (landing pública — dark-only, ES/EN/DE)
+- landing pública de `anclora-private-estates` (dark-only, ES/EN/DE)
 
 Fuera de alcance en esta fase:
 - ninguno
@@ -83,7 +89,7 @@ Contratos implícitos pero claros en código y UX:
 - patrón premium editorial en `anclora-synergi`
 - patrón ultra premium oro/teal en `anclora-private-estates`
 - patrón de botones/cards/modales de `anclora-impulso` para producto premium de `fitness_wellness`
-- patrón dark-only + switcher de idioma en `anclora-private-estates-landing` (emergente, 2026-04-05)
+- patrón dark-only + switcher de idioma en la landing pública de `anclora-private-estates` (emergente, 2026-04-05)
 
 ## Contratos canónicos del ecosistema
 
@@ -114,6 +120,29 @@ Mapeo obligatorio hacia `anclora-design-system`:
 
 Documentos de apoyo no normativos:
 - `ANCLORA_INTERNAL_APPS_GAP_ANALYSIS.md`
+
+## Repos a los que aplica
+
+- `anclora-group`
+- `anclora-advisor-ai`
+- `anclora-nexus`
+- `anclora-content-generator-ai`
+- `anclora-impulso`
+- `anclora-command-center`
+- `anclora-synergi`
+- `anclora-data-lab`
+- `anclora-talent`
+- `anclora-private-estates`
+- `anclora-portfolio`
+- `anclora-azure-bay-landing`
+- `anclora-playa-viva-uniestate`
+
+## Sincronización con repos consumidores
+
+- Contrato fuente en la bóveda: `docs/standards/ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`
+- Target normal de propagación: `docs/standards/`
+- La auditoría y la propagación se resuelven desde `docs/governance/contracts-registry.json`
+- Este contrato no aplica a `Independent Products` salvo mención explícita
 
 ## Orden de lectura obligatorio
 
@@ -159,7 +188,7 @@ Al crear una app nueva:
 | `anclora-data-lab` | Premium | `es`, `en`, `de` | `dark/light/system` | Base + premium |
 | `anclora-talent` | Premium | `es`, `en` | `dark/light` | Base + premium |
 | `anclora-private-estates` | Ultra premium | `es`, `en`, `de`, `fr` | premium multi-theme | Base + ultra premium |
-| `anclora-private-estates-landing` | Ultra premium (landing pública) | `es`, `en`, `de` ¹ | `dark-only` ² | Base + ultra premium |
+| landing pública de `anclora-private-estates` | Ultra premium (landing pública) | `es`, `en`, `de` ¹ | `dark-only` ² | Base + ultra premium |
 | `anclora-portfolio` | Portfolio / showcase | `es`, `en` | tema editorial único o dual diseñado | Base + portfolio |
 | `anclora-azure-bay-landing` | Portfolio / showcase | `es`, `en` | tema editorial único | Base + portfolio |
 | `anclora-playa-viva-uniestate` | Portfolio / showcase | `es`, `en` | tema editorial único | Base + portfolio |
@@ -172,9 +201,9 @@ Regla complementaria:
 
 Excepciones documentadas activas:
 
-¹ `anclora-private-estates-landing` cubre `es/en/de`. El idioma `fr` está aplazado a una iteración futura. Esta excepción es válida porque el copy en francés no está validado al nivel de calidad exigido por el contrato ultra premium. La cobertura de `fr` se activa cuando el copy esté revisado editorialmente.
+¹ La landing pública de `anclora-private-estates` cubre `es/en/de`. El idioma `fr` está aplazado a una iteración futura. Esta excepción es válida porque el copy en francés no está validado al nivel de calidad exigido por el contrato ultra premium. La cobertura de `fr` se activa cuando el copy esté revisado editorialmente.
 
-² `anclora-private-estates-landing` opera exclusivamente en modo oscuro (`dark-only`). El toggle de tema fue eliminado deliberadamente y reemplazado por un selector de idioma `ES / EN / DE`. Esta decisión es una excepción documentada al contrato `ANCLORA_ULTRA_PREMIUM_APP_CONTRACT`, que permite multi-theme. La excepción es válida porque la landing es una superficie de captación editorial y no una aplicación operativa que el usuario usa en distintos entornos. El modo único refuerza la firma visual, simplifica el mantenimiento y reduce el riesgo de degradación visual entre modos.
+² La landing pública de `anclora-private-estates` opera exclusivamente en modo oscuro (`dark-only`). El toggle de tema fue eliminado deliberadamente y reemplazado por un selector de idioma `ES / EN / DE`. Esta decisión es una excepción documentada al contrato `ANCLORA_ULTRA_PREMIUM_APP_CONTRACT`, que permite multi-theme. La excepción es válida porque la landing es una superficie de captación editorial y no una aplicación operativa que el usuario usa en distintos entornos. El modo único refuerza la firma visual, simplifica el mantenimiento y reduce el riesgo de degradación visual entre modos.
 
 ## Política de excepciones
 

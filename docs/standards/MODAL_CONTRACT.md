@@ -13,6 +13,12 @@ La implementación base de overlays debe salir de `anclora-design-system`:
 Regla:
 - un modal de producto no debe nacer como composición local si el caso encaja en una primitive o pattern ya existente.
 
+## Autoridad
+
+- Registro operativo: `docs/governance/contracts-registry.json`
+- Inventario aplicable: `docs/governance/ecosystem-repos.json`
+- Fuente ejecutable relacionada: `anclora-design-system`
+
 ## Reglas obligatorias
 - El modal se dimensiona según contenido y viewport real, no desde un ancho fijo heredado por defecto.
 - La primera estrategia es reorganizar layout y ampliar superficie útil, no introducir scroll.
@@ -36,6 +42,30 @@ Regla:
 - Body en `grid` o layout explícito, nunca como columna larga por inercia.
 - Footer con secundaria y primaria claramente diferenciadas.
 - En desktop: secundaria a la izquierda o neutralizada; primaria a la derecha.
+
+## Repos a los que aplica
+
+- `anclora-advisor-ai`
+- `anclora-nexus`
+- `anclora-content-generator-ai`
+- `anclora-impulso`
+- `anclora-command-center`
+- `anclora-synergi`
+- `anclora-data-lab`
+- `anclora-talent`
+- `anclora-private-estates`
+- `anclora-portfolio`
+- `anclora-azure-bay-landing`
+- `anclora-playa-viva-uniestate`
+
+Nota:
+- `anclora-group` mantiene autoridad matriz y criterios globales, pero no es target normal de propagación de este contrato transversal.
+
+## Sincronización con repos consumidores
+
+- Contrato fuente en la bóveda: `docs/standards/MODAL_CONTRACT.md`
+- Target normal de propagación: `docs/standards/`
+- Dependencia de auditoría y propagación desde `docs/governance/contracts-registry.json`
 
 ## Modales densos
 - Formularios complejos: usar modal ancho o casi fullscreen.

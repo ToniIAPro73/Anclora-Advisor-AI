@@ -13,11 +13,16 @@ La localización visible debe apoyarse en piezas reales de `anclora-design-syste
 Regla:
 - el contrato fija cobertura y cumplimiento; el design system fija cómo se ve y se comporta la capa de selección e i18n visible.
 
+## Autoridad
+
+- Registro operativo: `docs/governance/contracts-registry.json`
+- Inventario aplicable: `docs/governance/ecosystem-repos.json`
+- Fuente ejecutable relacionada: `anclora-design-system`
+
 ## Regla base
 - El contrato de localización se adapta al número de idiomas objetivo de cada app, no a la cantidad de locales que pueda haber en helpers internos.
 
 Cobertura objetivo por aplicación:
-- `anclora-group`: `es`, `en`
 - `anclora-advisor-ai`: `es`, `en`
 - `anclora-nexus`: `es`, `en`, `de`, `ru`
 - `anclora-content-generator-ai`: `es`, `en`
@@ -25,8 +30,33 @@ Cobertura objetivo por aplicación:
 - `anclora-command-center`: `es`, `en`, `de`
 - `anclora-synergi`: `es`, `en`, `de`
 - `anclora-data-lab`: `es`, `en`, `de`
+- `anclora-talent`: `es`, `en`
 - `anclora-private-estates`: `es`, `en`, `de`, `fr`
-- `anclora-private-estates-landing`: `es`, `en`, `de` (excepción: `fr` aplazado; ver nota en `ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`)
+- landing pública de `anclora-private-estates`: `es`, `en`, `de` (excepción: `fr` aplazado; ver nota en `ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`)
+
+## Repos a los que aplica
+
+- `anclora-advisor-ai`
+- `anclora-nexus`
+- `anclora-content-generator-ai`
+- `anclora-impulso`
+- `anclora-command-center`
+- `anclora-synergi`
+- `anclora-data-lab`
+- `anclora-talent`
+- `anclora-private-estates`
+- `anclora-portfolio`
+- `anclora-azure-bay-landing`
+- `anclora-playa-viva-uniestate`
+
+Nota:
+- `anclora-group` mantiene la autoridad matriz de marca y gobernanza, pero no es target normal de propagación de este contrato transversal.
+
+## Sincronización con repos consumidores
+
+- Contrato fuente en la bóveda: `docs/standards/LOCALIZATION_CONTRACT.md`
+- Target normal de propagación: `docs/standards/`
+- Dependencia de auditoría y propagación desde `docs/governance/contracts-registry.json`
 
 ## Reglas obligatorias
 - No mezclar idiomas en una misma vista salvo contenido de terceros o nombres propios.
