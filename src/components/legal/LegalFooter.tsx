@@ -9,7 +9,7 @@ export function LegalFooter({ compact = false }: { compact?: boolean }) {
       <div className={compact ? "space-y-2" : "mx-auto flex max-w-6xl flex-col gap-2 md:flex-row md:items-center md:justify-between"}>
         <div className="space-y-1">
           <p>© {year} Anclora Group — Todos los derechos reservados.</p>
-          <p>Anclora Advisor AI es una marca comercial operada bajo licencia exclusiva por Anclora Group.</p>
+          <p>Anclora Advisor AI forma parte del ecosistema tecnológico de Anclora Group.</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Link href="/terms" className="hover:underline">Términos del servicio</Link>
