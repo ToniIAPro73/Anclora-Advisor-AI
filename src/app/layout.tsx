@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from "react";
 import { AppPreferencesProvider } from "@/components/providers/AppPreferencesProvider";
 import { AppPreferencesScript } from "@/components/providers/AppPreferencesScript";
+import { CookieConsent } from "@/components/legal/CookieConsent";
 import { ADVISOR_BRAND } from "@/lib/advisor-brand";
 import './globals.css';
 
@@ -29,7 +30,10 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html lang="es" suppressHydrationWarning>
       <body className={`${displayFont.variable} ${bodyFont.variable}`}>
         <AppPreferencesScript />
-        <AppPreferencesProvider>{children}</AppPreferencesProvider>
+        <AppPreferencesProvider>
+          {children}
+          <CookieConsent />
+        </AppPreferencesProvider>
       </body>
     </html>
   );

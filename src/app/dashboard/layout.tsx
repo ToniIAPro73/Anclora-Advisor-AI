@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { DashboardNav } from "@/components/layout/DashboardNav";
 import { DashboardTopbar } from "@/components/layout/DashboardTopbar";
+import { LegalFooter } from "@/components/legal/LegalFooter";
 import { getCurrentAppUserFromCookies } from "@/lib/auth/app-user";
 
 export default async function DashboardLayout({
@@ -19,6 +20,7 @@ export default async function DashboardLayout({
       <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
         <DashboardTopbar userEmail={user.email ?? "usuario@anclora.ai"} role={user.role} />
         <main className="flex-1 overflow-hidden p-4 md:p-5">{children}</main>
+        <LegalFooter compact />
       </div>
     </div>
   );

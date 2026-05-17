@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LegalFooter } from "@/components/legal/LegalFooter";
 import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -393,9 +394,10 @@ export function LoginForm({ nextPath }: LoginFormProps) {
           {/* Footer */}
           <footer style={styles.footer}>
             <p style={styles.footerText}>
-              Plataforma de asesoramiento para autónomos&nbsp;·&nbsp;
+              Plataforma de asesoramiento para autónomos operada por&nbsp;
               <span style={{ color: "var(--advisor-accent)", fontWeight: 500 }}>Anclora Group</span>
             </p>
+            <LegalFooter compact />
           </footer>
         </div>
       </div>
