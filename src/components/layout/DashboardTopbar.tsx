@@ -165,20 +165,17 @@ function ThemeToggleGroup({
 
   return (
     <div
-      className="flex items-center gap-1 rounded-2xl border p-1"
-      style={{
-        borderColor: "var(--advisor-border)",
-        background: "color-mix(in srgb, var(--advisor-panel) 94%, transparent)",
-      }}
+      className="advisor-toggle"
+      role="group"
       aria-label={uiText(locale, "common.theme")}
     >
       {options.map((option) => (
         <button
           key={option.value}
           type="button"
-          className="advisor-icon-toggle"
-          data-active={current === option.value}
+          className={`advisor-toggle-option advisor-toggle-option-icon ${current === option.value ? "is-active" : ""}`}
           aria-label={option.label}
+          aria-pressed={current === option.value}
           title={option.label}
           onClick={() => onChange(option.value)}
         >
@@ -200,22 +197,15 @@ function LocaleToggle({
 }) {
   return (
     <div
-      className="flex items-center gap-1 rounded-2xl border p-1"
-      style={{
-        borderColor: "var(--advisor-border)",
-        background: "color-mix(in srgb, var(--advisor-panel) 94%, transparent)",
-      }}
+      className="advisor-toggle"
+      role="group"
       aria-label={uiText(locale, "common.language")}
     >
       {(["es", "en"] as const).map((itemLocale) => (
         <button
           key={itemLocale}
           type="button"
-          className="rounded-xl px-3 py-2 text-xs font-semibold transition"
-          style={{
-            background: current === itemLocale ? "var(--advisor-accent)" : "transparent",
-            color: current === itemLocale ? "var(--text-on-accent)" : "var(--text-secondary)",
-          }}
+          className={`advisor-toggle-option px-3 text-xs font-semibold ${current === itemLocale ? "is-active" : ""}`}
           aria-pressed={current === itemLocale}
           onClick={() => onChange(itemLocale)}
         >

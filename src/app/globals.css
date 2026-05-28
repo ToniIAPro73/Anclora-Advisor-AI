@@ -205,6 +205,46 @@ html[data-sidebar="collapsed"] {
     padding: 4px 10px;
   }
 
+  .advisor-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    border: 1px solid var(--advisor-border);
+    border-radius: 9999px;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--advisor-panel) 94%, transparent),
+      color-mix(in srgb, var(--advisor-panel) 86%, var(--advisor-light))
+    );
+  }
+
+  .advisor-toggle-option {
+    min-width: 38px;
+    height: 34px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .advisor-toggle-option-icon {
+    min-width: 36px;
+  }
+
+  .advisor-toggle-option:hover {
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--advisor-panel) 72%, var(--advisor-light));
+  }
+
+  .advisor-toggle-option.is-active {
+    color: var(--text-on-accent);
+    background: var(--advisor-accent);
+    box-shadow: 0 8px 18px rgba(29, 171, 137, 0.24);
+  }
+
   .advisor-label {
     display: block;
     font-size: 13px;
@@ -276,7 +316,8 @@ html[data-sidebar="collapsed"] {
   }
 
   .advisor-btn:focus-visible,
-  .advisor-icon-toggle:focus-visible {
+  .advisor-icon-toggle:focus-visible,
+  .advisor-toggle-option:focus-visible {
     outline: 2px solid var(--advisor-accent);
     outline-offset: 3px;
   }
