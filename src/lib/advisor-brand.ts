@@ -15,9 +15,13 @@ export const ADVISOR_BRAND = {
   darkCanvas: '#1c2b3c',      // Dark canvas — placeholder
   lightCanvas: '#f3f6fb',     // Light canvas — placeholder
 
-  // Assets — favicon pending user delivery
-  logoPath: '/brand/Logo-Advisor_2.png',
-  faviconPath: '/brand/favicon.ico',  // placeholder — pending user assets
+  // Assets
+  logoPath: '/brand/logo-Advisor.png',
+  faviconPath: '/brand/favicon.ico',
+  faviconPng32: '/brand/advisor_favicon_32.png',
+  faviconPng192: '/brand/advisor_favicon_192.png',
+  faviconPng512: '/brand/advisor_favicon_512.png',
+  appleTouchIcon: '/brand/apple-touch-icon.png',
 
   // App preferences (Internal baseline contract)
   supportedThemes: ['dark', 'light', 'system'] as const,
