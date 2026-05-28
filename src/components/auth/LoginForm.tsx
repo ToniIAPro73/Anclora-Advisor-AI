@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LegalFooter } from "@/components/legal/LegalFooter";
 import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
+import { uiText } from "@/lib/i18n/ui";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AuthMode = "login" | "signup" | "forgot" | "reset";
@@ -15,7 +17,8 @@ interface LoginFormProps {
 
 export function LoginForm({ nextPath }: LoginFormProps) {
   const router = useRouter();
-  const { resolvedTheme } = useAppPreferences();
+  const { resolvedTheme, locale } = useAppPreferences();
+  const ui = (key: string) => uiText(locale, key);
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -153,6 +156,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
               style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", objectPosition: "center" }}
             />
           </div>
+          <div style={isLight ? styles.divisorLight : styles.divisorDark} aria-hidden="true" />
           <span style={{ ...styles.logoText, ...(isLight ? styles.logoTextLight : styles.logoTextDark) }}>Anclora Advisor AI</span>
         </header>
 
@@ -162,21 +166,21 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             <div style={styles.cardHeader}>
               <h1 style={{ ...styles.cardTitle, ...(isLight ? styles.cardTitleLight : styles.cardTitleDark) }}>
                 {mode === "login"
-                  ? "Bienvenido de nuevo"
+                  ? ui("auth.welcomeBack")
                   : mode === "signup"
-                    ? "Crear cuenta"
+                    ? ui("auth.createAccount")
                     : mode === "forgot"
-                      ? "Recuperar acceso"
-                      : "Nueva contraseña"}
+                      ? ui("auth.recoverAccess")
+                      : ui("auth.newPassword")}
               </h1>
               <p style={styles.cardSubtitle}>
                 {mode === "login"
-                  ? "Accede a tu asesoramiento fiscal y laboral"
+                  ? ui("auth.signInMessage")
                   : mode === "signup"
-                    ? "Empieza a gestionar tu actividad como autónomo"
+                    ? ui("auth.startAccount")
                     : mode === "forgot"
-                      ? "Te enviaremos un enlace seguro para restablecer tu contraseña"
-                      : "Define una contraseña nueva para tu cuenta"}
+                      ? ui("auth.recoverCopy")
+                      : ui("auth.newPasswordCopy")}
               </p>
             </div>
 
@@ -192,7 +196,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 onClick={() => { setMode("login"); setError(null); setMessage(null); }}
                 style={{ ...styles.tab, ...(mode === "login" ? (isLight ? styles.tabActiveLight : styles.tabActiveDark) : {}) }}
               >
-                Iniciar sesión
+                {ui("auth.signIn")}
               </button>
               <button
                 id="tab-signup"
@@ -203,7 +207,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 onClick={() => { setMode("signup"); setError(null); setMessage(null); }}
                 style={{ ...styles.tab, ...(mode === "signup" ? (isLight ? styles.tabActiveLight : styles.tabActiveDark) : {}) }}
               >
-                Crear cuenta
+                {ui("auth.createAccount")}
               </button>
               </div>
             )}
@@ -212,7 +216,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             <form id="panel-form" role="tabpanel" onSubmit={handleSubmit} style={styles.form} noValidate>
               <div style={styles.fieldGroup}>
                 <label htmlFor="email" className="advisor-label">
-                  Correo electrónico
+                  {ui("auth.email")}
                 </label>
                 <input
                   id="email"
@@ -230,7 +234,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
               {mode !== "forgot" && (
                 <div style={styles.fieldGroup}>
                 <label htmlFor="password" className="advisor-label">
-                  {mode === "reset" ? "Nueva contraseña" : "Contraseña"}
+                  {mode === "reset" ? ui("auth.newPasswordLabel") : ui("auth.password")}
                 </label>
                 <div style={styles.passwordWrap}>
                   <input
@@ -248,8 +252,8 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                    title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    aria-label={showPassword ? ui("auth.hidePassword") : ui("auth.showPassword")}
+                    title={showPassword ? ui("auth.hidePassword") : ui("auth.showPassword")}
                     style={{ ...styles.passwordToggle, ...(isLight ? styles.passwordToggleLight : styles.passwordToggleDark) }}
                   >
                     {showPassword ? (
@@ -293,7 +297,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
               {mode === "reset" && (
                 <div style={styles.fieldGroup}>
                   <label htmlFor="confirmPassword" className="advisor-label">
-                    Confirmar contraseña
+                    {ui("auth.confirmPassword")}
                   </label>
                   <input
                     id="confirmPassword"
@@ -322,7 +326,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                     }}
                     style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark) }}
                   >
-                    Olvidé mi contraseña
+                    {ui("auth.forgotPassword")}
                   </button>
                 </div>
               )}
@@ -340,7 +344,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                     }}
                     style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark) }}
                   >
-                    Volver a iniciar sesión
+                    {ui("auth.backToSignIn")}
                   </button>
                 </div>
               )}
@@ -376,19 +380,27 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 {loading ? (
                   <>
                     <span className="advisor-spinner" aria-hidden="true" />
-                    Procesando…
+                    {ui("auth.processing")}
                   </>
                 ) : (
                   mode === "login"
-                    ? "Entrar al dashboard"
+                    ? ui("auth.signIn")
                     : mode === "signup"
-                      ? "Crear mi cuenta"
+                      ? ui("auth.signUp")
                       : mode === "forgot"
-                        ? "Enviar enlace de recuperación"
-                        : "Guardar nueva contraseña"
+                        ? ui("auth.sendResetLink")
+                        : ui("auth.saveNewPassword")
                 )}
               </button>
             </form>
+            {/* Legal notice inside card */}
+            <p style={styles.cardLegal}>
+              {ui("auth.legalPrefix")}{" "}
+              <Link href="/terms" style={styles.cardLegalLink}>{ui("auth.terms")}</Link>
+              {" "}{ui("auth.legalMiddle")}{" "}
+              <Link href="/privacy" style={styles.cardLegalLink}>{ui("auth.privacy")}</Link>
+              {ui("auth.legalSuffix")}
+            </p>
           </section>
 
           {/* Footer */}
@@ -675,5 +687,29 @@ const styles: Record<string, React.CSSProperties> = {
   footerText: {
     fontSize: "12px",
     color: "var(--text-muted)",
+  },
+  divisorLight: {
+    width: "64px",
+    height: "1px",
+    background: "linear-gradient(90deg, transparent, rgba(22,41,68,0.30), transparent)",
+    margin: "8px auto 6px",
+  } as React.CSSProperties,
+  divisorDark: {
+    width: "64px",
+    height: "1px",
+    background: "linear-gradient(90deg, transparent, rgba(161,219,198,0.40), transparent)",
+    margin: "8px auto 6px",
+  } as React.CSSProperties,
+  cardLegal: {
+    padding: "14px 28px 20px",
+    fontSize: "11px",
+    lineHeight: "1.6",
+    textAlign: "center" as const,
+    color: "var(--text-muted)",
+  },
+  cardLegalLink: {
+    color: "var(--advisor-accent)",
+    textDecoration: "underline",
+    textUnderlineOffset: "2px",
   },
 };
