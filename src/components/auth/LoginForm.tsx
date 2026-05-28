@@ -163,23 +163,22 @@ export function LoginForm({ nextPath }: LoginFormProps) {
           >
             {/* Logo + divisor + app name — 56×56 circular container matching Impulso BrandLogo */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 20, paddingBottom: 12 }}>
-              {/* Circular badge: same 56px bounding box as Impulso BrandLogo */}
+              {/* Circular badge: 56×56 matching Impulso BrandLogo — image fills container */}
               <div style={{
                 width: 56, height: 56,
                 borderRadius: '50%',
-                border: isLight ? '1.5px solid rgba(22,41,68,0.20)' : '1.5px solid rgba(29,171,137,0.40)',
-                background: isLight ? 'rgba(22,41,68,0.04)' : 'rgba(29,171,137,0.06)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: isLight ? '1.5px solid rgba(22,41,68,0.18)' : '1.5px solid rgba(29,171,137,0.38)',
+                overflow: 'hidden',
                 marginBottom: 8,
                 filter: isLight ? 'drop-shadow(0 12px 24px rgba(16,32,51,0.14))' : 'drop-shadow(0 12px 24px rgba(3,8,18,0.30))',
               }}>
                 <Image
-                  src="/brand/logo-Advisor_1.png"
+                  src="/brand/logo-Advisor.png"
                   alt="Logo de Anclora Advisor"
-                  width={42}
-                  height={42}
+                  width={56}
+                  height={56}
                   priority
-                  style={{ objectFit: 'contain' }}
+                  style={{ objectFit: 'contain', width: '100%', height: '100%' }}
                 />
               </div>
               <div style={{ width: 56, height: 1, background: isLight ? 'linear-gradient(90deg, transparent, rgba(22,41,68,0.40), transparent)' : 'linear-gradient(90deg, transparent, rgba(29,171,137,0.60), transparent)', marginBottom: 6 }} aria-hidden="true" />
