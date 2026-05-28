@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LegalFooter } from "@/components/legal/LegalFooter";
 import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
 import { uiText } from "@/lib/i18n/ui";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -145,27 +144,10 @@ export function LoginForm({ nextPath }: LoginFormProps) {
       }>
 
       <div className="relative w-full max-w-[460px] mx-auto">
-        {/* Brand header */}
-        <header style={styles.brandHeader}>
-          <div style={{ ...styles.logoWrap, ...(isLight ? styles.logoWrapLight : styles.logoWrapDark) }}>
-            <Image
-              src="/brand/logo-Advisor_1.png"
-              alt="Logo de Anclora Advisor"
-              width={96}
-              height={64}
-              priority
-              style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", objectPosition: "center" }}
-            />
-          </div>
-          <div style={isLight ? styles.divisorLight : styles.divisorDark} aria-hidden="true" />
-          <span style={{ ...styles.logoText, ...(isLight ? styles.logoTextLight : styles.logoTextDark) }}>Anclora Advisor AI</span>
-        </header>
-
-        <div style={styles.contentWrap}>
           {/* Card */}
           <section
             style={{
-              borderRadius: '20px',
+              borderRadius: '24px',
               background: isLight
                 ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,250,255,0.98) 100%)'
                 : 'rgba(5,15,28,0.88)',
@@ -178,25 +160,20 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             }}
             aria-label="Formulario de acceso"
           >
-            <div style={styles.cardHeader}>
-              <h1 style={{ ...styles.cardTitle, ...(isLight ? styles.cardTitleLight : styles.cardTitleDark) }}>
-                {mode === "login"
-                  ? ui("auth.welcomeBack")
-                  : mode === "signup"
-                    ? ui("auth.createAccount")
-                    : mode === "forgot"
-                      ? ui("auth.recoverAccess")
-                      : ui("auth.newPassword")}
-              </h1>
-              <p style={styles.cardSubtitle}>
-                {mode === "login"
-                  ? ui("auth.signInMessage")
-                  : mode === "signup"
-                    ? ui("auth.startAccount")
-                    : mode === "forgot"
-                      ? ui("auth.recoverCopy")
-                      : ui("auth.newPasswordCopy")}
-              </p>
+            {/* Logo + divisor + app name inside card — matching Impulso structure */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 20, paddingBottom: 12 }}>
+              <Image
+                src="/brand/logo-Advisor_1.png"
+                alt="Logo de Anclora Advisor"
+                width={56}
+                height={56}
+                priority
+                style={{ objectFit: 'contain', marginBottom: 8, filter: isLight ? 'drop-shadow(0 8px 16px rgba(16,32,51,0.12))' : 'drop-shadow(0 8px 20px rgba(3,8,18,0.30))' }}
+              />
+              <div style={{ width: 56, height: 1, background: isLight ? 'linear-gradient(90deg, transparent, rgba(22,41,68,0.30), transparent)' : 'linear-gradient(90deg, transparent, rgba(29,171,137,0.50), transparent)', marginBottom: 8 }} aria-hidden="true" />
+              <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? '#162944' : '#f3f7fd', fontFamily: "'Playfair Display', Georgia, serif", letterSpacing: '0.01em' }}>
+                Anclora Advisor AI
+              </span>
             </div>
 
             {/* Mode tabs */}
@@ -417,8 +394,8 @@ export function LoginForm({ nextPath }: LoginFormProps) {
               {ui("auth.legalSuffix")}
             </p>
             {/* Social login — disabled (OAuth not configured) */}
-            <div style={{ padding: '0 28px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px' }}>
+            <div style={{ padding: '0 22px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px' }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--advisor-border)' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>
                   {ui("auth.socialAccess")}
@@ -426,21 +403,11 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 <div style={{ flex: 1, height: 1, background: 'var(--advisor-border)' }} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <button disabled style={{ height: 44, border: '1px solid var(--advisor-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', color: 'var(--text-secondary)', opacity: 0.5, cursor: 'not-allowed', background: 'transparent' }} title={ui("auth.socialComingSoon")}>Google</button>
-                <button disabled style={{ height: 44, border: '1px solid var(--advisor-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', color: 'var(--text-secondary)', opacity: 0.5, cursor: 'not-allowed', background: 'transparent' }} title={ui("auth.socialComingSoon")}>GitHub</button>
+                <button disabled style={{ height: 36, border: '1px solid var(--advisor-border)', borderRadius: 10, fontSize: 12, fontFamily: 'inherit', color: 'var(--text-secondary)', opacity: 0.5, cursor: 'not-allowed', background: 'transparent' }} title={ui("auth.socialComingSoon")}>Google</button>
+                <button disabled style={{ height: 36, border: '1px solid var(--advisor-border)', borderRadius: 10, fontSize: 12, fontFamily: 'inherit', color: 'var(--text-secondary)', opacity: 0.5, cursor: 'not-allowed', background: 'transparent' }} title={ui("auth.socialComingSoon")}>GitHub</button>
               </div>
             </div>
           </section>
-
-          {/* Footer */}
-          <footer style={styles.footer}>
-            <p style={styles.footerText}>
-              Plataforma de asesoramiento para autónomos operada por&nbsp;
-              <span style={{ color: "var(--advisor-accent)", fontWeight: 500 }}>Anclora Group</span>
-            </p>
-            <LegalFooter compact />
-          </footer>
-        </div>
       </div>
     </main>
   );
@@ -535,8 +502,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: "4px",
-    margin: "24px 28px 0",
-    padding: "4px",
+    margin: "0 22px 0",
+    padding: "3px",
     borderRadius: "12px",
   },
   tabsDark: {
@@ -577,10 +544,10 @@ const styles: Record<string, React.CSSProperties> = {
 
   /* Form */
   form: {
-    padding: "24px 28px 28px",
+    padding: "12px 22px 16px",
     display: "flex",
     flexDirection: "column" as const,
-    gap: "16px",
+    gap: "10px",
   },
   inlineActions: {
     display: "flex",
@@ -665,7 +632,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "8px auto 6px",
   } as React.CSSProperties,
   cardLegal: {
-    padding: "14px 28px 20px",
+    padding: "8px 22px 14px",
     fontSize: "11px",
     lineHeight: "1.6",
     textAlign: "center" as const,
