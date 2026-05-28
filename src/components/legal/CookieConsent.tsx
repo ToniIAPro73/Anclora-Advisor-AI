@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
 
 type CookiePreferences = {
   necessary: true;
@@ -21,10 +22,53 @@ const defaults: CookiePreferences = {
   version: "v1",
 };
 
+const COOKIE_COPY = {
+  es: {
+    buttonLabel: "Preferencias de cookies",
+    title: "Preferencias de cookies",
+    description: "Usamos cookies necesarias para sesión, seguridad e idioma. Las opciones de análisis operativo o marketing no se activan por defecto.",
+    acceptAll: "Aceptar todas",
+    settings: "Configuración",
+    rejectOptional: "Rechazar opcionales",
+    manageTitle: "Gestionar cookies",
+    necessaryTitle: "Cookies necesarias",
+    necessaryDescription: "Funcionamiento básico, seguridad, idioma y preferencias. No se pueden desactivar.",
+    sessionTitle: "Sesión y autenticación",
+    sessionDescription: "Mantienen el acceso al dashboard y protegen la cuenta.",
+    analyticsTitle: "Análisis operativo",
+    analyticsDescription: "Ayudan a mejorar estabilidad y flujos internos cuando exista instrumentación.",
+    marketingTitle: "Marketing",
+    marketingDescription: "Reservadas para comunicaciones relevantes. No activan scripts inexistentes.",
+    back: "Volver",
+    save: "Guardar preferencias",
+  },
+  en: {
+    buttonLabel: "Cookie preferences",
+    title: "Cookie preferences",
+    description: "We use necessary cookies for session, security, and language. Operational analytics or marketing options are not enabled by default.",
+    acceptAll: "Accept all",
+    settings: "Settings",
+    rejectOptional: "Reject optional",
+    manageTitle: "Manage cookies",
+    necessaryTitle: "Necessary cookies",
+    necessaryDescription: "Basic operation, security, language, and preferences. They cannot be disabled.",
+    sessionTitle: "Session and authentication",
+    sessionDescription: "Keep dashboard access active and protect the account.",
+    analyticsTitle: "Operational analytics",
+    analyticsDescription: "Help improve stability and internal flows when instrumentation exists.",
+    marketingTitle: "Marketing",
+    marketingDescription: "Reserved for relevant communications. They do not enable scripts that are not present.",
+    back: "Back",
+    save: "Save preferences",
+  },
+} as const;
+
 export function CookieConsent() {
+  const { locale } = useAppPreferences();
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState(false);
   const [preferences, setPreferences] = useState<CookiePreferences>(defaults);
+  const copy = COOKIE_COPY[locale];
 
   useEffect(() => {
     try {
@@ -66,7 +110,7 @@ export function CookieConsent() {
     <>
       <button
         type="button"
-        aria-label="Preferencias de cookies"
+        aria-label={copy.buttonLabel}
         onClick={() => {
           setOpen(true);
           setSettings(true);
@@ -88,29 +132,29 @@ export function CookieConsent() {
               <div className="space-y-5">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--advisor-accent)" }}>Anclora Group</p>
-                  <h2 id="advisor-cookie-title" className="advisor-heading mt-2 text-2xl">Preferencias de cookies</h2>
-                  <p className="mt-3 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>Usamos cookies necesarias para sesión, seguridad e idioma. Las opciones de análisis operativo o marketing no se activan por defecto.</p>
+                  <h2 id="advisor-cookie-title" className="advisor-heading mt-2 text-2xl">{copy.title}</h2>
+                  <p className="mt-3 text-sm leading-6" style={{ color: "var(--text-secondary)" }}>{copy.description}</p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row">
-                  <button type="button" onClick={() => persist({ ...defaults, analytics: true, marketing: true })} className="advisor-btn advisor-btn-primary">Aceptar todas</button>
-                  <button type="button" onClick={() => setSettings(true)} className="advisor-btn advisor-btn-secondary">Configuración</button>
-                  <button type="button" onClick={() => persist(defaults)} className="advisor-btn advisor-btn-secondary">Rechazar opcionales</button>
+                  <button type="button" onClick={() => persist({ ...defaults, analytics: true, marketing: true })} className="advisor-btn advisor-btn-primary">{copy.acceptAll}</button>
+                  <button type="button" onClick={() => setSettings(true)} className="advisor-btn advisor-btn-secondary">{copy.settings}</button>
+                  <button type="button" onClick={() => persist(defaults)} className="advisor-btn advisor-btn-secondary">{copy.rejectOptional}</button>
                 </div>
               </div>
             ) : (
               <div className="space-y-5">
-                <h2 id="advisor-cookie-title" className="advisor-heading text-2xl">Gestionar cookies</h2>
+                <h2 id="advisor-cookie-title" className="advisor-heading text-2xl">{copy.manageTitle}</h2>
                 <div className="space-y-3">
-                  <CookieRow title="Cookies necesarias" description="Funcionamiento básico, seguridad, idioma y preferencias. No se pueden desactivar." checked disabled onChange={() => {}} />
-                  <CookieRow title="Sesión y autenticación" description="Mantienen el acceso al dashboard y protegen la cuenta." checked disabled onChange={() => {}} />
-                  <CookieRow title="Análisis operativo" description="Ayudan a mejorar estabilidad y flujos internos cuando exista instrumentación." checked={preferences.analytics} onChange={(analytics) => setPreferences((current) => ({ ...current, analytics }))} />
-                  <CookieRow title="Marketing" description="Reservadas para comunicaciones relevantes. No activan scripts inexistentes." checked={preferences.marketing} onChange={(marketing) => setPreferences((current) => ({ ...current, marketing }))} />
+                  <CookieRow title={copy.necessaryTitle} description={copy.necessaryDescription} checked disabled onChange={() => {}} />
+                  <CookieRow title={copy.sessionTitle} description={copy.sessionDescription} checked disabled onChange={() => {}} />
+                  <CookieRow title={copy.analyticsTitle} description={copy.analyticsDescription} checked={preferences.analytics} onChange={(analytics) => setPreferences((current) => ({ ...current, analytics }))} />
+                  <CookieRow title={copy.marketingTitle} description={copy.marketingDescription} checked={preferences.marketing} onChange={(marketing) => setPreferences((current) => ({ ...current, marketing }))} />
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-                  <button type="button" onClick={() => setSettings(false)} className="advisor-btn advisor-btn-secondary">Volver</button>
+                  <button type="button" onClick={() => setSettings(false)} className="advisor-btn advisor-btn-secondary">{copy.back}</button>
                   <div className="flex flex-col gap-3 sm:flex-row">
-                    <button type="button" onClick={() => persist(defaults)} className="advisor-btn advisor-btn-secondary">Rechazar opcionales</button>
-                    <button type="button" onClick={() => persist(preferences)} className="advisor-btn advisor-btn-primary">Guardar preferencias</button>
+                    <button type="button" onClick={() => persist(defaults)} className="advisor-btn advisor-btn-secondary">{copy.rejectOptional}</button>
+                    <button type="button" onClick={() => persist(preferences)} className="advisor-btn advisor-btn-primary">{copy.save}</button>
                   </div>
                 </div>
               </div>
