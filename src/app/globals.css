@@ -470,3 +470,23 @@ html[data-theme="dark"] .shadow-md {
 
 
 
+
+
+/* Login card elevation hover — forward scale effect (not upward) */
+.login-card-elevation {
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              box-shadow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform, box-shadow;
+}
+
+.login-card-elevation:hover {
+  transform: scale(1.018);
+}
+
+html[data-theme="dark"] .login-card-elevation:hover {
+  box-shadow: 0 48px 100px -35px rgba(29, 171, 137, 0.55) !important;
+}
+
+html[data-theme="light"] .login-card-elevation:hover {
+  box-shadow: 0 48px 100px -35px rgba(29, 171, 137, 0.30) !important;
+}

@@ -146,6 +146,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
       <div className="relative w-full max-w-[460px] mx-auto">
           {/* Card */}
           <section
+            className="login-card-elevation"
             style={{
               borderRadius: '24px',
               background: isLight
@@ -160,16 +161,27 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             }}
             aria-label="Formulario de acceso"
           >
-            {/* Logo + divisor + app name — same dimensions as Impulso */}
+            {/* Logo + divisor + app name — 56×56 circular container matching Impulso BrandLogo */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 20, paddingBottom: 12 }}>
-              <Image
-                src="/brand/logo-Advisor_1.png"
-                alt="Logo de Anclora Advisor"
-                width={72}
-                height={72}
-                priority
-                style={{ objectFit: 'contain', marginBottom: 8, filter: isLight ? 'drop-shadow(0 8px 16px rgba(16,32,51,0.12))' : 'drop-shadow(0 8px 20px rgba(3,8,18,0.30))' }}
-              />
+              {/* Circular badge: same 56px bounding box as Impulso BrandLogo */}
+              <div style={{
+                width: 56, height: 56,
+                borderRadius: '50%',
+                border: isLight ? '1.5px solid rgba(22,41,68,0.20)' : '1.5px solid rgba(29,171,137,0.40)',
+                background: isLight ? 'rgba(22,41,68,0.04)' : 'rgba(29,171,137,0.06)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                marginBottom: 8,
+                filter: isLight ? 'drop-shadow(0 12px 24px rgba(16,32,51,0.14))' : 'drop-shadow(0 12px 24px rgba(3,8,18,0.30))',
+              }}>
+                <Image
+                  src="/brand/logo-Advisor_1.png"
+                  alt="Logo de Anclora Advisor"
+                  width={42}
+                  height={42}
+                  priority
+                  style={{ objectFit: 'contain' }}
+                />
+              </div>
               <div style={{ width: 56, height: 1, background: isLight ? 'linear-gradient(90deg, transparent, rgba(22,41,68,0.40), transparent)' : 'linear-gradient(90deg, transparent, rgba(29,171,137,0.60), transparent)', marginBottom: 6 }} aria-hidden="true" />
               <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? '#162944' : '#f3f7fd', letterSpacing: '0.01em' }}>
                 Anclora Advisor AI
