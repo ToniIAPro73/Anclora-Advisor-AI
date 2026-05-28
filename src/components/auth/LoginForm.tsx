@@ -160,18 +160,18 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             }}
             aria-label="Formulario de acceso"
           >
-            {/* Logo + divisor + app name inside card — matching Impulso structure */}
+            {/* Logo + divisor + app name — same dimensions as Impulso */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 20, paddingBottom: 12 }}>
               <Image
                 src="/brand/logo-Advisor_1.png"
                 alt="Logo de Anclora Advisor"
-                width={56}
-                height={56}
+                width={72}
+                height={72}
                 priority
                 style={{ objectFit: 'contain', marginBottom: 8, filter: isLight ? 'drop-shadow(0 8px 16px rgba(16,32,51,0.12))' : 'drop-shadow(0 8px 20px rgba(3,8,18,0.30))' }}
               />
-              <div style={{ width: 56, height: 1, background: isLight ? 'linear-gradient(90deg, transparent, rgba(22,41,68,0.30), transparent)' : 'linear-gradient(90deg, transparent, rgba(29,171,137,0.50), transparent)', marginBottom: 8 }} aria-hidden="true" />
-              <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? '#162944' : '#f3f7fd', fontFamily: "'Playfair Display', Georgia, serif", letterSpacing: '0.01em' }}>
+              <div style={{ width: 56, height: 1, background: isLight ? 'linear-gradient(90deg, transparent, rgba(22,41,68,0.40), transparent)' : 'linear-gradient(90deg, transparent, rgba(29,171,137,0.60), transparent)', marginBottom: 6 }} aria-hidden="true" />
+              <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? '#162944' : '#f3f7fd', letterSpacing: '0.01em' }}>
                 Anclora Advisor AI
               </span>
             </div>
@@ -180,7 +180,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             {/* Form */}
             <form id="panel-form" role="tabpanel" onSubmit={handleSubmit} style={styles.form} noValidate>
               <div style={styles.fieldGroup}>
-                <label htmlFor="email" className="advisor-label">
+                <label htmlFor="email" className="advisor-label" style={{ fontSize: 12 }}>
                   {ui("auth.email")}
                 </label>
                 <input
@@ -192,13 +192,13 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                   className="advisor-input login-auth-input"
                   placeholder="usuario@anclora.es"
                   required
-                  style={isLight ? styles.loginInputLight : styles.loginInputDark}
+                  style={{ ...(isLight ? styles.loginInputLight : styles.loginInputDark), height: 40, padding: '0 14px' }}
                 />
               </div>
 
               {mode !== "forgot" && (
                 <div style={styles.fieldGroup}>
-                <label htmlFor="password" className="advisor-label">
+                <label htmlFor="password" className="advisor-label" style={{ fontSize: 12 }}>
                   {mode === "reset" ? ui("auth.newPasswordLabel") : ui("auth.password")}
                 </label>
                 <div style={styles.passwordWrap}>
@@ -212,7 +212,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                     placeholder={mode === "login" ? "Tu contraseña" : "Mínimo 6 caracteres"}
                     required
                     minLength={6}
-                    style={{ ...styles.passwordInput, ...(isLight ? styles.loginInputLight : styles.loginInputDark) }}
+                    style={{ ...styles.passwordInput, ...(isLight ? styles.loginInputLight : styles.loginInputDark), height: 40, padding: '0 44px 0 14px' }}
                   />
                   <button
                     type="button"
@@ -305,7 +305,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 type="submit"
                 disabled={loading}
                 className="advisor-btn advisor-btn-primary advisor-btn-full"
-                style={{ marginTop: 4 }}
+                style={{ marginTop: 4, height: 40, fontSize: 14 }}
               >
                 {loading ? (
                   <>
@@ -325,7 +325,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             </form>
             {/* Forgot password — centered, below button (login mode) */}
             {mode === "login" && (
-              <div style={{ textAlign: 'center', padding: '6px 22px 0' }}>
+              <div style={{ textAlign: 'center', padding: '6px 24px 0' }}>
                 <button
                   type="button"
                   onClick={() => { setMode("forgot"); setError(null); setMessage(null); setPassword(""); }}
@@ -338,7 +338,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
 
             {/* Back to sign in — forgot/reset modes */}
             {(mode === "forgot" || mode === "reset") && (
-              <div style={{ textAlign: 'center', padding: '6px 22px 0' }}>
+              <div style={{ textAlign: 'center', padding: '6px 24px 0' }}>
                 <button
                   type="button"
                   onClick={() => { setMode("login"); setError(null); setMessage(null); setPassword(""); setConfirmPassword(""); }}
@@ -352,7 +352,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             {/* No account / Already have account box — matching Impulso */}
             {(mode === "login" || mode === "signup") && (
               <div style={{
-                margin: '6px 22px 0',
+                margin: '6px 24px 0',
                 borderRadius: 16,
                 border: isLight ? '1px solid rgba(22,41,68,0.08)' : '1px solid rgba(29,171,137,0.08)',
                 background: isLight ? 'rgba(255,255,255,0.5)' : 'rgba(5,15,28,0.50)',
@@ -382,7 +382,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             )}
 
             {/* Social login — disabled (OAuth not configured) */}
-            <div style={{ padding: '8px 22px 0' }}>
+            <div style={{ padding: '8px 24px 0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px' }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--advisor-border)' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>
@@ -499,7 +499,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: "4px",
-    margin: "0 22px 0",
+    margin: "0 24px 0",
     padding: "3px",
     borderRadius: "12px",
   },
@@ -541,7 +541,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   /* Form */
   form: {
-    padding: "12px 22px 16px",
+    padding: "12px 24px 16px",
     display: "flex",
     flexDirection: "column" as const,
     gap: "10px",
@@ -629,7 +629,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "8px auto 6px",
   } as React.CSSProperties,
   cardLegal: {
-    padding: "8px 22px 14px",
+    padding: "8px 24px 14px",
     fontSize: "11px",
     lineHeight: "1.6",
     textAlign: "center" as const,
