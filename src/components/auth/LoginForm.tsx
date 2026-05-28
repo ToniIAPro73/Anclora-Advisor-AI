@@ -138,12 +138,13 @@ export function LoginForm({ nextPath }: LoginFormProps) {
   };
 
   return (
-    <main style={{ ...styles.main, ...(isLight ? styles.mainLight : styles.mainDark) }}>
-      {/* Background decorative blobs */}
-      <div style={{ ...styles.blobTop, ...(isLight ? styles.blobTopLight : styles.blobTopDark) }} aria-hidden="true" />
-      <div style={{ ...styles.blobBottom, ...(isLight ? styles.blobBottomLight : styles.blobBottomDark) }} aria-hidden="true" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-y-auto p-4 sm:p-6"
+      style={isLight
+        ? { background: 'radial-gradient(1200px 640px at 10% -10%, rgba(29,171,137,0.10), transparent 68%), linear-gradient(180deg, #eef4fb 0%, #f8fbff 46%, #e8eef8 100%)' }
+        : { background: 'radial-gradient(1200px 640px at 10% -10%, rgba(29,171,137,0.10), transparent 68%), linear-gradient(135deg, rgba(2,6,18,1) 0%, rgba(10,22,35,0.98) 50%, rgba(5,15,28,0.96) 100%)' }
+      }>
 
-      <div style={styles.wrapper}>
+      <div className="relative w-full max-w-[460px] mx-auto">
         {/* Brand header */}
         <header style={styles.brandHeader}>
           <div style={{ ...styles.logoWrap, ...(isLight ? styles.logoWrapLight : styles.logoWrapDark) }}>
@@ -162,7 +163,21 @@ export function LoginForm({ nextPath }: LoginFormProps) {
 
         <div style={styles.contentWrap}>
           {/* Card */}
-          <section style={{ ...styles.card, ...(isLight ? styles.cardLight : styles.cardDark) }} aria-label="Formulario de acceso">
+          <section
+            style={{
+              borderRadius: '20px',
+              background: isLight
+                ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,250,255,0.98) 100%)'
+                : 'rgba(5,15,28,0.88)',
+              border: isLight ? '1px solid rgba(22,41,68,0.10)' : '1px solid rgba(29,171,137,0.12)',
+              boxShadow: isLight
+                ? '0 32px 80px -40px rgba(29,171,137,0.25)'
+                : '0 32px 80px -40px rgba(29,171,137,0.35)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+            }}
+            aria-label="Formulario de acceso"
+          >
             <div style={styles.cardHeader}>
               <h1 style={{ ...styles.cardTitle, ...(isLight ? styles.cardTitleLight : styles.cardTitleDark) }}>
                 {mode === "login"
@@ -401,6 +416,20 @@ export function LoginForm({ nextPath }: LoginFormProps) {
               <Link href="/privacy" style={styles.cardLegalLink}>{ui("auth.privacy")}</Link>
               {ui("auth.legalSuffix")}
             </p>
+            {/* Social login — disabled (OAuth not configured) */}
+            <div style={{ padding: '0 28px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px' }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--advisor-border)' }} />
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>
+                  {ui("auth.socialAccess")}
+                </span>
+                <div style={{ flex: 1, height: 1, background: 'var(--advisor-border)' }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <button disabled style={{ height: 44, border: '1px solid var(--advisor-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', color: 'var(--text-secondary)', opacity: 0.5, cursor: 'not-allowed', background: 'transparent' }} title={ui("auth.socialComingSoon")}>Google</button>
+                <button disabled style={{ height: 44, border: '1px solid var(--advisor-border)', borderRadius: 10, fontSize: 13, fontFamily: 'inherit', color: 'var(--text-secondary)', opacity: 0.5, cursor: 'not-allowed', background: 'transparent' }} title={ui("auth.socialComingSoon")}>GitHub</button>
+              </div>
+            </div>
           </section>
 
           {/* Footer */}
@@ -419,71 +448,6 @@ export function LoginForm({ nextPath }: LoginFormProps) {
 
 /* ── Inline styles (layout only, no theming) ─────────────────────────────── */
 const styles: Record<string, React.CSSProperties> = {
-  main: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "32px 16px",
-    position: "relative",
-    overflow: "hidden",
-  },
-  mainDark: {
-    background:
-      "radial-gradient(1400px 700px at 15% -10%, rgba(29,171,137,0.10), transparent 65%)," +
-      "radial-gradient(1200px 600px at 95% 100%, rgba(22,41,68,0.12), transparent 65%)," +
-      "var(--advisor-canvas)",
-  },
-  mainLight: {
-    background:
-      "radial-gradient(1200px 640px at 10% -10%, rgba(29,171,137,0.12), transparent 68%)," +
-      "radial-gradient(980px 520px at 100% 0%, rgba(22,41,68,0.10), transparent 70%)," +
-      "linear-gradient(180deg, #eef4fb 0%, #f8fbff 46%, #e8eef8 100%)",
-  },
-
-  blobTop: {
-    position: "absolute",
-    top: "-120px",
-    right: "-80px",
-    width: "480px",
-    height: "480px",
-    borderRadius: "50%",
-    pointerEvents: "none",
-  },
-  blobTopDark: {
-    background: "radial-gradient(circle, rgba(29,171,137,0.12) 0%, transparent 70%)",
-  },
-  blobTopLight: {
-    background: "radial-gradient(circle, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0) 72%)",
-  },
-
-  blobBottom: {
-    position: "absolute",
-    bottom: "-140px",
-    left: "-100px",
-    width: "560px",
-    height: "560px",
-    borderRadius: "50%",
-    pointerEvents: "none",
-  },
-  blobBottomDark: {
-    background: "radial-gradient(circle, rgba(22,41,68,0.10) 0%, transparent 70%)",
-  },
-  blobBottomLight: {
-    background: "radial-gradient(circle, rgba(22,41,68,0.14) 0%, transparent 72%)",
-  },
-
-  wrapper: {
-    width: "100%",
-    maxWidth: "420px",
-    position: "relative",
-    zIndex: 1,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "14px",
-    transform: "translateY(-48px)",
-  },
   contentWrap: {
     width: "100%",
   },

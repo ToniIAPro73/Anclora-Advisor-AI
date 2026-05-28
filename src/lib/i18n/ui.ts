@@ -102,6 +102,8 @@ const ES: UiDict = {
   "auth.legalMiddle": "y la",
   "auth.privacy": "Política de privacidad",
   "auth.legalSuffix": ".",
+  "auth.socialAccess": "Acceso social",
+  "auth.socialComingSoon": "Próximamente",
 };
 
 const EN: UiDict = {
@@ -204,6 +206,8 @@ const EN: UiDict = {
   "auth.legalMiddle": "and the",
   "auth.privacy": "Privacy policy",
   "auth.legalSuffix": ".",
+  "auth.socialAccess": "Social access",
+  "auth.socialComingSoon": "Coming soon",
 };
 
 const UI_MESSAGES: Record<LocaleCode, UiDict> = { es: ES, en: EN };
