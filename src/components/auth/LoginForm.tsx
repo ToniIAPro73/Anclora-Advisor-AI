@@ -176,33 +176,6 @@ export function LoginForm({ nextPath }: LoginFormProps) {
               </span>
             </div>
 
-            {/* Mode tabs */}
-            {(mode === "login" || mode === "signup") && (
-              <div style={{ ...styles.tabs, ...(isLight ? styles.tabsLight : styles.tabsDark) }} role="tablist">
-              <button
-                id="tab-login"
-                role="tab"
-                type="button"
-                aria-selected={mode === "login"}
-                aria-controls="panel-form"
-                onClick={() => { setMode("login"); setError(null); setMessage(null); }}
-                style={{ ...styles.tab, ...(mode === "login" ? (isLight ? styles.tabActiveLight : styles.tabActiveDark) : {}) }}
-              >
-                {ui("auth.signIn")}
-              </button>
-              <button
-                id="tab-signup"
-                role="tab"
-                type="button"
-                aria-selected={mode === "signup"}
-                aria-controls="panel-form"
-                onClick={() => { setMode("signup"); setError(null); setMessage(null); }}
-                style={{ ...styles.tab, ...(mode === "signup" ? (isLight ? styles.tabActiveLight : styles.tabActiveDark) : {}) }}
-              >
-                {ui("auth.createAccount")}
-              </button>
-              </div>
-            )}
 
             {/* Form */}
             <form id="panel-form" role="tabpanel" onSubmit={handleSubmit} style={styles.form} noValidate>
@@ -306,41 +279,6 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 </div>
               )}
 
-              {mode === "login" && (
-                <div style={styles.inlineActions}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode("forgot");
-                      setError(null);
-                      setMessage(null);
-                      setPassword("");
-                    }}
-                    style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark) }}
-                  >
-                    {ui("auth.forgotPassword")}
-                  </button>
-                </div>
-              )}
-
-              {(mode === "forgot" || mode === "reset") && (
-                <div style={styles.inlineActions}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode("login");
-                      setError(null);
-                      setMessage(null);
-                      setPassword("");
-                      setConfirmPassword("");
-                    }}
-                    style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark) }}
-                  >
-                    {ui("auth.backToSignIn")}
-                  </button>
-                </div>
-              )}
-
               {error && (
                 <div role="alert" className="advisor-alert advisor-alert-error">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ flexShrink: 0, marginTop: 1 }}>
@@ -385,16 +323,66 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 )}
               </button>
             </form>
-            {/* Legal notice inside card */}
-            <p style={styles.cardLegal}>
-              {ui("auth.legalPrefix")}{" "}
-              <Link href="/terms" style={styles.cardLegalLink}>{ui("auth.terms")}</Link>
-              {" "}{ui("auth.legalMiddle")}{" "}
-              <Link href="/privacy" style={styles.cardLegalLink}>{ui("auth.privacy")}</Link>
-              {ui("auth.legalSuffix")}
-            </p>
+            {/* Forgot password — centered, below button (login mode) */}
+            {mode === "login" && (
+              <div style={{ textAlign: 'center', padding: '6px 22px 0' }}>
+                <button
+                  type="button"
+                  onClick={() => { setMode("forgot"); setError(null); setMessage(null); setPassword(""); }}
+                  style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark), fontSize: 12 }}
+                >
+                  {ui("auth.forgotPassword")}
+                </button>
+              </div>
+            )}
+
+            {/* Back to sign in — forgot/reset modes */}
+            {(mode === "forgot" || mode === "reset") && (
+              <div style={{ textAlign: 'center', padding: '6px 22px 0' }}>
+                <button
+                  type="button"
+                  onClick={() => { setMode("login"); setError(null); setMessage(null); setPassword(""); setConfirmPassword(""); }}
+                  style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark), fontSize: 12 }}
+                >
+                  {ui("auth.backToSignIn")}
+                </button>
+              </div>
+            )}
+
+            {/* No account / Already have account box — matching Impulso */}
+            {(mode === "login" || mode === "signup") && (
+              <div style={{
+                margin: '6px 22px 0',
+                borderRadius: 16,
+                border: isLight ? '1px solid rgba(22,41,68,0.08)' : '1px solid rgba(29,171,137,0.08)',
+                background: isLight ? 'rgba(255,255,255,0.5)' : 'rgba(5,15,28,0.50)',
+                padding: '8px 16px',
+                textAlign: 'center',
+                fontSize: 12,
+                color: 'var(--text-secondary)',
+              }}>
+                {mode === "login" ? (
+                  <>
+                    {ui("auth.noAccount")}{" "}
+                    <button type="button" onClick={() => { setMode("signup"); setError(null); setMessage(null); }}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: 'var(--advisor-accent)' }}>
+                      {ui("auth.signUp")}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {ui("auth.alreadyAccount")}{" "}
+                    <button type="button" onClick={() => { setMode("login"); setError(null); setMessage(null); }}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: 'var(--advisor-accent)' }}>
+                      {ui("auth.signIn")}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Social login — disabled (OAuth not configured) */}
-            <div style={{ padding: '0 22px 14px' }}>
+            <div style={{ padding: '8px 22px 0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px' }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--advisor-border)' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>
@@ -407,6 +395,15 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 <button disabled style={{ height: 36, border: '1px solid var(--advisor-border)', borderRadius: 10, fontSize: 12, fontFamily: 'inherit', color: 'var(--text-secondary)', opacity: 0.5, cursor: 'not-allowed', background: 'transparent' }} title={ui("auth.socialComingSoon")}>GitHub</button>
               </div>
             </div>
+
+            {/* Legal notice — always at the end */}
+            <p style={styles.cardLegal}>
+              {ui("auth.legalPrefix")}{" "}
+              <Link href="/terms" style={styles.cardLegalLink}>{ui("auth.terms")}</Link>
+              {" "}{ui("auth.legalMiddle")}{" "}
+              <Link href="/privacy" style={styles.cardLegalLink}>{ui("auth.privacy")}</Link>
+              {ui("auth.legalSuffix")}
+            </p>
           </section>
       </div>
     </main>
