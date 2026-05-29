@@ -148,6 +148,8 @@ export function LoginForm({ nextPath }: LoginFormProps) {
           <section
             className="login-card-elevation"
             style={{
+              width: '100%',
+              minHeight: 560,
               borderRadius: '24px',
               background: isLight
                 ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,250,255,0.98) 100%)'
@@ -161,27 +163,23 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             }}
             aria-label="Formulario de acceso"
           >
-            {/* Logo + divisor + app name — 56×56 circular container matching Impulso BrandLogo */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 20, paddingBottom: 12 }}>
-              {/* Circular badge: 56×56 matching Impulso BrandLogo — image fills container */}
-              <div style={{
-                width: 56, height: 56,
-                borderRadius: '50%',
-                border: isLight ? '1.5px solid rgba(22,41,68,0.18)' : '1.5px solid rgba(29,171,137,0.38)',
-                overflow: 'hidden',
-                marginBottom: 8,
-                filter: isLight ? 'drop-shadow(0 12px 24px rgba(16,32,51,0.14))' : 'drop-shadow(0 12px 24px rgba(3,8,18,0.30))',
-              }}>
-                <Image
-                  src="/brand/logo-Advisor.png"
-                  alt="Logo de Anclora Advisor"
-                  width={56}
-                  height={56}
-                  priority
-                  style={{ objectFit: 'contain', width: '100%', height: '100%' }}
-                />
-              </div>
-              <div style={{ width: 56, height: 1, background: isLight ? 'linear-gradient(90deg, transparent, rgba(22,41,68,0.40), transparent)' : 'linear-gradient(90deg, transparent, rgba(29,171,137,0.60), transparent)', marginBottom: 6 }} aria-hidden="true" />
+            {/* Logo 50px sin contenedor — igual que Impulso BrandLogo */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 32, paddingBottom: 20 }}>
+              <Image
+                src="/brand/logo-Advisor.png"
+                alt="Logo de Anclora Advisor"
+                width={50}
+                height={50}
+                priority
+                style={{
+                  objectFit: 'contain',
+                  marginBottom: 8,
+                  filter: isLight
+                    ? 'drop-shadow(0 12px 24px rgba(16,32,51,0.14))'
+                    : 'drop-shadow(0 12px 24px rgba(3,8,18,0.32))',
+                }}
+              />
+              <div style={{ width: 50, height: 1, background: isLight ? 'linear-gradient(90deg, transparent, rgba(22,41,68,0.40), transparent)' : 'linear-gradient(90deg, transparent, rgba(29,171,137,0.60), transparent)', marginBottom: 6 }} aria-hidden="true" />
               <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? '#162944' : '#f3f7fd', letterSpacing: '0.01em' }}>
                 Anclora Advisor AI
               </span>
@@ -336,7 +334,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             </form>
             {/* Forgot password — centered, below button (login mode) */}
             {mode === "login" && (
-              <div style={{ textAlign: 'center', padding: '6px 24px 0' }}>
+              <div style={{ textAlign: 'center', padding: '10px 24px 0' }}>
                 <button
                   type="button"
                   onClick={() => { setMode("forgot"); setError(null); setMessage(null); setPassword(""); }}
@@ -349,7 +347,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
 
             {/* Back to sign in — forgot/reset modes */}
             {(mode === "forgot" || mode === "reset") && (
-              <div style={{ textAlign: 'center', padding: '6px 24px 0' }}>
+              <div style={{ textAlign: 'center', padding: '10px 24px 0' }}>
                 <button
                   type="button"
                   onClick={() => { setMode("login"); setError(null); setMessage(null); setPassword(""); setConfirmPassword(""); }}
@@ -393,7 +391,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             )}
 
             {/* Social login — disabled (OAuth not configured) */}
-            <div style={{ padding: '8px 24px 0' }}>
+            <div style={{ padding: '12px 24px 0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px' }}>
                 <div style={{ flex: 1, height: 1, background: 'var(--advisor-border)' }} />
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>
@@ -552,10 +550,10 @@ const styles: Record<string, React.CSSProperties> = {
 
   /* Form */
   form: {
-    padding: "12px 24px 16px",
+    padding: "4px 24px 20px",
     display: "flex",
     flexDirection: "column" as const,
-    gap: "10px",
+    gap: "12px",
   },
   inlineActions: {
     display: "flex",
@@ -640,7 +638,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "8px auto 6px",
   } as React.CSSProperties,
   cardLegal: {
-    padding: "8px 24px 14px",
+    padding: "12px 24px 24px",
     fontSize: "11px",
     lineHeight: "1.6",
     textAlign: "center" as const,
