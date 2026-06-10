@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LegalFooter } from "@/components/legal/LegalFooter";
 import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
+import { uiText } from "@/lib/i18n/ui";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AuthMode = "login" | "signup" | "forgot" | "reset";
@@ -15,7 +16,8 @@ interface LoginFormProps {
 
 export function LoginForm({ nextPath }: LoginFormProps) {
   const router = useRouter();
-  const { resolvedTheme } = useAppPreferences();
+  const { resolvedTheme, locale } = useAppPreferences();
+  const ui = (key: string) => uiText(locale, key);
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
@@ -135,84 +137,60 @@ export function LoginForm({ nextPath }: LoginFormProps) {
   };
 
   return (
-    <main style={{ ...styles.main, ...(isLight ? styles.mainLight : styles.mainDark) }}>
-      {/* Background decorative blobs */}
-      <div style={{ ...styles.blobTop, ...(isLight ? styles.blobTopLight : styles.blobTopDark) }} aria-hidden="true" />
-      <div style={{ ...styles.blobBottom, ...(isLight ? styles.blobBottomLight : styles.blobBottomDark) }} aria-hidden="true" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-y-auto p-4 sm:p-6"
+      style={isLight
+        ? { background: 'radial-gradient(1200px 640px at 10% -10%, rgba(29,171,137,0.10), transparent 68%), linear-gradient(180deg, #eef4fb 0%, #f8fbff 46%, #e8eef8 100%)' }
+        : { background: 'radial-gradient(1200px 640px at 10% -10%, rgba(29,171,137,0.10), transparent 68%), linear-gradient(135deg, rgba(2,6,18,1) 0%, rgba(10,22,35,0.98) 50%, rgba(5,15,28,0.96) 100%)' }
+      }>
 
-      <div style={styles.wrapper}>
-        {/* Brand header */}
-        <header style={styles.brandHeader}>
-          <div style={{ ...styles.logoWrap, ...(isLight ? styles.logoWrapLight : styles.logoWrapDark) }}>
-            <Image
-              src="/brand/logo-Advisor_1.png"
-              alt="Logo de Anclora Advisor"
-              width={96}
-              height={64}
-              priority
-              style={{ display: "block", width: "100%", height: "100%", objectFit: "contain", objectPosition: "center" }}
-            />
-          </div>
-          <span style={{ ...styles.logoText, ...(isLight ? styles.logoTextLight : styles.logoTextDark) }}>Anclora Advisor AI</span>
-        </header>
-
-        <div style={styles.contentWrap}>
+      <div className="relative w-full max-w-[460px] mx-auto">
           {/* Card */}
-          <section style={{ ...styles.card, ...(isLight ? styles.cardLight : styles.cardDark) }} aria-label="Formulario de acceso">
-            <div style={styles.cardHeader}>
-              <h1 style={{ ...styles.cardTitle, ...(isLight ? styles.cardTitleLight : styles.cardTitleDark) }}>
-                {mode === "login"
-                  ? "Bienvenido de nuevo"
-                  : mode === "signup"
-                    ? "Crear cuenta"
-                    : mode === "forgot"
-                      ? "Recuperar acceso"
-                      : "Nueva contraseña"}
-              </h1>
-              <p style={styles.cardSubtitle}>
-                {mode === "login"
-                  ? "Accede a tu asesoramiento fiscal y laboral"
-                  : mode === "signup"
-                    ? "Empieza a gestionar tu actividad como autónomo"
-                    : mode === "forgot"
-                      ? "Te enviaremos un enlace seguro para restablecer tu contraseña"
-                      : "Define una contraseña nueva para tu cuenta"}
-              </p>
+          <section
+            className="login-card-elevation"
+            style={{
+              width: '100%',
+              minHeight: 560,
+              borderRadius: '24px',
+              background: isLight
+                ? 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(246,250,255,0.98) 100%)'
+                : 'rgba(5,15,28,0.88)',
+              border: isLight ? '1px solid rgba(22,41,68,0.10)' : '1px solid rgba(29,171,137,0.12)',
+              boxShadow: isLight
+                ? '0 32px 80px -40px rgba(29,171,137,0.25)'
+                : '0 32px 80px -40px rgba(29,171,137,0.35)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+            }}
+            aria-label="Formulario de acceso"
+          >
+            {/* Logo 50px sin contenedor — igual que Impulso BrandLogo */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 32, paddingBottom: 20 }}>
+              <Image
+                src="/brand/logo-Advisor.png"
+                alt="Logo de Anclora Advisor"
+                width={50}
+                height={50}
+                priority
+                style={{
+                  objectFit: 'contain',
+                  marginBottom: 8,
+                  filter: isLight
+                    ? 'drop-shadow(0 12px 24px rgba(16,32,51,0.14))'
+                    : 'drop-shadow(0 12px 24px rgba(3,8,18,0.32))',
+                }}
+              />
+              <div style={{ width: 50, height: 1, background: isLight ? 'linear-gradient(90deg, transparent, rgba(22,41,68,0.40), transparent)' : 'linear-gradient(90deg, transparent, rgba(29,171,137,0.60), transparent)', marginBottom: 6 }} aria-hidden="true" />
+              <span style={{ fontSize: 14, fontWeight: 700, color: isLight ? '#162944' : '#f3f7fd', letterSpacing: '0.01em' }}>
+                Anclora Advisor AI
+              </span>
             </div>
 
-            {/* Mode tabs */}
-            {(mode === "login" || mode === "signup") && (
-              <div style={{ ...styles.tabs, ...(isLight ? styles.tabsLight : styles.tabsDark) }} role="tablist">
-              <button
-                id="tab-login"
-                role="tab"
-                type="button"
-                aria-selected={mode === "login"}
-                aria-controls="panel-form"
-                onClick={() => { setMode("login"); setError(null); setMessage(null); }}
-                style={{ ...styles.tab, ...(mode === "login" ? (isLight ? styles.tabActiveLight : styles.tabActiveDark) : {}) }}
-              >
-                Iniciar sesión
-              </button>
-              <button
-                id="tab-signup"
-                role="tab"
-                type="button"
-                aria-selected={mode === "signup"}
-                aria-controls="panel-form"
-                onClick={() => { setMode("signup"); setError(null); setMessage(null); }}
-                style={{ ...styles.tab, ...(mode === "signup" ? (isLight ? styles.tabActiveLight : styles.tabActiveDark) : {}) }}
-              >
-                Crear cuenta
-              </button>
-              </div>
-            )}
 
             {/* Form */}
             <form id="panel-form" role="tabpanel" onSubmit={handleSubmit} style={styles.form} noValidate>
               <div style={styles.fieldGroup}>
-                <label htmlFor="email" className="advisor-label">
-                  Correo electrónico
+                <label htmlFor="email" className="advisor-label" style={{ fontSize: 12 }}>
+                  {ui("auth.email")}
                 </label>
                 <input
                   id="email"
@@ -223,14 +201,14 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                   className="advisor-input login-auth-input"
                   placeholder="usuario@anclora.es"
                   required
-                  style={isLight ? styles.loginInputLight : styles.loginInputDark}
+                  style={{ ...(isLight ? styles.loginInputLight : styles.loginInputDark), height: 40, padding: '0 14px' }}
                 />
               </div>
 
               {mode !== "forgot" && (
                 <div style={styles.fieldGroup}>
-                <label htmlFor="password" className="advisor-label">
-                  {mode === "reset" ? "Nueva contraseña" : "Contraseña"}
+                <label htmlFor="password" className="advisor-label" style={{ fontSize: 12 }}>
+                  {mode === "reset" ? ui("auth.newPasswordLabel") : ui("auth.password")}
                 </label>
                 <div style={styles.passwordWrap}>
                   <input
@@ -243,13 +221,13 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                     placeholder={mode === "login" ? "Tu contraseña" : "Mínimo 6 caracteres"}
                     required
                     minLength={6}
-                    style={{ ...styles.passwordInput, ...(isLight ? styles.loginInputLight : styles.loginInputDark) }}
+                    style={{ ...styles.passwordInput, ...(isLight ? styles.loginInputLight : styles.loginInputDark), height: 40, padding: '0 44px 0 14px' }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                    title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    aria-label={showPassword ? ui("auth.hidePassword") : ui("auth.showPassword")}
+                    title={showPassword ? ui("auth.hidePassword") : ui("auth.showPassword")}
                     style={{ ...styles.passwordToggle, ...(isLight ? styles.passwordToggleLight : styles.passwordToggleDark) }}
                   >
                     {showPassword ? (
@@ -293,7 +271,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
               {mode === "reset" && (
                 <div style={styles.fieldGroup}>
                   <label htmlFor="confirmPassword" className="advisor-label">
-                    Confirmar contraseña
+                    {ui("auth.confirmPassword")}
                   </label>
                   <input
                     id="confirmPassword"
@@ -307,41 +285,6 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                     minLength={6}
                     style={isLight ? styles.loginInputLight : styles.loginInputDark}
                   />
-                </div>
-              )}
-
-              {mode === "login" && (
-                <div style={styles.inlineActions}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode("forgot");
-                      setError(null);
-                      setMessage(null);
-                      setPassword("");
-                    }}
-                    style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark) }}
-                  >
-                    Olvidé mi contraseña
-                  </button>
-                </div>
-              )}
-
-              {(mode === "forgot" || mode === "reset") && (
-                <div style={styles.inlineActions}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode("login");
-                      setError(null);
-                      setMessage(null);
-                      setPassword("");
-                      setConfirmPassword("");
-                    }}
-                    style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark) }}
-                  >
-                    Volver a iniciar sesión
-                  </button>
                 </div>
               )}
 
@@ -371,35 +314,106 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                 type="submit"
                 disabled={loading}
                 className="advisor-btn advisor-btn-primary advisor-btn-full"
-                style={{ marginTop: 4 }}
+                style={{ marginTop: 4, height: 40, fontSize: 14 }}
               >
                 {loading ? (
                   <>
                     <span className="advisor-spinner" aria-hidden="true" />
-                    Procesando…
+                    {ui("auth.processing")}
                   </>
                 ) : (
                   mode === "login"
-                    ? "Entrar al dashboard"
+                    ? ui("auth.signIn")
                     : mode === "signup"
-                      ? "Crear mi cuenta"
+                      ? ui("auth.signUp")
                       : mode === "forgot"
-                        ? "Enviar enlace de recuperación"
-                        : "Guardar nueva contraseña"
+                        ? ui("auth.sendResetLink")
+                        : ui("auth.saveNewPassword")
                 )}
               </button>
             </form>
-          </section>
+            {/* Forgot password — centered, below button (login mode) */}
+            {mode === "login" && (
+              <div style={{ textAlign: 'center', padding: '10px 24px 0' }}>
+                <button
+                  type="button"
+                  onClick={() => { setMode("forgot"); setError(null); setMessage(null); setPassword(""); }}
+                  style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark), fontSize: 12 }}
+                >
+                  {ui("auth.forgotPassword")}
+                </button>
+              </div>
+            )}
 
-          {/* Footer */}
-          <footer style={styles.footer}>
-            <p style={styles.footerText}>
-              Plataforma de asesoramiento para autónomos operada por&nbsp;
-              <span style={{ color: "var(--advisor-accent)", fontWeight: 500 }}>Anclora Group</span>
+            {/* Back to sign in — forgot/reset modes */}
+            {(mode === "forgot" || mode === "reset") && (
+              <div style={{ textAlign: 'center', padding: '10px 24px 0' }}>
+                <button
+                  type="button"
+                  onClick={() => { setMode("login"); setError(null); setMessage(null); setPassword(""); setConfirmPassword(""); }}
+                  style={{ ...styles.linkButton, ...(isLight ? styles.linkButtonLight : styles.linkButtonDark), fontSize: 12 }}
+                >
+                  {ui("auth.backToSignIn")}
+                </button>
+              </div>
+            )}
+
+            {/* No account / Already have account box — matching Impulso */}
+            {(mode === "login" || mode === "signup") && (
+              <div style={{
+                margin: '6px 24px 0',
+                borderRadius: 16,
+                border: isLight ? '1px solid rgba(22,41,68,0.08)' : '1px solid rgba(29,171,137,0.08)',
+                background: isLight ? 'rgba(255,255,255,0.5)' : 'rgba(5,15,28,0.50)',
+                padding: '8px 16px',
+                textAlign: 'center',
+                fontSize: 12,
+                color: 'var(--text-secondary)',
+              }}>
+                {mode === "login" ? (
+                  <>
+                    {ui("auth.noAccount")}{" "}
+                    <button type="button" onClick={() => { setMode("signup"); setError(null); setMessage(null); }}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: 'var(--advisor-accent)' }}>
+                      {ui("auth.signUp")}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {ui("auth.alreadyAccount")}{" "}
+                    <button type="button" onClick={() => { setMode("login"); setError(null); setMessage(null); }}
+                      style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: 'var(--advisor-accent)' }}>
+                      {ui("auth.signIn")}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Social login — disabled (OAuth not configured) */}
+            <div style={{ padding: '12px 24px 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px' }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--advisor-border)' }} />
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' as const, letterSpacing: '0.1em' }}>
+                  {ui("auth.socialAccess")}
+                </span>
+                <div style={{ flex: 1, height: 1, background: 'var(--advisor-border)' }} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <button disabled style={{ height: 36, border: '1px solid var(--advisor-border)', borderRadius: 10, fontSize: 12, fontFamily: 'inherit', color: 'var(--text-secondary)', opacity: 0.5, cursor: 'not-allowed', background: 'transparent' }} title={ui("auth.socialComingSoon")}>Google</button>
+                <button disabled style={{ height: 36, border: '1px solid var(--advisor-border)', borderRadius: 10, fontSize: 12, fontFamily: 'inherit', color: 'var(--text-secondary)', opacity: 0.5, cursor: 'not-allowed', background: 'transparent' }} title={ui("auth.socialComingSoon")}>GitHub</button>
+              </div>
+            </div>
+
+            {/* Legal notice — always at the end */}
+            <p style={styles.cardLegal}>
+              {ui("auth.legalPrefix")}{" "}
+              <Link href="/terms" style={styles.cardLegalLink}>{ui("auth.terms")}</Link>
+              {" "}{ui("auth.legalMiddle")}{" "}
+              <Link href="/privacy" style={styles.cardLegalLink}>{ui("auth.privacy")}</Link>
+              {ui("auth.legalSuffix")}
             </p>
-            <LegalFooter compact />
-          </footer>
-        </div>
+          </section>
       </div>
     </main>
   );
@@ -407,71 +421,6 @@ export function LoginForm({ nextPath }: LoginFormProps) {
 
 /* ── Inline styles (layout only, no theming) ─────────────────────────────── */
 const styles: Record<string, React.CSSProperties> = {
-  main: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "32px 16px",
-    position: "relative",
-    overflow: "hidden",
-  },
-  mainDark: {
-    background:
-      "radial-gradient(1400px 700px at 15% -10%, rgba(29,171,137,0.10), transparent 65%)," +
-      "radial-gradient(1200px 600px at 95% 100%, rgba(22,41,68,0.12), transparent 65%)," +
-      "var(--advisor-canvas)",
-  },
-  mainLight: {
-    background:
-      "radial-gradient(1200px 640px at 10% -10%, rgba(29,171,137,0.12), transparent 68%)," +
-      "radial-gradient(980px 520px at 100% 0%, rgba(22,41,68,0.10), transparent 70%)," +
-      "linear-gradient(180deg, #eef4fb 0%, #f8fbff 46%, #e8eef8 100%)",
-  },
-
-  blobTop: {
-    position: "absolute",
-    top: "-120px",
-    right: "-80px",
-    width: "480px",
-    height: "480px",
-    borderRadius: "50%",
-    pointerEvents: "none",
-  },
-  blobTopDark: {
-    background: "radial-gradient(circle, rgba(29,171,137,0.12) 0%, transparent 70%)",
-  },
-  blobTopLight: {
-    background: "radial-gradient(circle, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0) 72%)",
-  },
-
-  blobBottom: {
-    position: "absolute",
-    bottom: "-140px",
-    left: "-100px",
-    width: "560px",
-    height: "560px",
-    borderRadius: "50%",
-    pointerEvents: "none",
-  },
-  blobBottomDark: {
-    background: "radial-gradient(circle, rgba(22,41,68,0.10) 0%, transparent 70%)",
-  },
-  blobBottomLight: {
-    background: "radial-gradient(circle, rgba(22,41,68,0.14) 0%, transparent 72%)",
-  },
-
-  wrapper: {
-    width: "100%",
-    maxWidth: "420px",
-    position: "relative",
-    zIndex: 1,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "14px",
-    transform: "translateY(-48px)",
-  },
   contentWrap: {
     width: "100%",
   },
@@ -559,8 +508,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: "grid",
     gridTemplateColumns: "1fr 1fr",
     gap: "4px",
-    margin: "24px 28px 0",
-    padding: "4px",
+    margin: "0 24px 0",
+    padding: "3px",
     borderRadius: "12px",
   },
   tabsDark: {
@@ -601,10 +550,10 @@ const styles: Record<string, React.CSSProperties> = {
 
   /* Form */
   form: {
-    padding: "24px 28px 28px",
+    padding: "4px 24px 20px",
     display: "flex",
     flexDirection: "column" as const,
-    gap: "16px",
+    gap: "12px",
   },
   inlineActions: {
     display: "flex",
@@ -675,5 +624,29 @@ const styles: Record<string, React.CSSProperties> = {
   footerText: {
     fontSize: "12px",
     color: "var(--text-muted)",
+  },
+  divisorLight: {
+    width: "64px",
+    height: "1px",
+    background: "linear-gradient(90deg, transparent, rgba(22,41,68,0.30), transparent)",
+    margin: "8px auto 6px",
+  } as React.CSSProperties,
+  divisorDark: {
+    width: "64px",
+    height: "1px",
+    background: "linear-gradient(90deg, transparent, rgba(161,219,198,0.40), transparent)",
+    margin: "8px auto 6px",
+  } as React.CSSProperties,
+  cardLegal: {
+    padding: "12px 24px 24px",
+    fontSize: "11px",
+    lineHeight: "1.6",
+    textAlign: "center" as const,
+    color: "var(--text-muted)",
+  },
+  cardLegalLink: {
+    color: "var(--advisor-accent)",
+    textDecoration: "underline",
+    textUnderlineOffset: "2px",
   },
 };

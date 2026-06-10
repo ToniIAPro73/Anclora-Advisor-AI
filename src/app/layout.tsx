@@ -22,7 +22,15 @@ const bodyFont = Source_Sans_3({
 export const metadata: Metadata = {
   title: ADVISOR_BRAND.name,
   description: ADVISOR_BRAND.description,
-  icons: { icon: ADVISOR_BRAND.faviconPath },
+  icons: {
+    icon: [
+      { url: ADVISOR_BRAND.faviconPath, sizes: 'any' },
+      { url: ADVISOR_BRAND.faviconPng32, type: 'image/png', sizes: '32x32' },
+      { url: ADVISOR_BRAND.faviconPng192, type: 'image/png', sizes: '192x192' },
+    ],
+    apple: [{ url: ADVISOR_BRAND.appleTouchIcon, sizes: '180x180', type: 'image/png' }],
+    shortcut: [ADVISOR_BRAND.faviconPath],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

@@ -85,7 +85,7 @@ export function CookieConsent() {
         });
         return;
       }
-    } catch {}
+    } catch { /* ignore parse errors — show banner */ }
     setOpen(true);
   }, []);
 
@@ -166,7 +166,7 @@ export function CookieConsent() {
   );
 }
 
-function CookieRow({ title, description, checked, disabled, onChange }: { title: string; description: string; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void }) {
+function CookieRow({ title, description, checked, disabled, onChange }: { title: string; description: string; checked: boolean; disabled?: boolean; onChange: (_: boolean) => void }) {
   return (
     <label className="flex items-start justify-between gap-4 rounded-2xl border p-4" style={{ borderColor: "var(--advisor-border)", background: "color-mix(in srgb, var(--advisor-panel) 88%, var(--advisor-light))" }}>
       <span>
