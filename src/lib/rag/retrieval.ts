@@ -6,11 +6,13 @@ import { generateEmbedding } from './embeddings';
 // Domain alias map: orchestrator types → DB category values
 // ----------------------------------------------------------------
 const DOMAIN_ALIAS: Record<string, string> = {
-  fiscal:  'fiscal',
-  laboral: 'laboral',
-  labor:   'laboral',   // orchestrator legacy key
-  mercado: 'mercado',
-  market:  'mercado',   // orchestrator legacy key
+  fiscal:         'fiscal',
+  laboral:        'laboral',
+  labor:          'laboral',        // orchestrator legacy key
+  mercado:        'mercado',
+  market:         'mercado',        // orchestrator legacy key
+  inmobiliario:   'inmobiliario',
+  legal:          'inmobiliario',   // alias for external callers (Nexus)
 };
 
 function resolveCategory(raw?: string): string {
