@@ -1,0 +1,48 @@
+name: Promote development → staging
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    name: Promote
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run -s type-check
+
+      - name: Lint
+        run: npm run -s lint
+
+      - name: Smoke tests
+        run: npm run -s test:smoke
+
+      - name: Merge development into staging
+        run: |
+          git checkout staging
+          git merge --no-ff origin/development -m "chore: merge development to staging [ci-skip]"
+          git push origin staging

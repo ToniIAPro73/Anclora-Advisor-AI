@@ -21,6 +21,8 @@ export default [
     rules: {
       "no-console": "off",
       "no-undef": "off",
+      "no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+      "no-empty": ["error", { "allowEmptyCatch": true }],
     },
   },
 ];
