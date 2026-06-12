@@ -1,13 +1,17 @@
 /**
- * Unit tests for contract compliance validator logic.
+ * Unit tests for contract compliance validator helpers.
  * Run: npx tsx tests/unit/test-contract-compliance.ts
  */
 
 import {
+  normalizeContractRequest,
+  validateContractCompliance,
+} from "../../src/lib/contracts/contract-compliance-validator";
+import {
   buildComplianceSystemPrompt,
   buildComplianceUserPrompt,
 } from "../../src/lib/rag/contract-compliance-prompt";
-import type { ValidateContractRequest, ContractFinding, ContractComplianceResponse } from "../../src/types/contract-compliance";
+import type { RAGChunk } from "../../src/lib/rag/retrieval";
 
 let passed = 0;
 let failed = 0;
@@ -22,108 +26,108 @@ function assert(condition: boolean, label: string): void {
   }
 }
 
-// ─── Helpers that replicate route logic without HTTP ─────────────────────────
+const validBody = {
+  contractText: "Contrato de arrendamiento de temporada con renta, fianza y clausulas de uso de vivienda.",
+  operationType: "alquiler_temporada",
+  jurisdiction: "ES-IB",
+  language: "es",
+};
 
-function parseModelResponse(raw: string): { findings: ContractFinding[]; warnings: ContractFinding[] } {
-  const fallback = { findings: [] as ContractFinding[], warnings: [] as ContractFinding[] };
-  try {
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return fallback;
-    return {
-      findings: Array.isArray(parsed.findings) ? parsed.findings : [],
-      warnings: Array.isArray(parsed.warnings) ? parsed.warnings : [],
-    };
-  } catch {
-    return fallback;
+const chunk: RAGChunk = {
+  id: "chunk-1",
+  document_id: "doc-1",
+  content: "La fianza y las clausulas de arrendamiento deben ajustarse a LAU.",
+  metadata: {
+    title: "LAU arrendamientos",
+    category: "inmobiliario",
+    source_url: "https://example.test/lau",
+  },
+  similarity: 0.8,
+};
+
+console.log("\nTest 1: request normalization accepts new and legacy names");
+const normalizedNew = normalizeContractRequest(validBody);
+assert(!("error" in normalizedNew), "new body is valid");
+if (!("error" in normalizedNew)) {
+  assert(normalizedNew.contractText.includes("arrendamiento"), "new contractText normalized");
+  assert(normalizedNew.operationType === "alquiler_temporada", "new operationType normalized");
+}
+
+const normalizedLegacy = normalizeContractRequest({
+  contract_id: "legacy-1",
+  contract_text: validBody.contractText,
+  operation_type: "compraventa",
+  org_id: "org-1",
+});
+assert(!("error" in normalizedLegacy), "legacy body is valid");
+if (!("error" in normalizedLegacy)) {
+  assert(normalizedLegacy.contractId === "legacy-1", "legacy contract_id preserved");
+  assert(normalizedLegacy.orgId === "org-1", "legacy org_id preserved");
+}
+
+console.log("\nTest 2: invalid bodies are rejected");
+assert("error" in normalizeContractRequest(null), "null rejected");
+assert("error" in normalizeContractRequest({ contractText: "" }), "empty text rejected");
+assert("error" in normalizeContractRequest({ contractText: "corto" }), "short text rejected");
+
+console.log("\nTest 3: prompt builders use normalized contract data");
+const normalizedPromptBody = normalizeContractRequest(validBody);
+assert(!("error" in normalizedPromptBody), "prompt fixture valid");
+if (!("error" in normalizedPromptBody)) {
+  const systemPrompt = buildComplianceSystemPrompt();
+  assert(systemPrompt.includes("JSON"), "system prompt requires JSON");
+  assert(systemPrompt.includes("critical"), "system prompt includes critical severity");
+
+  const userPrompt = buildComplianceUserPrompt(normalizedPromptBody, chunk.content);
+  assert(userPrompt.includes("alquiler_temporada"), "user prompt includes operation type");
+  assert(userPrompt.includes("ES-IB"), "user prompt includes jurisdiction");
+  assert(userPrompt.includes(chunk.content), "user prompt includes RAG context");
+}
+
+async function main(): Promise<void> {
+  console.log("\nTest 4: critical findings always block signing");
+  const critical = await validateContractCompliance(validBody, "test-request", {
+    retrieve: async () => ({ chunks: [chunk], cacheHit: false }),
+    generate: async () => JSON.stringify({
+      status: "ok",
+      confidence: 0.9,
+      summary: "Riesgo critico detectado.",
+      findings: [{
+        severity: "critical",
+        category: "clausula_abusiva",
+        title: "Renuncia imperativa",
+        description: "El contrato contiene una renuncia potencialmente imperativa.",
+        recommendation: "Eliminar o rehacer la clausula.",
+        block_signing: false,
+      }],
+      required_actions: [],
+    }),
+    now: () => new Date("2026-06-12T00:00:00.000Z"),
+  });
+  assert(critical.statusCode === 200, "critical response returns 200");
+  if ("block_signing" in critical.body) {
+    assert(critical.body.block_signing === true, "critical severity blocks signing");
+    assert(critical.body.status === "review_required", "critical severity requires review");
   }
+
+  console.log("\nTest 5: invalid model JSON degrades safely");
+  const invalidJson = await validateContractCompliance(validBody, "test-request", {
+    retrieve: async () => ({ chunks: [chunk], cacheHit: false }),
+    generate: async () => "not json",
+    now: () => new Date("2026-06-12T00:00:00.000Z"),
+  });
+  assert(invalidJson.statusCode === 200, "invalid JSON response returns 200");
+  if ("block_signing" in invalidJson.body) {
+    assert(invalidJson.body.status === "review_required", "invalid JSON requires review");
+    assert(invalidJson.body.block_signing === true, "invalid JSON blocks signing");
+    assert(invalidJson.body.legal_disclaimer.includes("abogado"), "disclaimer included");
+  }
+
+  console.log(`\n${passed + failed} tests - ${passed} passed, ${failed} failed`);
+  if (failed > 0) process.exit(1);
 }
 
-function buildResponse(
-  body: ValidateContractRequest,
-  parsed: { findings: ContractFinding[]; warnings: ContractFinding[] },
-  ragSourcesUsed: number
-): ContractComplianceResponse {
-  return {
-    contract_id: body.contract_id,
-    compliance_check_passed: parsed.findings.length === 0,
-    block_signing: parsed.findings.some((f) => f.block_signing),
-    verification_timestamp: new Date().toISOString(),
-    findings: parsed.findings,
-    warnings: parsed.warnings,
-    rag_sources_used: ragSourcesUsed,
-  };
-}
-
-// ─── Test 1: Missing required fields detected ─────────────────────────────────
-console.log("\nTest 1: required field validation");
-const missingFields = [
-  { contract_text: "text", operation_type: "compraventa", org_id: "org" } as Partial<ValidateContractRequest>,
-  { contract_id: "id", operation_type: "compraventa", org_id: "org" } as Partial<ValidateContractRequest>,
-  { contract_id: "id", contract_text: "text", org_id: "org" } as Partial<ValidateContractRequest>,
-  { contract_id: "id", contract_text: "text", operation_type: "compraventa" } as Partial<ValidateContractRequest>,
-];
-for (const body of missingFields) {
-  const isMissing = !body.contract_id || !body.contract_text || !body.operation_type || !body.org_id;
-  assert(isMissing, `missing field detected: ${JSON.stringify(Object.keys(body))}`);
-}
-
-// ─── Test 2: Valid body builds correct response shape ─────────────────────────
-console.log("\nTest 2: valid body → response shape");
-const validBody: ValidateContractRequest = {
-  contract_id: "test-001",
-  contract_text: "Contrato de arrendamiento de temporada...",
-  operation_type: "alquiler_temporada",
-  org_id: "org-abc",
-};
-const emptyParsed = { findings: [], warnings: [] };
-const response = buildResponse(validBody, emptyParsed, 3);
-assert(response.contract_id === "test-001", "contract_id reflected");
-assert(response.compliance_check_passed === true, "compliance_check_passed true when no findings");
-assert(response.block_signing === false, "block_signing false when no findings");
-assert(response.rag_sources_used === 3, "rag_sources_used set correctly");
-assert(typeof response.verification_timestamp === "string", "verification_timestamp is string");
-assert(Array.isArray(response.findings), "findings is array");
-assert(Array.isArray(response.warnings), "warnings is array");
-
-// ─── Test 3: block_signing propagates from findings ──────────────────────────
-console.log("\nTest 3: block_signing propagation");
-const blockingFinding: ContractFinding = {
-  clause_ref: "§3",
-  rule: "Art. 6 LAU",
-  severity: "block",
-  description: "Renuncia a prórroga forzosa",
-  suggested_fix: "Eliminar la cláusula",
-  block_signing: true,
-};
-const parsedWithBlock = { findings: [blockingFinding], warnings: [] };
-const blockResponse = buildResponse(validBody, parsedWithBlock, 0);
-assert(blockResponse.block_signing === true, "block_signing true when a finding has block_signing: true");
-assert(blockResponse.compliance_check_passed === false, "compliance_check_passed false when findings exist");
-
-// ─── Test 4: Unparseable model output → empty findings, no crash ─────────────
-console.log("\nTest 4: unparseable model output");
-const badJsons = ["not json at all", "```json\n{}```", "", "null", "undefined"];
-for (const bad of badJsons) {
-  const result = parseModelResponse(bad);
-  assert(Array.isArray(result.findings), `findings is array for input: "${bad.slice(0, 20)}"`);
-  assert(Array.isArray(result.warnings), `warnings is array for input: "${bad.slice(0, 20)}"`);
-}
-
-// ─── Test 5: Prompt builders return non-empty strings ────────────────────────
-console.log("\nTest 5: prompt builders");
-const systemPrompt = buildComplianceSystemPrompt();
-assert(systemPrompt.length > 100, "system prompt non-trivial");
-assert(systemPrompt.includes("LAU"), "system prompt mentions LAU");
-assert(systemPrompt.includes("JSON"), "system prompt requests JSON");
-
-const userPrompt = buildComplianceUserPrompt(validBody, "Art. 6 LAU...");
-assert(userPrompt.includes(validBody.operation_type), "user prompt includes operation_type");
-assert(userPrompt.includes(validBody.contract_text), "user prompt includes contract_text");
-assert(userPrompt.includes("Art. 6 LAU"), "user prompt includes RAG context");
-
-const userPromptNoRag = buildComplianceUserPrompt(validBody, "");
-assert(userPromptNoRag.includes("sin fragmentos recuperados"), "empty rag context handled gracefully");
-
-// ─── Summary ─────────────────────────────────────────────────────────────────
-console.log(`\n${passed + failed} tests — ${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
