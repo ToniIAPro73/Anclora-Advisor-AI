@@ -2,10 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import type { AppRole } from "@/lib/auth/roles";
 import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const baseLinks = [
   {
@@ -53,17 +52,8 @@ interface DashboardNavProps {
 
 export function DashboardNav({ role }: DashboardNavProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { locale, resolvedTheme, sidebarCollapsed: collapsed, setSidebarCollapsed } = useAppPreferences();
   const links = role === "admin" ? [...baseLinks, adminLink] : baseLinks;
-
-  const handleLogout = async () => {
-    const supabase = getSupabaseBrowserClient();
-    await supabase.auth.signOut();
-    await fetch("/api/auth/session", { method: "DELETE" });
-    router.replace("/login");
-    router.refresh();
-  };
 
   return (
     <aside
@@ -159,19 +149,6 @@ export function DashboardNav({ role }: DashboardNavProps) {
           );
         })}
       </nav>
-      <div className="px-4 pb-4 md:mt-auto md:px-5 md:pb-6">
-        <button
-          type="button"
-          onClick={handleLogout}
-          title={collapsed ? (locale === "es" ? "Cerrar sesion" : "Sign out") : undefined}
-          className={`advisor-sidebar-logout rounded-xl py-2.5 text-sm font-semibold transition ${
-            collapsed ? "w-full px-2" : "w-full px-3"
-          }`}
-          style={{ color: "var(--sidebar-text-strong)" }}
-        >
-          {collapsed ? (locale === "es" ? "Salir" : "Exit") : (locale === "es" ? "Cerrar sesion" : "Sign out")}
-        </button>
-      </div>
     </aside>
   );
 }
