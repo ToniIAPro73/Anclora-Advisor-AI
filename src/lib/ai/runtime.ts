@@ -45,6 +45,11 @@ export interface AIRuntimeSummary {
   expectedEmbeddingDimension: number;
 }
 
+export interface GenerateChatTextOptions {
+  temperature?: number;
+  maxTokens?: number;
+}
+
 type OpenAICompatibleChatResponse = {
   choices?: Array<{
     message?: {
@@ -270,17 +275,23 @@ async function generateChatWithOllama(
   config: ChatRuntimeConfig,
   model: string,
   systemPrompt: string,
-  query: string
+  query: string,
+  options: GenerateChatTextOptions = {}
 ): Promise<string> {
+  const generationOptions: Record<string, number> = {
+    temperature: options.temperature ?? config.temperature,
+  };
+  if (options.maxTokens && options.maxTokens > 0) {
+    generationOptions.num_predict = options.maxTokens;
+  }
+
   const response = await fetch(`${config.baseUrl}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
       stream: false,
-      options: {
-        temperature: config.temperature,
-      },
+      options: generationOptions,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: query },
@@ -305,23 +316,29 @@ async function generateChatWithOpenAICompatible(
   config: ChatRuntimeConfig,
   model: string,
   systemPrompt: string,
-  query: string
+  query: string,
+  options: GenerateChatTextOptions = {}
 ): Promise<string> {
+  const body: Record<string, unknown> = {
+    model,
+    temperature: options.temperature ?? config.temperature,
+    stream: false,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: query },
+    ],
+  };
+  if (options.maxTokens && options.maxTokens > 0) {
+    body.max_tokens = options.maxTokens;
+  }
+
   const response = await fetch(`${config.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model,
-      temperature: config.temperature,
-      stream: false,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: query },
-      ],
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -337,12 +354,17 @@ async function generateChatWithOpenAICompatible(
   return text;
 }
 
-export async function generateChatText(model: string, systemPrompt: string, query: string): Promise<string> {
+export async function generateChatText(
+  model: string,
+  systemPrompt: string,
+  query: string,
+  options: GenerateChatTextOptions = {}
+): Promise<string> {
   const runtime = getAIRuntimeConfig();
   if (runtime.chat.provider === "ollama") {
-    return generateChatWithOllama(runtime.chat, model, systemPrompt, query);
+    return generateChatWithOllama(runtime.chat, model, systemPrompt, query, options);
   }
-  return generateChatWithOpenAICompatible(runtime.chat, model, systemPrompt, query);
+  return generateChatWithOpenAICompatible(runtime.chat, model, systemPrompt, query, options);
 }
 
 async function generateEmbeddingWithOllama(config: EmbeddingRuntimeConfig, text: string): Promise<number[]> {
