@@ -61,7 +61,7 @@ const DEFAULT_REQUIRED_CLAUSES = [
 
 // Date-like patterns (loose — for anomaly detection, not parsing)
 const DATE_PATTERN =
-  /\b(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\b|\b(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\b/g;
+  /\b(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b|\b(\d{4})[/-](\d{1,2})[/-](\d{1,2})\b/g;
 
 // Amount patterns: 1.000,00 € / 1,000.00 EUR / $1000
 const AMOUNT_PATTERN =
