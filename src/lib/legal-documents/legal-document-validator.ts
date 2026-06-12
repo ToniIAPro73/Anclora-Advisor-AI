@@ -174,9 +174,20 @@ export async function validateLegalDocument(
 
   // Step 7: Parse LLM response
   let parsed: ParsedModelResponse;
+  const jsonMatch = modelOutput.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    log("warn", "LLM response contains no JSON — returning fallback", requestId);
+    return buildFallbackResult(
+      normalized,
+      deterministicResult.differences,
+      requestId,
+      modelName,
+      ragSourcesUsed,
+      deps.now(),
+    );
+  }
   try {
-    const jsonMatch = modelOutput.match(/\{[\s\S]*\}/);
-    parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    parsed = JSON.parse(jsonMatch[0]);
   } catch {
     log("warn", "LLM response parse failed — returning fallback", requestId);
     return buildFallbackResult(
