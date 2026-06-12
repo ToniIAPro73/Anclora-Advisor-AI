@@ -30,7 +30,7 @@ const MIN_DOCUMENT_TEXT_LENGTH = 25;
 // ── Dependencies (DI for testing) ─────────────────────────────────────────────
 
 export interface LegalDocumentValidatorDependencies {
-  retrieve: (query: string, options?: import("@/lib/rag/retrieval").RetrievalOptions) => Promise<RetrievalResult>;
+  retrieve: (_query: string, _options?: import("@/lib/rag/retrieval").RetrievalOptions) => Promise<RetrievalResult>;
   generate: typeof generateChatText;
   now: () => Date;
 }
@@ -273,7 +273,6 @@ function buildFallbackResult(
   now: Date,
 ): LegalDocumentValidatorResult {
   const deterministicRiskLevel = computeRiskLevel(deterministicDiffs);
-  const blockSigning = deterministicRiskLevel === "critical" || deterministicRiskLevel === "high";
 
   const response: LegalDocumentValidationResponse = {
     status: "review_required",
