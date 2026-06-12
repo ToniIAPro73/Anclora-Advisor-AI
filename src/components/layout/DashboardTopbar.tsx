@@ -1,12 +1,14 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 /* eslint-disable no-unused-vars */
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { GeneralAlertCenter } from "@/components/layout/GeneralAlertCenter";
 import { useAppPreferences, type ThemeMode } from "@/components/providers/AppPreferencesProvider";
 import type { AppRole } from "@/lib/auth/roles";
 import { uiText } from "@/lib/i18n/ui";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useEffect } from "react";
 
 type SectionCopy = {
   title: string;
@@ -106,19 +108,87 @@ export function DashboardTopbar({ userEmail, role }: DashboardTopbarProps) {
           <ThemeToggleGroup current={themeMode} onChange={setThemeMode} locale={locale} />
           <LocaleToggle current={locale} onChange={setLocale} locale={locale} />
           <span className="advisor-chip">{uiText(locale, "common.role")}: {role}</span>
-          <span
-            className="rounded-full border px-3 py-1 text-xs font-semibold"
-            style={{
-              borderColor: "var(--advisor-border)",
-              background: "color-mix(in srgb, var(--advisor-panel) 92%, var(--advisor-light))",
-              color: "var(--text-primary)",
-            }}
-          >
-            {userEmail}
-          </span>
+          <UserMenu userEmail={userEmail} locale={locale} />
         </div>
       </div>
     </header>
+  );
+}
+
+function getUserInitials(email: string): string {
+  const prefix = email.split("@")[0] ?? email;
+  return prefix.slice(0, 2).toUpperCase();
+}
+
+function UserMenu({ userEmail, locale }: { userEmail: string; locale: "es" | "en" }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const handleLogout = async () => {
+    setOpen(false);
+    const supabase = getSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    await fetch("/api/auth/session", { method: "DELETE" });
+    router.replace("/login");
+    router.refresh();
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={userEmail}
+        title={userEmail}
+        className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition hover:opacity-80"
+        style={{
+          background: "var(--advisor-accent, #1DAB89)",
+          color: "#fff",
+        }}
+      >
+        {getUserInitials(userEmail)}
+      </button>
+
+      {open && (
+        <div
+          className="absolute right-0 top-10 z-50 min-w-[180px] rounded-xl border py-1 shadow-lg"
+          style={{
+            background: "var(--advisor-panel)",
+            borderColor: "var(--advisor-border)",
+          }}
+        >
+          <p
+            className="truncate px-4 py-2 text-xs"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            {userEmail}
+          </p>
+          <div style={{ borderTop: "1px solid var(--advisor-border)" }} />
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-medium transition hover:opacity-80"
+            style={{ color: "var(--text-primary)" }}
+          >
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            {locale === "es" ? "Cerrar sesión" : "Sign out"}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
