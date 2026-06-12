@@ -6,7 +6,7 @@ import {
 import type { ContractValidatorDependencies } from "@/lib/contracts/contract-compliance-validator";
 import { getRequestId } from "@/lib/observability/logger";
 
-export function createValidateContractPost(
+function createValidateContractPost(
   deps: ContractValidatorDependencies = defaultContractValidatorDependencies
 ) {
   return async function validateContractPost(req: NextRequest | Request) {
