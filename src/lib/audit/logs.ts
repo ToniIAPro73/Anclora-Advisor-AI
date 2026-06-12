@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const AUDIT_DOMAIN_VALUES = ["fiscal", "labor", "invoices", "admin_rag"] as const;
+export const AUDIT_DOMAIN_VALUES = ["fiscal", "labor", "invoices", "admin_rag", "contracts"] as const;
 export type AuditDomain = (typeof AUDIT_DOMAIN_VALUES)[number];
 
 export interface AuditLogRecord {
