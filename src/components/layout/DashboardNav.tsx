@@ -65,7 +65,7 @@ export function DashboardNav({ role }: DashboardNavProps) {
       <div className="px-5 py-4 md:px-6 md:py-5">
         <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3.5"}`}>
           <Image
-            src="/brand/logo-Advisor_1.png"
+            src="/brand/logo-Advisor.png"
             alt="Anclora Advisor"
             width={collapsed ? 63 : 72}
             height={collapsed ? 42 : 48}
