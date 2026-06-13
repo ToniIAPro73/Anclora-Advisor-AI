@@ -49,6 +49,46 @@ const REQUIRED_CLAUSES: Record<string, string[]> = {
     "descripción del inmueble",
     "partes",
   ],
+  kyc: [
+    "identidad",
+    "titular real",
+    "origen de fondos",
+    "documento identificativo",
+    "pep",
+    "sanciones",
+  ],
+  mandato: [
+    "mandante",
+    "mandatario",
+    "facultades",
+    "vigencia",
+    "honorarios",
+    "revocación",
+  ],
+  reserva: [
+    "partes",
+    "inmueble",
+    "precio",
+    "cantidad reservada",
+    "plazo",
+    "penalización",
+  ],
+  inventario: [
+    "inmueble",
+    "estado",
+    "mobiliario",
+    "electrodomésticos",
+    "fecha",
+    "firma",
+  ],
+  entrega_llaves: [
+    "partes",
+    "inmueble",
+    "fecha",
+    "llaves",
+    "estado",
+    "firma",
+  ],
 };
 
 const DEFAULT_REQUIRED_CLAUSES = [
@@ -77,6 +117,7 @@ export function runDeterministicRules(
   text: string,
   documentType: string,
   canonicalText?: string,
+  variableSnapshot: Record<string, unknown> = {},
 ): DeterministicRuleResult {
   const differences: LegalDifference[] = [];
 
@@ -103,6 +144,9 @@ export function runDeterministicRules(
 
   const amountAnomalies = detectAmountAnomalies(text, canonicalText);
   differences.push(...amountAnomalies);
+
+  differences.push(...detectVariableSnapshotInconsistencies(text, variableSnapshot));
+  differences.push(...detectRealEstateCriticalRules(text, documentType));
 
   return {
     differences,
@@ -221,12 +265,130 @@ function detectAmountAnomalies(
   return differences;
 }
 
+function detectVariableSnapshotInconsistencies(
+  submitted: string,
+  variableSnapshot: Record<string, unknown>,
+): LegalDifference[] {
+  const differences: LegalDifference[] = [];
+  const lower = submitted.toLowerCase();
+  for (const [field, value] of Object.entries(variableSnapshot)) {
+    if (value === undefined || value === null) continue;
+    if (!isTrackedSnapshotField(field)) continue;
+    const normalizedValue = normalizeSnapshotValue(value);
+    if (!normalizedValue || normalizedValue.length < 2) continue;
+    if (!lower.includes(normalizedValue.toLowerCase())) {
+      differences.push({
+        type: field.toLowerCase().includes("jurisdiction") ? "field_inconsistency" : "amount_anomaly",
+        field,
+        canonical_value: normalizedValue,
+        description: `Snapshot value for "${field}" was not found in the submitted document.`,
+        severity: field.toLowerCase().includes("price") || field.toLowerCase().includes("jurisdiction")
+          ? "critical"
+          : "high",
+      });
+    }
+  }
+  return differences;
+}
+
+function detectRealEstateCriticalRules(text: string, documentType: string): LegalDifference[] {
+  const lower = text.toLowerCase();
+  const normalizedType = documentType.toLowerCase();
+  const differences: LegalDifference[] = [];
+
+  if (!isRealEstateDocumentType(normalizedType)) {
+    return differences;
+  }
+
+  if (!containsAny(lower, ["dni", "nie", "pasaporte", "cif", "identidad"])) {
+    differences.push({
+      type: "missing_clause",
+      field: "identity",
+      description: "Party identity details are missing or insufficient.",
+      severity: "critical",
+    });
+  }
+
+  if (requiresTemporalCause(normalizedType) && !containsAny(lower, ["causa de temporalidad", "uso temporal", "motivo temporal", "estancia laboral", "estancia por estudios", "vacaciones"])) {
+    differences.push({
+      type: "missing_clause",
+      field: "temporal_cause",
+      description: "Seasonal/temporary rental lacks an explicit temporal cause.",
+      severity: "critical",
+    });
+  }
+
+  if (["compraventa", "arras", "reserva"].includes(normalizedType) && !containsAny(lower, ["cargas", "gravámenes", "registro", "nota simple"])) {
+    differences.push({
+      type: "missing_clause",
+      field: "encumbrances",
+      description: "Real-estate sale document lacks encumbrance or registry verification language.",
+      severity: "high",
+    });
+  }
+
+  if (["inventario", "entrega_llaves"].includes(normalizedType) && !containsAny(lower, ["estado", "anexo", "fotograf", "inventario"])) {
+    differences.push({
+      type: "missing_clause",
+      field: "annexes",
+      description: "Inventory/key-handover document lacks condition evidence or annex references.",
+      severity: "high",
+    });
+  }
+
+  return differences;
+}
+
 function extractAmounts(text: string): string[] {
   return text.match(new RegExp(AMOUNT_PATTERN.source, AMOUNT_PATTERN.flags)) ?? [];
 }
 
 function normalizeAmount(amount: string): string {
   return amount.replace(/\s/g, "").replace(/,/g, ".").toLowerCase();
+}
+
+function normalizeSnapshotValue(value: unknown): string {
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return value.trim();
+  return "";
+}
+
+function isTrackedSnapshotField(field: string): boolean {
+  const normalized = field.toLowerCase();
+  return [
+    "price",
+    "precio",
+    "amount",
+    "jurisdiction",
+    "object",
+    "objeto",
+    "property",
+    "inmueble",
+    "templateversion",
+    "template_version",
+  ].some((part) => normalized.includes(part));
+}
+
+function containsAny(text: string, needles: string[]): boolean {
+  return needles.some((needle) => text.includes(needle));
+}
+
+function requiresTemporalCause(documentType: string): boolean {
+  return documentType === "alquiler_temporada" || documentType === "alquiler_turistico";
+}
+
+function isRealEstateDocumentType(documentType: string): boolean {
+  return [
+    "compraventa",
+    "alquiler_temporada",
+    "alquiler_turistico",
+    "arras",
+    "kyc",
+    "mandato",
+    "reserva",
+    "inventario",
+    "entrega_llaves",
+  ].includes(documentType);
 }
 
 function splitSections(text: string): string[] {
