@@ -1,0 +1,82 @@
+[
+  {
+    "id": "approved-sale-v1",
+    "label": "approved",
+    "expected_status": "approved",
+    "expected_block_signing": false,
+    "document_type": "compraventa",
+    "current_text": "Contrato de compraventa. Partes con DNI y NIE identificados. Objeto: vivienda en España. Precio: 250.000 EUR. Forma de pago por transferencia. Descripción del inmueble, cargas y gravámenes verificados, notaría, impuestos, fecha de entrega y arras pactadas.",
+    "canonical_text": "Contrato de compraventa. Partes con DNI y NIE identificados. Objeto: vivienda en España. Precio: 250.000 EUR. Forma de pago por transferencia. Descripción del inmueble, cargas y gravámenes verificados, notaría, impuestos, fecha de entrega y arras pactadas."
+  },
+  {
+    "id": "warning-wording-v1",
+    "label": "warning",
+    "expected_status": "approved_with_warnings",
+    "expected_block_signing": false,
+    "document_type": "mandato",
+    "current_text": "Mandato con DNI de mandante y mandatario. Facultades de comercialización, vigencia, honorarios y revocación descritos.",
+    "model_status": "approved_with_warnings",
+    "model_findings": [
+      {
+        "severity": "low",
+        "category": "wording",
+        "title": "Minor wording clarification",
+        "description": "The mandate wording can be clearer.",
+        "recommendation": "Clarify commercial scope.",
+        "block_signing": false
+      }
+    ]
+  },
+  {
+    "id": "review-missing-source-v1",
+    "label": "review",
+    "expected_status": "review_required",
+    "expected_block_signing": true,
+    "document_type": "arras",
+    "source_mode": "none",
+    "current_text": "Contrato de arras. Partes con DNI y NIE. Cantidad, plazo, penalización, descripción del inmueble y partes indicadas."
+  },
+  {
+    "id": "block-placeholder-v1",
+    "label": "block",
+    "expected_status": "review_required",
+    "expected_block_signing": true,
+    "document_type": "reserva",
+    "current_text": "Reserva de inmueble. Partes con DNI. Inmueble descrito. Precio: [PRECIO]. Cantidad reservada, plazo y penalización."
+  },
+  {
+    "id": "clause-deleted-v1",
+    "label": "clause_deleted",
+    "expected_status": "review_required",
+    "expected_block_signing": true,
+    "document_type": "compraventa",
+    "canonical_text": "Contrato de compraventa. Partes con DNI y NIE. Precio: 250.000 EUR. Forma de pago. Descripción del inmueble. Cargas y gravámenes. Notaría. Impuestos. Fecha de entrega. Arras.",
+    "current_text": "Contrato de compraventa. Partes con DNI y NIE. Precio: 250.000 EUR."
+  },
+  {
+    "id": "price-change-v1",
+    "label": "price_change",
+    "expected_status": "review_required",
+    "expected_block_signing": true,
+    "document_type": "compraventa",
+    "variable_snapshot": { "price": "250.000 EUR", "jurisdiction": "España" },
+    "current_text": "Contrato de compraventa. Partes con DNI y NIE. Objeto: vivienda en España. Precio: 180.000 EUR. Forma de pago. Descripción del inmueble. Cargas y gravámenes. Notaría. Impuestos. Fecha de entrega. Arras."
+  },
+  {
+    "id": "jurisdiction-change-v1",
+    "label": "jurisdiction_change",
+    "expected_status": "review_required",
+    "expected_block_signing": true,
+    "document_type": "alquiler_turistico",
+    "variable_snapshot": { "jurisdiction": "España" },
+    "current_text": "Contrato turístico con DNI de las partes, causa de temporalidad por vacaciones, número de licencia, precio por noche, capacidad máxima, limpieza, cancelación y fianza. Jurisdicción: Francia."
+  },
+  {
+    "id": "bad-temporality-v1",
+    "label": "bad_temporality",
+    "expected_status": "review_required",
+    "expected_block_signing": true,
+    "document_type": "alquiler_temporada",
+    "current_text": "Contrato de alquiler de temporada con DNI de las partes. Renta, duración, fianza, inventario, suministros y rescisión."
+  }
+]
