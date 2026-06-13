@@ -1,7 +1,7 @@
 # Legal Document Validation Engine
 
-Validates legal documents against deterministic rules and LLM-based legal
-analysis, with optional comparison against canonical templates.
+Validates legal documents against deterministic rules, source quality controls,
+canonical-template comparison, and LLM-based legal analysis.
 
 ---
 
@@ -11,21 +11,33 @@ analysis, with optional comparison against canonical templates.
 
 Full validation: deterministic rules + RAG context retrieval + LLM analysis.
 
-**Request**
+Requires internal authentication:
+
+- Header: `x-advisor-internal-api-key: <ADVISOR_INTERNAL_API_KEY>`
+- Optional caller trace: `x-advisor-caller: nexus`
+
+**Canonical Nexus request**
 
 ```json
 {
-  "documentText": "...",
+  "documentId": "doc-abc123",
+  "templateId": "tpl-compraventa",
+  "templateVersionId": "tpl-compraventa-v1",
   "documentType": "compraventa",
+  "operationType": "sale",
   "jurisdiction": "España",
   "language": "es",
-  "canonicalTemplate": "...",
-  "documentId": "doc-abc123",
-  "orgId": "org-xyz"
+  "canonicalText": "...",
+  "currentText": "...",
+  "variableSnapshot": {},
+  "metadata": {},
+  "sourceHints": [],
+  "requestId": "nexus-request-id"
 }
 ```
 
-All fields accept camelCase or snake_case (`document_text`, `document_type`, etc.).
+Legacy aliases remain accepted (`documentText`, `canonicalTemplate`,
+`document_text`, `canonical_template`, etc.).
 
 | Field | Required | Description |
 |-------|----------|-------------|
@@ -41,22 +53,26 @@ All fields accept camelCase or snake_case (`document_text`, `document_type`, etc
 
 ```json
 {
-  "status": "ok | review_required | error",
+  "status": "approved | approved_with_warnings | review_required | rejected",
   "block_signing": false,
   "risk_level": "low | medium | high | critical",
-  "review_requirement": "none | recommended | required | urgent",
+  "review_requirement": "none | internal_review | legal_review | notarial_review",
   "confidence": 0.85,
   "summary": "...",
   "findings": [],
   "differences": [],
   "required_actions": [],
+  "unresolved_placeholders": [],
   "missing_clauses": [],
+  "missing_documents": [],
   "legal_disclaimer": "...",
   "sources": [],
   "document_id": "doc-abc123",
   "validation_timestamp": "2026-01-15T10:00:00.000Z",
   "rag_sources_used": 3,
   "request_id": "..."
+  "engine_version": "legal-validation-v1",
+  "prompt_version": "legal-document-validation-prompt-v1"
 }
 ```
 
@@ -64,14 +80,17 @@ All fields accept camelCase or snake_case (`document_text`, `document_type`, etc
 
 - Any finding with `severity: "critical"` → `block_signing: true`.
 - Any detected placeholder (`[...]`, `___`, `XXXX`, etc.) → `risk_level: critical`, `block_signing: true`.
-- LLM failure or malformed response → `status: review_required`, `block_signing: true`.
-- RAG failure → proceeds with empty context; may lower confidence.
+- LLM failure, malformed response, timeout, or circuit breaker → `status: review_required`, `block_signing: true`.
+- No usable legal source → `status: review_required`, `block_signing: true`.
+- Superseded, uncertain, expired, low-confidence, or jurisdiction-mismatched sources reduce confidence and force review or block depending on severity.
+- Critical deterministic risk always blocks signing.
 
 ---
 
 ### `POST /api/legal-documents/compare`
 
 Deterministic-only comparison: no LLM call, no RAG. Fast and synchronous.
+Requires the same internal auth header as validation.
 
 **Request**
 
@@ -110,8 +129,10 @@ POST /api/legal-documents/validate
   ├─ normalizeLegalDocumentRequest()       — input sanitization, camel/snake
   ├─ runDeterministicRules()               — placeholder, clause, date, amount
   ├─ retrieveContext(category: "legal")    — RAG vector search
+  ├─ evaluateLegalSources()                — authority, jurisdiction, status, validity
   ├─ buildLegalDocumentSystemPrompt()      — legal auditor persona
   ├─ buildLegalDocumentUserPrompt()        — doc text + diffs + RAG context
+  ├─ runWithLegalValidationResilience()    — timeout, retry, circuit breaker
   ├─ deps.generate()                       — LLM call (DI-injectable)
   ├─ parseAndMergeFindings()               — normalize + merge deterministic + LLM
   ├─ finalizeRiskAndBlockSigning()         — business rules
@@ -154,6 +175,8 @@ The audit trail (`LegalDocumentAuditPayload`) stores:
 - `sha256(canonicalTemplate)` — hash if provided
 - `risk_level`, `block_signing`, `status`, `findings_count`, `differences_count`
 - `model_used`, `rag_sources_used`, `request_id`, `document_id`, `org_id`
+- `template_version_id`, `prompt_version`, `engine_version`, source statuses,
+  duration, fallback flag, and hashes
 
 **Never logged**: raw contract text, names, DNI, addresses, banking data, or any personal information.
 
@@ -163,6 +186,14 @@ The audit trail (`LegalDocumentAuditPayload`) stores:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `ADVISOR_INTERNAL_API_KEY` | none | Required key for internal legal validation endpoints |
+| `ADVISOR_LEGAL_VALIDATION_MODEL` | fallback model | Canonical model override |
+| `ADVISOR_LEGAL_VALIDATION_MAX_TOKENS` | legacy value / `1500` | Max LLM response tokens |
+| `ADVISOR_LEGAL_VALIDATION_TEMPERATURE` | legacy value / `0` | LLM temperature |
+| `ADVISOR_LEGAL_VALIDATION_TIMEOUT_MS` | `20000` | LLM timeout |
+| `ADVISOR_LEGAL_VALIDATION_PROMPT_VERSION` | `legal-document-validation-prompt-v1` | Prompt version returned to Nexus |
+| `ADVISOR_LEGAL_VALIDATION_ENGINE_VERSION` | `legal-validation-v1` | Engine version returned to Nexus |
+| `ADVISOR_LEGAL_VALIDATION_RATE_LIMIT` | `120` | Requests per caller per minute |
 | `ADVISOR_LEGAL_DOCUMENT_VALIDATOR_MODEL` | Falls back to `ADVISOR_CONTRACT_VALIDATOR_MODEL` | LLM model name |
 | `ADVISOR_LEGAL_DOCUMENT_VALIDATOR_MAX_TOKENS` | `1500` | Max response tokens |
 | `ADVISOR_LEGAL_DOCUMENT_VALIDATOR_TEMPERATURE` | `0` | LLM temperature |
