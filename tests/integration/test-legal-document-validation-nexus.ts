@@ -7,9 +7,11 @@ process.env.ADVISOR_INTERNAL_API_KEY = "test-internal-key";
 process.env.ADVISOR_LEGAL_VALIDATION_TIMEOUT_MS = "50";
 process.env.ADVISOR_LEGAL_VALIDATION_RETRIES = "0";
 
-import { createLegalDocumentValidatePost } from "../../src/app/api/legal-documents/validate/route";
-import { createLegalDocumentComparePost } from "../../src/app/api/legal-documents/compare/route";
-import { createValidateContractPost } from "../../src/app/api/validate-contract/route";
+import {
+  createLegalDocumentComparePost,
+  createLegalDocumentValidatePost,
+} from "../../src/lib/legal-documents/legal-document-route-handlers";
+import { createValidateContractPost } from "../../src/lib/contracts/contract-route-handlers";
 import type { LegalDocumentValidatorDependencies } from "../../src/lib/legal-documents/legal-document-validator";
 import type { RAGChunk, RetrievalResult } from "../../src/lib/rag/retrieval";
 
