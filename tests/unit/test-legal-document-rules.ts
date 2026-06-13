@@ -43,7 +43,8 @@ console.log("\nTest 3: clean document with all required clauses");
 {
   const text = `
     Contrato de alquiler de temporada.
-    Partes: arrendador y arrendatario.
+    Partes: arrendador con DNI y arrendatario con NIE.
+    Causa de temporalidad: estancia laboral de dos meses.
     Renta: 1.200 EUR al mes.
     Duración: del 1 de julio al 31 de agosto.
     Fianza: 2.400 EUR depositados a la firma.
@@ -86,10 +87,19 @@ console.log("\nTest 6: computeRiskLevel escalation");
 // ── Test 7: No canonical — only submitted text analyzed ───────────────────────
 console.log("\nTest 7: no canonical template — only submitted analyzed");
 {
-  const text = "Contrato de arrendamiento turístico con número de licencia válido, precio por noche, capacidad máxima, limpieza, cancelación, fianza.";
+  const text = "Contrato de arrendamiento turístico con DNI de las partes, causa de temporalidad, número de licencia válido, precio por noche, capacidad máxima, limpieza, cancelación, fianza.";
   const result = runDeterministicRules(text, "alquiler_turistico");
   assert(result.missingClauses.length === 0, "all required clauses present for alquiler_turistico");
   assert(result.placeholdersFound === 0, "no placeholders");
+}
+
+// ── Test 8: seasonal rental requires temporal cause ──────────────────────────
+console.log("\nTest 8: seasonal rental temporal cause is critical");
+{
+  const text = "Contrato de alquiler de temporada con DNI de las partes. Renta, duración, fianza, inventario, suministros y rescisión.";
+  const result = runDeterministicRules(text, "alquiler_temporada");
+  assert(result.differences.some((d) => d.field === "temporal_cause"), "detects missing temporal cause");
+  assert(result.differences.some((d) => d.severity === "critical"), "missing temporal cause is critical");
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────

@@ -25,13 +25,35 @@ function assert(condition: boolean, label: string): void {
 
 const emptyRetrieval: RetrievalResult = { chunks: [], query: "test", cached: false };
 const fixedNow = new Date("2026-01-15T10:00:00Z");
+const currentLegalRetrieval: RetrievalResult = {
+  chunks: [
+    {
+      id: "chunk-legal-1",
+      document_id: "legal-source-1",
+      content: "La LAU exige causa de temporalidad y pactos claros de renta, duración y fianza.",
+      metadata: {
+        title: "LAU rental source",
+        source_url: "https://example.test/lau",
+        jurisdiction: "España",
+        status: "current",
+        reviewed_at: "2026-01-01",
+        authority: "BOE",
+        source_type: "law",
+        confidence: 0.9,
+      },
+      similarity: 0.9,
+    },
+  ],
+  query: "test",
+  cached: false,
+};
 
 function makeDeps(overrides: Partial<LegalDocumentValidatorDependencies> = {}): LegalDocumentValidatorDependencies {
   return {
-    retrieve: async () => emptyRetrieval,
+    retrieve: async () => currentLegalRetrieval,
     generate: async () =>
       JSON.stringify({
-        status: "ok",
+        status: "approved",
         confidence: 0.85,
         summary: "Sin infracciones detectadas.",
         findings: [],
@@ -45,7 +67,7 @@ function makeDeps(overrides: Partial<LegalDocumentValidatorDependencies> = {}): 
 
 const minimalValidBody = {
   documentText:
-    "Contrato de arrendamiento de temporada. Renta: 1.200 EUR. Duración: 2 meses. Fianza: 2.400 EUR. Inventario adjunto. Suministros incluidos. Rescisión según LAU.",
+    "Contrato de arrendamiento de temporada. DNI de arrendador y NIE de arrendatario identificados. Causa de temporalidad: estancia de trabajo. Renta: 1.200 EUR. Duración: 2 meses. Fianza: 2.400 EUR. Inventario adjunto. Suministros incluidos. Rescisión según LAU.",
   documentType: "alquiler_temporada",
   jurisdiction: "España",
   language: "es",
@@ -94,6 +116,9 @@ async function test4() {
   assert("differences" in body, "body has differences array");
   assert("findings" in body, "body has findings array");
   assert("legal_disclaimer" in body, "body has legal_disclaimer");
+  assert("request_id" in body, "body has request_id");
+  assert("engine_version" in body, "body has engine_version");
+  assert("prompt_version" in body, "body has prompt_version");
   assert(body.validation_timestamp === fixedNow.toISOString(), "validation_timestamp uses injected now()");
 }
 
@@ -125,7 +150,7 @@ console.log("\nTest 7: placeholder text forces critical risk");
 async function test7() {
   const body = {
     ...minimalValidBody,
-    documentText: "Contrato de arrendamiento. Arrendatario: [NOMBRE COMPLETO]. Renta: 1.200 EUR. Duración: 2 meses. Fianza: 2.400 EUR. Inventario adjunto. Suministros incluidos. Rescisión según LAU.",
+    documentText: "Contrato de arrendamiento. Arrendatario: [NOMBRE COMPLETO]. DNI pendiente. Causa de temporalidad: trabajo. Renta: 1.200 EUR. Duración: 2 meses. Fianza: 2.400 EUR. Inventario adjunto. Suministros incluidos. Rescisión según LAU.",
   };
   const result = await validateLegalDocument(body, "req-test-7", makeDeps());
   const resp = result.body as Record<string, unknown>;
@@ -134,6 +159,17 @@ async function test7() {
     resp.risk_level === "critical" || resp.risk_level === "high",
     "risk_level elevated for placeholder",
   );
+}
+
+// ── Test 9: missing RAG sources prevents approval ────────────────────────────
+console.log("\nTest 9: missing RAG sources forces review");
+async function test9() {
+  const result = await validateLegalDocument(minimalValidBody, "req-test-9", makeDeps({
+    retrieve: async () => emptyRetrieval,
+  }));
+  const body = result.body as Record<string, unknown>;
+  assert(body.status === "review_required", "status is review_required without sources");
+  assert(body.block_signing === true, "block_signing true without sources");
 }
 
 // ── Test 8: audit payload is privacy-safe (no raw text) ──────────────────────
@@ -161,6 +197,7 @@ async function runAll() {
   await test6();
   await test7();
   await test8();
+  await test9();
 
   console.log(`\n${passed + failed} tests — ${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);

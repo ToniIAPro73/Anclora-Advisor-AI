@@ -3,7 +3,7 @@
  * Run: npx tsx tests/unit/test-validate-contract-route.ts
  */
 
-import { createValidateContractPost } from "../../src/app/api/validate-contract/route";
+import { createValidateContractPost } from "../../src/lib/contracts/contract-route-handlers";
 import type { RAGChunk } from "../../src/lib/rag/retrieval";
 
 let passed = 0;
