@@ -4,10 +4,18 @@ import {
   normalizeLegalCompareRequest,
   compareDocuments,
 } from "@/lib/legal-documents/document-diff";
+import { verifyInternalLegalValidationRequest } from "@/lib/legal-documents/internal-api-security";
 
-function createLegalDocumentComparePost() {
+export function createLegalDocumentComparePost() {
   return async function legalDocumentComparePost(req: NextRequest | Request) {
     const requestId = getRequestId(req.headers.get("x-request-id"));
+    const auth = verifyInternalLegalValidationRequest(req.headers, requestId);
+    if (!auth.ok) {
+      return NextResponse.json(
+        { error: auth.error, request_id: requestId },
+        { status: auth.status },
+      );
+    }
 
     let body: unknown;
     try {

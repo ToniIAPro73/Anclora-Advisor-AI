@@ -22,7 +22,7 @@ function assert(condition: boolean, label: string): void {
 }
 
 const canonicalCompraventa = `
-  Partes: vendedor y comprador claramente identificados.
+  Partes: vendedor con DNI y comprador con NIE claramente identificados.
   Precio de venta: 250.000 EUR.
   Forma de pago: transferencia bancaria en el acto notarial.
   Descripción del inmueble: vivienda con referencia catastral.
