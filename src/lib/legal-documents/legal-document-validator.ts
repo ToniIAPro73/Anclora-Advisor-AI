@@ -17,6 +17,7 @@ import {
 } from "./resilience";
 import type {
   LegalDocumentAuditPayload,
+  LegalDocumentValidationIssue,
   LegalSource,
   LegalDocumentValidationResponse,
   LegalDifference,
@@ -39,16 +40,20 @@ const DEFAULT_PROMPT_VERSION = "legal-document-validation-prompt-v1";
 // ── Dependencies (DI for testing) ─────────────────────────────────────────────
 
 export interface LegalDocumentValidatorDependencies {
-  retrieve: (_query: string, _options?: import("@/lib/rag/retrieval").RetrievalOptions) => Promise<RetrievalResult>;
+  retrieve: (
+    _query: string,
+    _options?: import("@/lib/rag/retrieval").RetrievalOptions,
+  ) => Promise<RetrievalResult>;
   generate: typeof generateChatText;
   now: () => Date;
 }
 
-export const defaultLegalDocumentValidatorDependencies: LegalDocumentValidatorDependencies = {
-  retrieve: retrieveContext,
-  generate: generateChatText,
-  now: () => new Date(),
-};
+export const defaultLegalDocumentValidatorDependencies: LegalDocumentValidatorDependencies =
+  {
+    retrieve: retrieveContext,
+    generate: generateChatText,
+    now: () => new Date(),
+  };
 
 export interface LegalDocumentValidatorResult {
   statusCode: number;
@@ -71,6 +76,12 @@ export function normalizeLegalDocumentRequest(
     (typeof body.current_text === "string" ? body.current_text : undefined) ??
     (typeof body.documentText === "string" ? body.documentText : undefined) ??
     (typeof body.document_text === "string" ? body.document_text : undefined) ??
+    (typeof body.document_content === "string"
+      ? body.document_content
+      : undefined) ??
+    (typeof body.documentContent === "string"
+      ? body.documentContent
+      : undefined) ??
     "";
 
   if (documentText.trim().length < MIN_DOCUMENT_TEXT_LENGTH) {
@@ -85,37 +96,62 @@ export function normalizeLegalDocumentRequest(
       (typeof body.templateId === "string" ? body.templateId : undefined) ??
       (typeof body.template_id === "string" ? body.template_id : undefined),
     templateVersionId:
-      (typeof body.templateVersionId === "string" ? body.templateVersionId : undefined) ??
-      (typeof body.template_version_id === "string" ? body.template_version_id : undefined),
+      (typeof body.templateVersionId === "string"
+        ? body.templateVersionId
+        : undefined) ??
+      (typeof body.template_version_id === "string"
+        ? body.template_version_id
+        : undefined),
     documentText,
     canonicalTemplate:
-      (typeof body.canonicalText === "string" ? body.canonicalText : undefined) ??
-      (typeof body.canonical_text === "string" ? body.canonical_text : undefined) ??
-      (typeof body.canonicalTemplate === "string" ? body.canonicalTemplate : undefined) ??
-      (typeof body.canonical_template === "string" ? body.canonical_template : undefined),
+      (typeof body.canonicalText === "string"
+        ? body.canonicalText
+        : undefined) ??
+      (typeof body.canonical_text === "string"
+        ? body.canonical_text
+        : undefined) ??
+      (typeof body.canonicalTemplate === "string"
+        ? body.canonicalTemplate
+        : undefined) ??
+      (typeof body.canonical_template === "string"
+        ? body.canonical_template
+        : undefined),
     documentType:
       (typeof body.documentType === "string" ? body.documentType : undefined) ??
-      (typeof body.document_type === "string" ? body.document_type : undefined) ??
+      (typeof body.document_type === "string"
+        ? body.document_type
+        : undefined) ??
       "generico",
     operationType:
-      (typeof body.operationType === "string" ? body.operationType : undefined) ??
-      (typeof body.operation_type === "string" ? body.operation_type : undefined) ??
+      (typeof body.operationType === "string"
+        ? body.operationType
+        : undefined) ??
+      (typeof body.operation_type === "string"
+        ? body.operation_type
+        : undefined) ??
       "unknown",
     jurisdiction:
       typeof body.jurisdiction === "string" ? body.jurisdiction : "España",
     language: typeof body.language === "string" ? body.language : "es",
     variableSnapshot:
-      body.variableSnapshot && typeof body.variableSnapshot === "object" && !Array.isArray(body.variableSnapshot)
+      body.variableSnapshot &&
+      typeof body.variableSnapshot === "object" &&
+      !Array.isArray(body.variableSnapshot)
         ? body.variableSnapshot
-        : body.variable_snapshot && typeof body.variable_snapshot === "object" && !Array.isArray(body.variable_snapshot)
+        : body.variable_snapshot &&
+            typeof body.variable_snapshot === "object" &&
+            !Array.isArray(body.variable_snapshot)
           ? body.variable_snapshot
           : {},
-    sourceHints:
-      Array.isArray(body.sourceHints)
-        ? body.sourceHints.filter((hint): hint is string => typeof hint === "string")
-        : Array.isArray(body.source_hints)
-          ? body.source_hints.filter((hint): hint is string => typeof hint === "string")
-          : [],
+    sourceHints: Array.isArray(body.sourceHints)
+      ? body.sourceHints.filter(
+          (hint): hint is string => typeof hint === "string",
+        )
+      : Array.isArray(body.source_hints)
+        ? body.source_hints.filter(
+            (hint): hint is string => typeof hint === "string",
+          )
+        : [],
     requestId:
       (typeof body.requestId === "string" ? body.requestId : undefined) ??
       (typeof body.request_id === "string" ? body.request_id : undefined),
@@ -123,7 +159,9 @@ export function normalizeLegalDocumentRequest(
       (typeof body.orgId === "string" ? body.orgId : undefined) ??
       (typeof body.org_id === "string" ? body.org_id : undefined),
     metadata:
-      body.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)
+      body.metadata &&
+      typeof body.metadata === "object" &&
+      !Array.isArray(body.metadata)
         ? body.metadata
         : {},
   };
@@ -144,7 +182,8 @@ export async function validateLegalDocument(
   }
   const effectiveRequestId = normalized.requestId ?? requestId;
   const idempotencyKey = buildIdempotencyKey(rawBody, effectiveRequestId);
-  const cached = getCachedIdempotentResult<LegalDocumentValidatorResult>(idempotencyKey);
+  const cached =
+    getCachedIdempotentResult<LegalDocumentValidatorResult>(idempotencyKey);
   if (cached) return cached;
 
   // Step 2: Run deterministic rules (no LLM)
@@ -156,21 +195,37 @@ export async function validateLegalDocument(
   );
 
   // Step 3: Build RAG query
-  const ragQuery = buildRagQuery(normalized, deterministicResult.missingClauses);
+  const ragQuery = buildRagQuery(
+    normalized,
+    deterministicResult.missingClauses,
+  );
 
   // Step 4: Retrieve legal context
   let ragChunks: RAGChunk[] = [];
   let ragSourcesUsed = 0;
   try {
-    const ragResult: RetrievalResult = await deps.retrieve(ragQuery, { category: "legal", limit: 5, threshold: 0.65 });
+    const ragResult: RetrievalResult = await deps.retrieve(ragQuery, {
+      category: "legal",
+      limit: 5,
+      threshold: 0.65,
+    });
     ragChunks = ragResult.chunks;
     ragSourcesUsed = ragChunks.length;
   } catch (err) {
-    log("warn", "RAG retrieval failed — proceeding with empty context", requestId, {
-      error: err instanceof Error ? err.message : String(err),
-    });
+    log(
+      "warn",
+      "RAG retrieval failed — proceeding with empty context",
+      requestId,
+      {
+        error: err instanceof Error ? err.message : String(err),
+      },
+    );
   }
-  const sourceQuality = evaluateLegalSources(ragChunks, normalized.jurisdiction, deps.now());
+  const sourceQuality = evaluateLegalSources(
+    ragChunks,
+    normalized.jurisdiction,
+    deps.now(),
+  );
 
   const ragContext = ragChunks
     .map((c) => `[${c.metadata?.title ?? "source"}]\n${c.content}`)
@@ -194,16 +249,17 @@ export async function validateLegalDocument(
     "llama3";
 
   try {
-    modelOutput = await runWithLegalValidationResilience(
-      () => deps.generate(
-        modelName,
-        systemPrompt,
-        userPrompt,
-        {
-          maxTokens: readPositiveInt("ADVISOR_LEGAL_VALIDATION_MAX_TOKENS", readPositiveInt("ADVISOR_LEGAL_DOCUMENT_VALIDATOR_MAX_TOKENS", 1500)),
-          temperature: readNumber("ADVISOR_LEGAL_VALIDATION_TEMPERATURE", readNumber("ADVISOR_LEGAL_DOCUMENT_VALIDATOR_TEMPERATURE", 0)),
-        },
-      ),
+    modelOutput = await runWithLegalValidationResilience(() =>
+      deps.generate(modelName, systemPrompt, userPrompt, {
+        maxTokens: readPositiveInt(
+          "ADVISOR_LEGAL_VALIDATION_MAX_TOKENS",
+          readPositiveInt("ADVISOR_LEGAL_DOCUMENT_VALIDATOR_MAX_TOKENS", 1500),
+        ),
+        temperature: readNumber(
+          "ADVISOR_LEGAL_VALIDATION_TEMPERATURE",
+          readNumber("ADVISOR_LEGAL_DOCUMENT_VALIDATOR_TEMPERATURE", 0),
+        ),
+      }),
     );
   } catch (err) {
     log("error", "LLM call failed — returning fallback response", requestId, {
@@ -227,7 +283,11 @@ export async function validateLegalDocument(
   let parsed: ParsedModelResponse;
   const jsonMatch = modelOutput.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    log("warn", "LLM response contains no JSON — returning fallback", requestId);
+    log(
+      "warn",
+      "LLM response contains no JSON — returning fallback",
+      requestId,
+    );
     const fallback = buildFallbackResult(
       normalized,
       deterministicResult.differences,
@@ -262,12 +322,17 @@ export async function validateLegalDocument(
   // Step 8: Merge deterministic differences with LLM findings and finalize
   const llmFindings = normalizeLegalFindings(parsed.findings);
   const sourceFindings = sourceQuality.findings;
-  const unresolvedPlaceholders = allPlaceholderValues(deterministicResult.differences);
+  const unresolvedPlaceholders = allPlaceholderValues(
+    deterministicResult.differences,
+  );
   const allDifferences = deterministicResult.differences;
 
   const deterministicRiskLevel = computeRiskLevel(allDifferences);
   const llmStatus = normalizeStatus(parsed.status);
-  const llmConfidence = Math.max(0, clampConfidence(parsed.confidence) - sourceQuality.confidencePenalty);
+  const llmConfidence = Math.max(
+    0,
+    clampConfidence(parsed.confidence) - sourceQuality.confidencePenalty,
+  );
 
   let finalStatus: LegalValidationStatus =
     llmStatus === "error" ||
@@ -288,7 +353,10 @@ export async function validateLegalDocument(
     finalStatus = "review_required";
   }
 
-  const reviewRequirement = deriveReviewRequirement(finalRiskLevel, blockSigning);
+  const reviewRequirement = deriveReviewRequirement(
+    finalRiskLevel,
+    blockSigning,
+  );
 
   const response: LegalDocumentValidationResponse = {
     status: finalStatus,
@@ -296,11 +364,17 @@ export async function validateLegalDocument(
     risk_level: finalRiskLevel,
     review_requirement: reviewRequirement,
     confidence: llmConfidence,
-    summary: typeof parsed.summary === "string" ? parsed.summary : buildDefaultSummary(llmFindings, allDifferences, finalRiskLevel),
+    summary:
+      typeof parsed.summary === "string"
+        ? parsed.summary
+        : buildDefaultSummary(llmFindings, allDifferences, finalRiskLevel),
     findings: allFindings,
+    issues: mapFindingsToIssues(allFindings),
     differences: allDifferences,
     required_actions: Array.isArray(parsed.required_actions)
-      ? parsed.required_actions.filter((a): a is string => typeof a === "string")
+      ? parsed.required_actions.filter(
+          (a): a is string => typeof a === "string",
+        )
       : [],
     unresolved_placeholders: unresolvedPlaceholders,
     missing_clauses: deterministicResult.missingClauses,
@@ -318,11 +392,19 @@ export async function validateLegalDocument(
     fallback_used: false,
   };
   if (blockSigning && response.required_actions.length === 0) {
-    response.required_actions = ["Route the document to legal review before signature."];
+    response.required_actions = [
+      "Route the document to legal review before signature.",
+    ];
   }
 
   // Step 9: Build audit payload (privacy-safe)
-  const auditPayload = buildAuditPayload(normalized, response, effectiveRequestId, modelName, Date.now() - startedAt);
+  const auditPayload = buildAuditPayload(
+    normalized,
+    response,
+    effectiveRequestId,
+    modelName,
+    Date.now() - startedAt,
+  );
 
   log("info", "Legal document validation complete", requestId, {
     risk_level: finalRiskLevel,
@@ -360,6 +442,7 @@ function buildFallbackResult(
     summary:
       "No fue posible completar el análisis automático. El documento requiere revisión manual por un profesional.",
     findings: [],
+    issues: [],
     differences: deterministicDiffs,
     required_actions: [
       "Revisar el documento con un abogado o asesor jurídico antes de proceder.",
@@ -380,7 +463,13 @@ function buildFallbackResult(
     fallback_used: true,
   };
 
-  const auditPayload = buildAuditPayload(req, response, requestId, modelName, durationMs);
+  const auditPayload = buildAuditPayload(
+    req,
+    response,
+    requestId,
+    modelName,
+    durationMs,
+  );
   return { statusCode: 200, body: response, auditPayload };
 }
 
@@ -404,9 +493,11 @@ function normalizeLegalFindings(raw: unknown): LegalFinding[] {
       category: typeof f.category === "string" ? f.category : "general",
       title: typeof f.title === "string" ? f.title : "Hallazgo sin título",
       description: typeof f.description === "string" ? f.description : "",
-      recommendation: typeof f.recommendation === "string" ? f.recommendation : "",
+      recommendation:
+        typeof f.recommendation === "string" ? f.recommendation : "",
       block_signing:
-        normalizeRiskLevel(f.severity) === "critical" || f.block_signing === true,
+        normalizeRiskLevel(f.severity) === "critical" ||
+        f.block_signing === true,
       evidence: typeof f.evidence === "string" ? f.evidence : undefined,
       source_reference:
         typeof f.source_reference === "string" ? f.source_reference : undefined,
@@ -414,7 +505,8 @@ function normalizeLegalFindings(raw: unknown): LegalFinding[] {
 }
 
 function normalizeRiskLevel(raw: unknown): LegalRiskLevel {
-  if (raw === "low" || raw === "medium" || raw === "high" || raw === "critical") return raw;
+  if (raw === "low" || raw === "medium" || raw === "high" || raw === "critical")
+    return raw;
   return "medium";
 }
 
@@ -426,7 +518,8 @@ function normalizeStatus(raw: unknown): LegalValidationStatus {
     raw === "rejected" ||
     raw === "ok" ||
     raw === "error"
-  ) return raw;
+  )
+    return raw;
   return "review_required";
 }
 
@@ -441,10 +534,12 @@ function mergeRiskLevel(
   findings: LegalFinding[],
 ): LegalRiskLevel {
   const llmLevel = computeRiskLevel(
-    findings.map((f) => ({ severity: f.severity } as LegalDifference)),
+    findings.map((f) => ({ severity: f.severity }) as LegalDifference),
   );
   const order: LegalRiskLevel[] = ["low", "medium", "high", "critical"];
-  return order[Math.max(order.indexOf(deterministicLevel), order.indexOf(llmLevel))];
+  return order[
+    Math.max(order.indexOf(deterministicLevel), order.indexOf(llmLevel))
+  ];
 }
 
 function deriveReviewRequirement(
@@ -462,11 +557,17 @@ function canonicalizeApprovedStatus(
   findings: LegalFinding[],
   differences: LegalDifference[],
 ): LegalValidationStatus {
-  if (status === "approved" || status === "approved_with_warnings" || status === "rejected") {
+  if (
+    status === "approved" ||
+    status === "approved_with_warnings" ||
+    status === "rejected"
+  ) {
     return status;
   }
   if (status === "ok") {
-    return findings.length > 0 || differences.length > 0 ? "approved_with_warnings" : "approved";
+    return findings.length > 0 || differences.length > 0
+      ? "approved_with_warnings"
+      : "approved";
   }
   return "review_required";
 }
@@ -474,7 +575,10 @@ function canonicalizeApprovedStatus(
 function allPlaceholderValues(differences: LegalDifference[]): string[] {
   return differences
     .filter((difference) => difference.type === "placeholder_detected")
-    .map((difference) => difference.submitted_value ?? difference.field ?? "placeholder")
+    .map(
+      (difference) =>
+        difference.submitted_value ?? difference.field ?? "placeholder",
+    )
     .filter((value, index, values) => values.indexOf(value) === index);
 }
 
@@ -484,8 +588,21 @@ function buildDefaultSummary(
   riskLevel: LegalRiskLevel,
 ): string {
   const total = findings.length + differences.length;
-  if (total === 0) return "Análisis completado. No se detectaron problemas significativos.";
+  if (total === 0)
+    return "Análisis completado. No se detectaron problemas significativos.";
   return `Análisis completado. Se detectaron ${findings.length} hallazgo${findings.length !== 1 ? "s" : ""} y ${differences.length} diferencia${differences.length !== 1 ? "s" : ""}. Nivel de riesgo: ${riskLevel}.`;
+}
+
+/** Maps findings to the simplified issues[] contract for Nexus integration. */
+function mapFindingsToIssues(
+  findings: LegalFinding[],
+): LegalDocumentValidationIssue[] {
+  return findings.map((f) => ({
+    type: f.category,
+    severity: f.severity,
+    description: f.description || f.title,
+    reference: f.source_reference,
+  }));
 }
 
 function buildAuditPayload(
@@ -499,7 +616,8 @@ function buildAuditPayload(
     request_id: requestId,
     document_id: req.documentId,
     template_version_id: req.templateVersionId,
-    caller: typeof req.metadata.caller === "string" ? req.metadata.caller : undefined,
+    caller:
+      typeof req.metadata.caller === "string" ? req.metadata.caller : undefined,
     document_type: req.documentType,
     jurisdiction: req.jurisdiction,
     model_used: modelName,
@@ -515,9 +633,10 @@ function buildAuditPayload(
     canonical_template_hash: req.canonicalTemplate
       ? sha256(req.canonicalTemplate)
       : undefined,
-    variable_snapshot_hash: Object.keys(req.variableSnapshot).length > 0
-      ? sha256(JSON.stringify(req.variableSnapshot))
-      : undefined,
+    variable_snapshot_hash:
+      Object.keys(req.variableSnapshot).length > 0
+        ? sha256(JSON.stringify(req.variableSnapshot))
+        : undefined,
     findings_count: response.findings.length,
     differences_count: response.differences.length,
     duration_ms: durationMs,
@@ -548,7 +667,9 @@ function buildRagQuery(
   req: NormalizedLegalDocumentValidationRequest,
   missingClauses: string[],
 ): string {
-  const parts = [`${req.documentType} ${req.operationType} ${req.jurisdiction}`];
+  const parts = [
+    `${req.documentType} ${req.operationType} ${req.jurisdiction}`,
+  ];
   if (missingClauses.length > 0) {
     parts.push(`cláusulas: ${missingClauses.slice(0, 3).join(", ")}`);
   }
@@ -559,9 +680,15 @@ function buildRagQuery(
 }
 
 function engineVersion(): string {
-  return process.env.ADVISOR_LEGAL_VALIDATION_ENGINE_VERSION?.trim() || DEFAULT_ENGINE_VERSION;
+  return (
+    process.env.ADVISOR_LEGAL_VALIDATION_ENGINE_VERSION?.trim() ||
+    DEFAULT_ENGINE_VERSION
+  );
 }
 
 function promptVersion(): string {
-  return process.env.ADVISOR_LEGAL_VALIDATION_PROMPT_VERSION?.trim() || DEFAULT_PROMPT_VERSION;
+  return (
+    process.env.ADVISOR_LEGAL_VALIDATION_PROMPT_VERSION?.trim() ||
+    DEFAULT_PROMPT_VERSION
+  );
 }
