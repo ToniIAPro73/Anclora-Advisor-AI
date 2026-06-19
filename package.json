@@ -52,6 +52,7 @@
     "perf:validate:baseline": "tsx scripts/validate-ollama-baseline.ts",
     "perf:benchmark:hardware": "tsx scripts/benchmark-hardware.ts",
     "test": "npm run test:legal-documents && npm run test:contract-compliance",
+    "test:property:referential-integrity": "tsx tests/unit/test-source-auditor-referential-integrity.property.ts",
     "test:admin-status": "tsx tests/unit/test-admin-status-filters.ts",
     "test:admin-status:service": "tsx tests/unit/test-admin-status-service.ts",
     "test:ai-runtime-profile": "tsx tests/unit/test-ai-runtime-profile.ts",
@@ -85,6 +86,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "fast-check": "^3.23.2",
     "@playwright/test": "^1.58.2",
     "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.16.0",
@@ -92,6 +94,7 @@
     "@typescript-eslint/parser": "^8.26.1",
     "autoprefixer": "^10.4.27",
     "eslint": "^9.22.0",
+    "fast-check": "^3.23.2",
     "pg": "^8.19.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",

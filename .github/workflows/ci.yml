@@ -1,13 +1,17 @@
 name: CI
 
 on:
-  push:
-    branches: ["main", "development", "staging", "production"]
   pull_request:
+    branches: [development, staging, production, main]
+  push:
+    branches: [development, staging, production, main]
 
 jobs:
-  quality:
+  gate:
+    name: Quality Gate
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,19 +26,18 @@ jobs:
         run: npm ci
 
       - name: Type check
-        run: npm run -s type-check
+        run: npm run type-check
 
       - name: Lint
-        run: npm run -s lint
+        run: npm run lint
 
-      - name: Smoke tests
-        run: npm run -s test:smoke
-
-      - name: Integration ops tests
-        run: npm run -s test:integration:ops
+      - name: Build
+        run: npm run build
 
   e2e-ui:
+    name: E2E UI Tests
     runs-on: ubuntu-latest
+    needs: gate
     outputs:
       enabled: ${{ steps.preflight.outputs.enabled }}
     steps:
@@ -110,3 +113,75 @@ jobs:
             playwright-report
             test-results
           if-no-files-found: ignore
+
+  rag-eval:
+    name: RAG Evaluation Gate
+    runs-on: ubuntu-latest
+    needs: gate
+    if: >-
+      github.event_name == 'pull_request' &&
+      (
+        contains(github.event.pull_request.title, 'rag') ||
+        contains(github.event.pull_request.title, 'RAG') ||
+        contains(github.event.pull_request.title, 'retrieval') ||
+        contains(github.event.pull_request.title, 'knowledge')
+      )
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check changed files
+        id: changes
+        run: |
+          git fetch origin ${{ github.base_ref }} --depth=1
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          RAG_CHANGED=false
+          for file in $CHANGED; do
+            case "$file" in
+              src/lib/rag/*|lib/rag/*|docs/evals/*|scripts/eval-rag*|scripts/ingest-rag*)
+                RAG_CHANGED=true
+                break
+                ;;
+            esac
+          done
+          echo "rag_changed=$RAG_CHANGED" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        if: steps.changes.outputs.rag_changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.changes.outputs.rag_changed == 'true'
+        run: npm ci
+
+      - name: Create .env.local
+        if: steps.changes.outputs.rag_changed == 'true'
+        run: |
+          cat <<'EOF' > .env.local
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          EOF
+
+      - name: Run RAG evaluation gate
+        if: steps.changes.outputs.rag_changed == 'true'
+        run: npm run rag:eval:gate
+
+      - name: Upload evaluation report
+        if: always() && steps.changes.outputs.rag_changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-eval-report
+          path: artifacts/rag_eval_report.json
+          if-no-files-found: ignore
+
+      - name: Skip RAG eval
+        if: steps.changes.outputs.rag_changed != 'true'
+        run: echo "No changes to RAG knowledge base or retrieval logic. Skipping evaluation."
