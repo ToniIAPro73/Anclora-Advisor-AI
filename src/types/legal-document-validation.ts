@@ -109,9 +109,6 @@ export interface LegalDocumentValidationRequest {
   documentText?: string;
   canonicalTemplate?: string;
   orgId?: string;
-  // Nexus integration contract (document_content)
-  documentContent?: string;
-  document_content?: string;
   // snake_case variants (backend / integrations)
   document_text?: string;
   canonical_template?: string;
@@ -176,13 +173,6 @@ export interface LegalDocumentCompareResponse {
   legal_disclaimer: string;
 }
 
-export interface LegalDocumentValidationIssue {
-  type: string;
-  severity: LegalRiskLevel;
-  description: string;
-  reference?: string;
-}
-
 export interface LegalDocumentValidationResponse {
   status: LegalValidationStatus;
   block_signing: boolean;
@@ -191,7 +181,6 @@ export interface LegalDocumentValidationResponse {
   confidence: number;
   summary: string;
   findings: LegalFinding[];
-  issues: LegalDocumentValidationIssue[];
   differences: LegalDifference[];
   required_actions: string[];
   unresolved_placeholders: string[];
