@@ -6,14 +6,10 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useChat, type ChatMessage } from "@/hooks/useChat";
 import type { ChatSuggestedAction } from "@/lib/chat/action-suggestions";
-import type {
-  ChatConversationRecord,
-  ChatPersistedMessageRecord,
-} from "@/lib/chat/contracts";
+import type { ChatConversationRecord, ChatPersistedMessageRecord } from "@/lib/chat/contracts";
 import { resolveExactNavigationHref } from "@/lib/chat/entity-resolution";
 import { uiText } from "@/lib/i18n/ui";
 import { useAppPreferences } from "@/components/providers/AppPreferencesProvider";
-import { SessionDisclaimerBanner, AiIndicatorBadge } from "./disclaimer";
 import MessageList from "./MessageList";
 
 interface ChatInterfaceProps {
@@ -23,9 +19,7 @@ interface ChatInterfaceProps {
   initialMessages: ChatPersistedMessageRecord[];
 }
 
-function mapPersistedMessage(
-  message: ChatPersistedMessageRecord,
-): ChatMessage | null {
+function mapPersistedMessage(message: ChatPersistedMessageRecord): ChatMessage | null {
   if (message.role !== "user" && message.role !== "assistant") {
     return null;
   }
@@ -38,23 +32,13 @@ function mapPersistedMessage(
   };
 }
 
-function formatConversationLabel(
-  conversation: ChatConversationRecord,
-  locale: "es" | "en",
-): string {
+function formatConversationLabel(conversation: ChatConversationRecord, locale: "es" | "en"): string {
   const title = conversation.title?.trim();
   if (!title) {
     return uiText(locale, "chat.default_title");
   }
 
-  if (
-    [
-      "Nueva conversacion",
-      "Nueva conversación",
-      "NEW CONVERSATION",
-      "New conversation",
-    ].includes(title)
-  ) {
+  if (["Nueva conversacion", "Nueva conversación", "NEW CONVERSATION", "New conversation"].includes(title)) {
     return uiText(locale, "chat.default_title");
   }
 
@@ -80,47 +64,27 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { locale } = useAppPreferences();
-  const [conversations, setConversations] =
-    useState<ChatConversationRecord[]>(initialConversations);
-  const [activeConversationId, setActiveConversationId] = useState<
-    string | null
-  >(initialConversationId);
+  const [conversations, setConversations] = useState<ChatConversationRecord[]>(initialConversations);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(initialConversationId);
   const [conversationLoading, setConversationLoading] = useState(false);
-  const [conversationError, setConversationError] = useState<string | null>(
-    null,
-  );
+  const [conversationError, setConversationError] = useState<string | null>(null);
   const [inputQuery, setInputQuery] = useState("");
-  const [actionStates, setActionStates] = useState<
-    Record<
-      string,
-      {
-        status: "idle" | "loading" | "success" | "error";
-        message: string | null;
-      }
-    >
-  >({});
+  const [actionStates, setActionStates] = useState<Record<string, { status: "idle" | "loading" | "success" | "error"; message: string | null }>>({});
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
 
   const mappedInitialMessages = useMemo(
-    () =>
-      initialMessages
-        .map(mapPersistedMessage)
-        .filter((message): message is ChatMessage => message !== null),
-    [initialMessages],
+    () => initialMessages.map(mapPersistedMessage).filter((message): message is ChatMessage => message !== null),
+    [initialMessages]
   );
 
-  const activeConversation =
-    conversations.find((item) => item.id === activeConversationId) ?? null;
+  const activeConversation = conversations.find((item) => item.id === activeConversationId) ?? null;
 
-  const {
-    messages,
-    loading,
-    error,
-    sendMessageStreaming,
-    replaceMessages,
-    appendAssistantMessage,
-  } = useChat(userId, activeConversationId ?? "", mappedInitialMessages);
+  const { messages, loading, error, sendMessageStreaming, replaceMessages, appendAssistantMessage } = useChat(
+    userId,
+    activeConversationId ?? "",
+    mappedInitialMessages
+  );
 
   function getActionStateKey(messageId: string, actionId: string): string {
     return `${messageId}:${actionId}`;
@@ -152,10 +116,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
 
     setConversations(result.conversations);
-    if (
-      preferredConversationId &&
-      result.conversations.some((item) => item.id === preferredConversationId)
-    ) {
+    if (preferredConversationId && result.conversations.some((item) => item.id === preferredConversationId)) {
       setActiveConversationId(preferredConversationId);
     }
   }
@@ -187,20 +148,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       replaceMessages(nextMessages);
       syncConversationInUrl(conversationId);
     } catch (loadError) {
-      setConversationError(
-        loadError instanceof Error
-          ? loadError.message
-          : uiText(locale, "chat.error.load"),
-      );
+      setConversationError(loadError instanceof Error ? loadError.message : uiText(locale, "chat.error.load"));
     } finally {
       setConversationLoading(false);
     }
   }
 
-  async function createConversation(options?: {
-    activate?: boolean;
-    resetMessages?: boolean;
-  }) {
+  async function createConversation(options?: { activate?: boolean; resetMessages?: boolean }) {
     setConversationLoading(true);
     setConversationError(null);
     setRenaming(false);
@@ -235,11 +189,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       setRenameValue(formatConversationLabel(nextConversation, locale));
       return nextConversation;
     } catch (createError) {
-      setConversationError(
-        createError instanceof Error
-          ? createError.message
-          : uiText(locale, "chat.error.create"),
-      );
+      setConversationError(createError instanceof Error ? createError.message : uiText(locale, "chat.error.create"));
       return null;
     } finally {
       setConversationLoading(false);
@@ -250,9 +200,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     await createConversation({ activate: true, resetMessages: true });
   }
 
-  async function handleRenameConversation(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
+  async function handleRenameConversation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!activeConversation || !renameValue.trim()) {
       return;
@@ -261,14 +209,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setConversationLoading(true);
     setConversationError(null);
     try {
-      const response = await fetch(
-        `/api/chat/conversations/${activeConversation.id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: renameValue.trim() }),
-        },
-      );
+      const response = await fetch(`/api/chat/conversations/${activeConversation.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: renameValue.trim() }),
+      });
       const result = (await response.json()) as {
         success: boolean;
         error?: string;
@@ -280,28 +225,18 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       }
 
       setConversations((prev) =>
-        prev.map((item) =>
-          item.id === result.conversation?.id
-            ? (result.conversation as ChatConversationRecord)
-            : item,
-        ),
+        prev.map((item) => (item.id === result.conversation?.id ? (result.conversation as ChatConversationRecord) : item))
       );
       setRenaming(false);
     } catch (renameError) {
-      setConversationError(
-        renameError instanceof Error
-          ? renameError.message
-          : uiText(locale, "chat.error.rename"),
-      );
+      setConversationError(renameError instanceof Error ? renameError.message : uiText(locale, "chat.error.rename"));
     } finally {
       setConversationLoading(false);
     }
   }
 
   async function handleDeleteConversation(conversationId: string) {
-    const targetConversation = conversations.find(
-      (item) => item.id === conversationId,
-    );
+    const targetConversation = conversations.find((item) => item.id === conversationId);
     if (!targetConversation || conversationLoading || loading) {
       return;
     }
@@ -315,12 +250,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     setConversationError(null);
     setRenaming(false);
     try {
-      const response = await fetch(
-        `/api/chat/conversations/${conversationId}`,
-        {
-          method: "DELETE",
-        },
-      );
+      const response = await fetch(`/api/chat/conversations/${conversationId}`, {
+        method: "DELETE",
+      });
       const result = (await response.json()) as {
         success: boolean;
         error?: string;
@@ -331,9 +263,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         throw new Error(result.error ?? uiText(locale, "chat.error.delete"));
       }
 
-      const remainingConversations = conversations.filter(
-        (item) => item.id !== result.deletedConversationId,
-      );
+      const remainingConversations = conversations.filter((item) => item.id !== result.deletedConversationId);
       setConversations(remainingConversations);
 
       if (activeConversationId !== result.deletedConversationId) {
@@ -348,9 +278,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         return;
       }
 
-      const nextResponse = await fetch(
-        `/api/chat/conversations/${nextConversation.id}`,
-      );
+      const nextResponse = await fetch(`/api/chat/conversations/${nextConversation.id}`);
       const nextResult = (await nextResponse.json()) as {
         success: boolean;
         error?: string;
@@ -368,11 +296,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       replaceMessages(nextMessages);
       syncConversationInUrl(nextConversation.id);
     } catch (deleteError) {
-      setConversationError(
-        deleteError instanceof Error
-          ? deleteError.message
-          : uiText(locale, "chat.error.delete"),
-      );
+      setConversationError(deleteError instanceof Error ? deleteError.message : uiText(locale, "chat.error.delete"));
     } finally {
       setConversationLoading(false);
     }
@@ -386,10 +310,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       let targetConversationId = activeConversationId;
 
       if (!targetConversationId) {
-        const createdConversation = await createConversation({
-          activate: true,
-          resetMessages: true,
-        });
+        const createdConversation = await createConversation({ activate: true, resetMessages: true });
         if (!createdConversation) {
           return;
         }
@@ -404,45 +325,28 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
 
-  async function executeSuggestedAction(
-    messageId: string,
-    action: ChatSuggestedAction,
-  ) {
+  async function executeSuggestedAction(messageId: string, action: ChatSuggestedAction) {
     const stateKey = getActionStateKey(messageId, action.id);
     setActionStates((prev) => ({
       ...prev,
-      [stateKey]: {
-        status: "loading",
-        message: uiText(locale, "chat.action.creating"),
-      },
+      [stateKey]: { status: "loading", message: uiText(locale, "chat.action.creating") },
     }));
 
     try {
       let response: Response;
       let successSummary = "";
 
-      if (
-        action.kind === "open_existing_fiscal_alert" ||
-        action.kind === "open_existing_labor_assessment" ||
-        action.kind === "open_existing_invoice"
-      ) {
+      if (action.kind === "open_existing_fiscal_alert" || action.kind === "open_existing_labor_assessment" || action.kind === "open_existing_invoice") {
         const resolvedHref = await resolveExactNavigationHref(action);
         router.push(resolvedHref);
         setActionStates((prev) => ({
           ...prev,
-          [stateKey]: {
-            status: "success",
-            message:
-              resolvedHref === action.navigationHref
-                ? uiText(locale, "chat.action.filter_opened")
-                : uiText(locale, "chat.action.entity_opened"),
-          },
+          [stateKey]: { status: "success", message: resolvedHref === action.navigationHref ? uiText(locale, "chat.action.filter_opened") : uiText(locale, "chat.action.entity_opened") },
         }));
         appendAssistantMessage({
-          content:
-            resolvedHref === action.navigationHref
-              ? uiText(locale, "chat.summary.open_filtered")
-              : uiText(locale, "chat.summary.open_exact"),
+          content: resolvedHref === action.navigationHref
+            ? uiText(locale, "chat.summary.open_filtered")
+            : uiText(locale, "chat.summary.open_exact"),
           suggestedActions: [],
           alerts: [],
           citations: [],
@@ -474,20 +378,14 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         successSummary = uiText(locale, "chat.summary.invoice_created");
       }
 
-      const result = (await response.json()) as {
-        success?: boolean;
-        error?: string;
-      };
+      const result = (await response.json()) as { success?: boolean; error?: string };
       if (!response.ok || !result.success) {
         throw new Error(result.error ?? uiText(locale, "chat.error.execute"));
       }
 
       setActionStates((prev) => ({
         ...prev,
-        [stateKey]: {
-          status: "success",
-          message: uiText(locale, "chat.action.created"),
-        },
+        [stateKey]: { status: "success", message: uiText(locale, "chat.action.created") },
       }));
       appendAssistantMessage({
         content: `${successSummary} ${locale === "en" ? "You can review it in the corresponding module." : "Puedes revisarla en el módulo correspondiente."}`,
@@ -501,10 +399,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         ...prev,
         [stateKey]: {
           status: "error",
-          message:
-            actionError instanceof Error
-              ? actionError.message
-              : uiText(locale, "chat.error.execute"),
+          message: actionError instanceof Error ? actionError.message : uiText(locale, "chat.error.execute"),
         },
       }));
     }
@@ -513,24 +408,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   return (
     <div className="grid h-full min-h-0 gap-3 lg:grid-cols-5">
       <aside className="advisor-card flex min-h-0 flex-col overflow-hidden lg:col-span-2">
-        <div
-          className="shrink-0 border-b p-4"
-          style={{ borderColor: "var(--advisor-border)" }}
-        >
+        <div className="shrink-0 border-b p-4" style={{ borderColor: "var(--advisor-border)" }}>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2
-                className="advisor-heading text-2xl"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {uiText(locale, "chat.sidebar.title")}
-              </h2>
-              <p
-                className="mt-1 text-sm"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                {uiText(locale, "chat.sidebar.subtitle")}
-              </p>
+              <h2 className="advisor-heading text-2xl" style={{ color: "var(--text-primary)" }}>{uiText(locale, "chat.sidebar.title")}</h2>
+              <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>{uiText(locale, "chat.sidebar.subtitle")}</p>
             </div>
             <button
               type="button"
@@ -542,13 +424,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </button>
           </div>
           {activeConversation && (
-            <div
-              className="mt-3 rounded-xl border p-3"
-              style={{
-                borderColor: "var(--advisor-border)",
-                background: "var(--advisor-panel-muted)",
-              }}
-            >
+            <div className="mt-3 rounded-xl border p-3" style={{ borderColor: "var(--advisor-border)", background: "var(--advisor-panel-muted)" }}>
               {renaming ? (
                 <form className="space-y-2" onSubmit={handleRenameConversation}>
                   <input
@@ -559,28 +435,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     autoFocus
                   />
                   <div className="flex gap-2">
-                    <button
-                      type="submit"
-                      className="advisor-btn advisor-btn-primary px-3 py-2 text-xs"
-                    >
-                      {uiText(locale, "chat.save")}
-                    </button>
-                    <button
-                      type="button"
-                      className="advisor-btn px-3 py-2 text-xs"
-                      style={{
-                        border: "1px solid var(--advisor-border)",
-                        background:
-                          "color-mix(in srgb, var(--advisor-panel) 92%, #ffffff)",
-                        color: "var(--text-primary)",
-                      }}
-                      onClick={() => {
-                        setRenaming(false);
-                        setRenameValue(
-                          formatConversationLabel(activeConversation, locale),
-                        );
-                      }}
-                    >
+                    <button type="submit" className="advisor-btn advisor-btn-primary px-3 py-2 text-xs">{uiText(locale, "chat.save")}</button>
+                    <button type="button" className="advisor-btn px-3 py-2 text-xs" style={{ border: "1px solid var(--advisor-border)", background: "color-mix(in srgb, var(--advisor-panel) 92%, #ffffff)", color: "var(--text-primary)" }} onClick={() => { setRenaming(false); setRenameValue(formatConversationLabel(activeConversation, locale)); }}>
                       {uiText(locale, "chat.cancel")}
                     </button>
                   </div>
@@ -588,33 +444,16 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               ) : (
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p
-                      className="text-xs font-semibold uppercase tracking-wide"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {uiText(locale, "chat.active")}
-                    </p>
-                    <p
-                      className="mt-1 text-sm font-semibold"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {formatConversationLabel(activeConversation, locale)}
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-secondary)" }}>{uiText(locale, "chat.active")}</p>
+                    <p className="mt-1 text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{formatConversationLabel(activeConversation, locale)}</p>
                   </div>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       className="advisor-btn px-3 py-2 text-xs"
-                      style={{
-                        border: "1px solid var(--advisor-border)",
-                        background:
-                          "color-mix(in srgb, var(--advisor-panel) 92%, #ffffff)",
-                        color: "var(--text-primary)",
-                      }}
+                      style={{ border: "1px solid var(--advisor-border)", background: "color-mix(in srgb, var(--advisor-panel) 92%, #ffffff)", color: "var(--text-primary)" }}
                       onClick={() => {
-                        setRenameValue(
-                          formatConversationLabel(activeConversation, locale),
-                        );
+                        setRenameValue(formatConversationLabel(activeConversation, locale));
                         setRenaming(true);
                       }}
                     >
@@ -623,16 +462,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     <button
                       type="button"
                       className="advisor-btn px-3 py-2 text-xs"
-                      style={{
-                        border:
-                          "1px solid color-mix(in srgb, #ef4444 35%, var(--advisor-border))",
-                        background:
-                          "color-mix(in srgb, #ef4444 10%, var(--advisor-panel) 90%)",
-                        color: "#fecaca",
-                      }}
-                      onClick={() =>
-                        handleDeleteConversation(activeConversation.id)
-                      }
+                      style={{ border: "1px solid color-mix(in srgb, #ef4444 35%, var(--advisor-border))", background: "color-mix(in srgb, #ef4444 10%, var(--advisor-panel) 90%)", color: "#fecaca" }}
+                      onClick={() => handleDeleteConversation(activeConversation.id)}
                     >
                       {uiText(locale, "chat.delete")}
                     </button>
@@ -642,17 +473,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
           )}
           {conversationError && (
-            <div className="advisor-alert advisor-alert-error mt-3">
-              {conversationError}
-            </div>
+            <div className="advisor-alert advisor-alert-error mt-3">{conversationError}</div>
           )}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {conversations.length === 0 ? (
-            <div
-              className="advisor-card-muted p-4 text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <div className="advisor-card-muted p-4 text-sm" style={{ color: "var(--text-secondary)" }}>
               {uiText(locale, "chat.empty_cta")}
             </div>
           ) : (
@@ -670,39 +496,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     }
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <button
-                        type="button"
-                        onClick={() => loadConversation(conversation.id)}
-                        className="min-w-0 flex-1 text-left"
-                      >
-                        <p
-                          className="truncate text-sm font-semibold"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {formatConversationLabel(conversation, locale)}
-                        </p>
-                        <p
-                          className="mt-1 text-xs"
-                          style={{ color: "var(--text-secondary)" }}
-                        >
-                          {formatConversationDate(
-                            conversation.updated_at,
-                            locale,
-                          )}
-                        </p>
+                      <button type="button" onClick={() => loadConversation(conversation.id)} className="min-w-0 flex-1 text-left">
+                        <p className="truncate text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{formatConversationLabel(conversation, locale)}</p>
+                        <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>{formatConversationDate(conversation.updated_at, locale)}</p>
                       </button>
                       <button
                         type="button"
                         aria-label={uiText(locale, "chat.delete")}
                         disabled={conversationLoading || loading}
                         className="rounded-lg px-2 py-1 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
-                        style={{
-                          color: "#b91c1c",
-                          background: "color-mix(in srgb, #ef4444 12%, white)",
-                        }}
-                        onClick={() =>
-                          handleDeleteConversation(conversation.id)
-                        }
+                        style={{ color: "#b91c1c", background: "color-mix(in srgb, #ef4444 12%, white)" }}
+                        onClick={() => handleDeleteConversation(conversation.id)}
                       >
                         {uiText(locale, "chat.delete")}
                       </button>
@@ -716,80 +520,30 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </aside>
 
       <div className="advisor-card flex min-h-0 flex-1 flex-col overflow-hidden lg:col-span-3">
-        <div
-          className="flex shrink-0 items-center justify-between border-b p-4"
-          style={{
-            background: "var(--chat-hero-bg)",
-            borderColor: "var(--chat-hero-border)",
-            color: "var(--chat-hero-text)",
-          }}
-        >
+        <div className="flex shrink-0 items-center justify-between border-b p-4" style={{ background: "var(--chat-hero-bg)", borderColor: "var(--chat-hero-border)", color: "var(--chat-hero-text)" }}>
           <h2 className="advisor-heading text-xl">Anclora Advisor AI</h2>
-          <div className="flex items-center gap-2">
-            <AiIndicatorBadge locale={locale} />
-            <span
-              className="rounded-full px-2.5 py-1 text-xs font-semibold"
-              style={{
-                background: "var(--chat-hero-badge-bg)",
-                color: "var(--chat-hero-badge-text)",
-              }}
-            >
-              {uiText(locale, "common.persisted")}
-            </span>
-          </div>
+          <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ background: "var(--chat-hero-badge-bg)", color: "var(--chat-hero-badge-text)" }}>{uiText(locale, "common.persisted")}</span>
         </div>
 
-        <div
-          className="min-h-0 flex-1 overflow-y-auto p-4"
-          style={{
-            background:
-              "color-mix(in srgb, var(--advisor-panel) 96%, transparent)",
-          }}
-        >
+        <div className="min-h-0 flex-1 overflow-y-auto p-4" style={{ background: "color-mix(in srgb, var(--advisor-panel) 96%, transparent)" }}>
           {messages.length === 0 && !conversationLoading && (
-            <div
-              className="flex h-full items-center justify-center px-6 text-center"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <div className="flex h-full items-center justify-center px-6 text-center" style={{ color: "var(--text-secondary)" }}>
               <p>{uiText(locale, "chat.empty_prompt")}</p>
             </div>
           )}
           {conversationLoading ? (
-            <div
-              className="flex h-full items-center justify-center px-6 text-center"
-              style={{ color: "var(--text-secondary)" }}
-            >
+            <div className="flex h-full items-center justify-center px-6 text-center" style={{ color: "var(--text-secondary)" }}>
               <p>{uiText(locale, "chat.loading")}</p>
             </div>
           ) : (
-            <>
-              <SessionDisclaimerBanner locale={locale} />
-              <MessageList
-                messages={messages}
-                locale={locale}
-                actionStates={actionStates}
-                onExecuteAction={executeSuggestedAction}
-              />
-            </>
+            <MessageList messages={messages} actionStates={actionStates} onExecuteAction={executeSuggestedAction} />
           )}
 
           {loading && (
             <div className="mt-4 flex justify-start">
-              <div
-                className="flex items-center gap-3 rounded-lg border p-4 shadow-sm"
-                style={{
-                  borderColor: "var(--advisor-border)",
-                  background:
-                    "color-mix(in srgb, var(--advisor-panel) 92%, #ffffff)",
-                }}
-              >
+              <div className="flex items-center gap-3 rounded-lg border p-4 shadow-sm" style={{ borderColor: "var(--advisor-border)", background: "color-mix(in srgb, var(--advisor-panel) 92%, #ffffff)" }}>
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1DAB89] border-t-transparent"></div>
-                <p
-                  className="text-sm font-medium"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  {uiText(locale, "chat.streaming")}
-                </p>
+                <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{uiText(locale, "chat.streaming")}</p>
               </div>
             </div>
           )}
@@ -801,13 +555,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           )}
         </div>
 
-        <div
-          className="shrink-0 border-t p-4"
-          style={{
-            borderColor: "var(--advisor-border)",
-            background: "color-mix(in srgb, var(--advisor-panel) 92%, #ffffff)",
-          }}
-        >
+        <div className="shrink-0 border-t p-4" style={{ borderColor: "var(--advisor-border)", background: "color-mix(in srgb, var(--advisor-panel) 92%, #ffffff)" }}>
           <form onSubmit={handleSendMessage} className="flex gap-3">
             <input
               type="text"
@@ -825,29 +573,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               {uiText(locale, "chat.send")}
             </button>
           </form>
-          <div
-            className="mt-3 flex flex-wrap gap-2 text-xs"
-            style={{ color: "var(--text-secondary)" }}
-          >
+          <div className="mt-3 flex flex-wrap gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
             <span>{uiText(locale, "chat.quick_actions")}</span>
-            <Link
-              href="/dashboard/fiscal"
-              className="font-semibold text-[#1dab89] hover:underline"
-            >
-              {uiText(locale, "chat.link.fiscal")}
-            </Link>
-            <Link
-              href="/dashboard/laboral"
-              className="font-semibold text-[#1dab89] hover:underline"
-            >
-              {uiText(locale, "chat.link.labor")}
-            </Link>
-            <Link
-              href="/dashboard/facturacion"
-              className="font-semibold text-[#1dab89] hover:underline"
-            >
-              {uiText(locale, "chat.link.invoice")}
-            </Link>
+            <Link href="/dashboard/fiscal" className="font-semibold text-[#1dab89] hover:underline">{uiText(locale, "chat.link.fiscal")}</Link>
+            <Link href="/dashboard/laboral" className="font-semibold text-[#1dab89] hover:underline">{uiText(locale, "chat.link.labor")}</Link>
+            <Link href="/dashboard/facturacion" className="font-semibold text-[#1dab89] hover:underline">{uiText(locale, "chat.link.invoice")}</Link>
           </div>
         </div>
       </div>

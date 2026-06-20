@@ -7,7 +7,7 @@ const buckets = new Map<string, number[]>();
 
 export interface InternalApiAuthResult {
   ok: boolean;
-  status: 200 | 401 | 429 | 503;
+  status: 200 | 401 | 403 | 429 | 503;
   caller: string;
   error?: string;
 }
@@ -21,12 +21,7 @@ export function verifyInternalLegalValidationRequest(
 
   if (!configuredKey) {
     log("error", "advisor_internal_api_key_missing", requestId, { caller });
-    return {
-      ok: false,
-      status: 503,
-      caller,
-      error: "Internal API key is not configured",
-    };
+    return { ok: false, status: 503, caller, error: "Internal API key is not configured" };
   }
 
   const providedKey =
@@ -34,25 +29,13 @@ export function verifyInternalLegalValidationRequest(
     parseBearer(headers.get("authorization"));
 
   if (!providedKey) {
-    log("warn", "advisor_internal_api_key_missing_from_request", requestId, {
-      caller,
-    });
-    return {
-      ok: false,
-      status: 401,
-      caller,
-      error: "Missing internal API key",
-    };
+    log("warn", "advisor_internal_api_key_missing_from_request", requestId, { caller });
+    return { ok: false, status: 401, caller, error: "Missing internal API key" };
   }
 
   if (!safeEqual(providedKey, configuredKey)) {
     log("warn", "advisor_internal_api_key_invalid", requestId, { caller });
-    return {
-      ok: false,
-      status: 401,
-      caller,
-      error: "Invalid internal API key",
-    };
+    return { ok: false, status: 403, caller, error: "Invalid internal API key" };
   }
 
   if (isRateLimited(caller)) {
@@ -78,10 +61,7 @@ function safeEqual(left: string, right: string): boolean {
 }
 
 function isRateLimited(caller: string): boolean {
-  const limit = readPositiveInt(
-    "ADVISOR_LEGAL_VALIDATION_RATE_LIMIT",
-    DEFAULT_RATE_LIMIT,
-  );
+  const limit = readPositiveInt("ADVISOR_LEGAL_VALIDATION_RATE_LIMIT", DEFAULT_RATE_LIMIT);
   if (limit <= 0) return false;
 
   const now = Date.now();
