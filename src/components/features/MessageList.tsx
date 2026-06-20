@@ -1,59 +1,34 @@
 // src/components/features/MessageList.tsx
 import React from "react";
 import { ChatMessage } from "@/hooks/useChat";
-import type { LocaleCode } from "@/lib/i18n/messages";
-import { LegalRecommendationFooter } from "./disclaimer";
 
 interface MessageListProps {
   messages: ChatMessage[];
-  locale: LocaleCode;
-  actionStates: Record<
-    string,
-    { status: "idle" | "loading" | "success" | "error"; message: string | null }
-  >;
-  onExecuteAction: (
-    ..._args: [string, NonNullable<ChatMessage["suggestedActions"]>[number]]
-  ) => Promise<void>;
+  actionStates: Record<string, { status: "idle" | "loading" | "success" | "error"; message: string | null }>;
+  // eslint-disable-next-line no-unused-vars
+  onExecuteAction: (...args: [string, NonNullable<ChatMessage["suggestedActions"]>[number]]) => Promise<void>;
 }
 
-export const MessageList: React.FC<MessageListProps> = ({
-  messages,
-  locale,
-  actionStates,
-  onExecuteAction,
-}) => {
-  const [expandedMessageId, setExpandedMessageId] = React.useState<
-    string | null
-  >(null);
+export const MessageList: React.FC<MessageListProps> = ({ messages, actionStates, onExecuteAction }) => {
+  const [expandedMessageId, setExpandedMessageId] = React.useState<string | null>(null);
 
-  function getGroundingBadgeClass(
-    confidence: ChatMessage["groundingConfidence"],
-  ): string {
-    if (confidence === "high")
-      return "bg-emerald-100 text-emerald-700 border-emerald-200";
-    if (confidence === "medium")
-      return "bg-amber-100 text-amber-700 border-amber-200";
-    if (confidence === "low")
-      return "bg-orange-100 text-orange-700 border-orange-200";
+  function getGroundingBadgeClass(confidence: ChatMessage["groundingConfidence"]): string {
+    if (confidence === "high") return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    if (confidence === "medium") return "bg-amber-100 text-amber-700 border-amber-200";
+    if (confidence === "low") return "bg-orange-100 text-orange-700 border-orange-200";
     return "bg-slate-100 text-slate-700 border-slate-200";
   }
 
   return (
     <div className="space-y-4">
       {messages.map((msg) => (
-        <div
-          key={msg.id}
-          className={
-            "flex " + (msg.role === "user" ? "justify-end" : "justify-start")
-          }
-        >
+        <div key={msg.id} className={"flex " + (msg.role === "user" ? "justify-end" : "justify-start")}>
           <div
             className="max-w-3xl rounded-xl border px-4 py-3 shadow-sm"
             style={
               msg.role === "user"
                 ? {
-                    background:
-                      "linear-gradient(135deg, #1DAB89 0%, #169a7a 100%)",
+                    background: "linear-gradient(135deg, #1DAB89 0%, #169a7a 100%)",
                     borderColor: "color-mix(in srgb, #1DAB89 70%, #ffffff)",
                     color: "#ffffff",
                   }
@@ -64,173 +39,110 @@ export const MessageList: React.FC<MessageListProps> = ({
                   }
             }
           >
-            {msg.role === "assistant" &&
-              msg.alerts &&
-              msg.alerts.length > 0 && (
-                <div className="mb-3 space-y-2">
-                  {msg.alerts.map((alert, idx) => (
-                    <div
-                      key={`${msg.id}_alert_${idx}`}
-                      className={
-                        "rounded-lg border px-3 py-2 text-sm " +
-                        (alert.type === "CRITICAL"
-                          ? "border-red-300 bg-red-50 text-red-700"
-                          : "border-amber-300 bg-amber-50 text-amber-700")
-                      }
-                    >
-                      <p className="font-semibold">
-                        {alert.type === "CRITICAL"
-                          ? "Alerta critica"
-                          : `Alerta ${alert.type.toLowerCase()}`}
-                      </p>
-                      <p>{alert.message}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-            <p className="text-base leading-relaxed whitespace-pre-wrap">
-              {msg.content}
-            </p>
-
-            {msg.role === "assistant" && (
-              <LegalRecommendationFooter locale={locale} />
+            {msg.role === "assistant" && msg.alerts && msg.alerts.length > 0 && (
+              <div className="mb-3 space-y-2">
+                {msg.alerts.map((alert, idx) => (
+                  <div
+                    key={`${msg.id}_alert_${idx}`}
+                    className={
+                      "rounded-lg border px-3 py-2 text-sm " +
+                      (alert.type === "CRITICAL"
+                        ? "border-red-300 bg-red-50 text-red-700"
+                        : "border-amber-300 bg-amber-50 text-amber-700")
+                    }
+                  >
+                    <p className="font-semibold">{alert.type === "CRITICAL" ? "Alerta critica" : `Alerta ${alert.type.toLowerCase()}`}</p>
+                    <p>{alert.message}</p>
+                  </div>
+                ))}
+              </div>
             )}
 
-            {msg.role === "assistant" &&
-              msg.suggestedActions &&
-              msg.suggestedActions.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {msg.suggestedActions.map((action) => {
-                    const state = actionStates[`${msg.id}:${action.id}`] ?? {
-                      status: "idle",
-                      message: null,
-                    };
-                    const successLabel =
-                      action.kind === "open_existing_fiscal_alert" ||
-                      action.kind === "open_existing_labor_assessment" ||
-                      action.kind === "open_existing_invoice"
-                        ? "Abierto"
-                        : "Creado";
-                    return (
-                      <div
-                        key={`${msg.id}_${action.id}`}
-                        className="rounded-lg border p-3"
-                        style={{
-                          borderColor: "var(--advisor-border)",
-                          background:
-                            "color-mix(in srgb, var(--advisor-panel) 88%, transparent)",
-                        }}
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <p
-                              className="text-sm font-semibold"
-                              style={{ color: "var(--text-primary)" }}
-                            >
-                              {action.title}
-                            </p>
-                            <p
-                              className="mt-1 text-xs"
-                              style={{ color: "var(--text-secondary)" }}
-                            >
-                              {action.description}
-                            </p>
-                          </div>
-                          <a
-                            href={action.navigationHref}
-                            className="text-xs font-semibold text-[#1dab89] hover:underline"
-                          >
-                            Ir al modulo
-                          </a>
+            <p className="text-base leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+
+            {msg.role === "assistant" && msg.suggestedActions && msg.suggestedActions.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {msg.suggestedActions.map((action) => {
+                  const state = actionStates[`${msg.id}:${action.id}`] ?? { status: "idle", message: null };
+                  const successLabel =
+                    action.kind === "open_existing_fiscal_alert" ||
+                    action.kind === "open_existing_labor_assessment" ||
+                    action.kind === "open_existing_invoice"
+                      ? "Abierto"
+                      : "Creado";
+                  return (
+                    <div
+                      key={`${msg.id}_${action.id}`}
+                      className="rounded-lg border p-3"
+                      style={{ borderColor: "var(--advisor-border)", background: "color-mix(in srgb, var(--advisor-panel) 88%, transparent)" }}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{action.title}</p>
+                          <p className="mt-1 text-xs" style={{ color: "var(--text-secondary)" }}>{action.description}</p>
                         </div>
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void onExecuteAction(msg.id, action)}
-                            disabled={
-                              state.status === "loading" ||
-                              state.status === "success"
-                            }
-                            className="rounded-lg bg-[#1DAB89] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#179a7a] disabled:cursor-not-allowed disabled:bg-gray-300"
-                          >
-                            {state.status === "loading"
-                              ? "Procesando..."
-                              : state.status === "success"
-                                ? successLabel
-                                : action.ctaLabel}
-                          </button>
-                          {state.message && (
-                            <span
-                              className={
-                                "text-xs " +
-                                (state.status === "error"
-                                  ? "text-red-700"
-                                  : state.status === "success"
-                                    ? "text-emerald-700"
-                                    : "")
-                              }
-                              style={
-                                state.status === "error"
-                                  ? undefined
-                                  : state.status === "success"
-                                    ? undefined
-                                    : { color: "var(--text-secondary)" }
-                              }
-                            >
-                              {state.message}
-                            </span>
-                          )}
-                        </div>
+                        <a href={action.navigationHref} className="text-xs font-semibold text-[#1dab89] hover:underline">
+                          Ir al modulo
+                        </a>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void onExecuteAction(msg.id, action)}
+                          disabled={state.status === "loading" || state.status === "success"}
+                          className="rounded-lg bg-[#1DAB89] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#179a7a] disabled:cursor-not-allowed disabled:bg-gray-300"
+                        >
+                          {state.status === "loading" ? "Procesando..." : state.status === "success" ? successLabel : action.ctaLabel}
+                        </button>
+                        {state.message && (
+                          <span
+                            className={
+                              "text-xs " +
+                              (state.status === "error"
+                                ? "text-red-700"
+                                : state.status === "success"
+                                  ? "text-emerald-700"
+                                  : "")
+                            }
+                            style={
+                              state.status === "error"
+                                ? undefined
+                                : state.status === "success"
+                                  ? undefined
+                                  : { color: "var(--text-secondary)" }
+                            }
+                          >
+                            {state.message}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {msg.role === "assistant" && (
-              <div
-                className="mt-3 border-t pt-3"
-                style={{ borderColor: "var(--advisor-border)" }}
-              >
+              <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--advisor-border)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <button
-                    onClick={() =>
-                      setExpandedMessageId(
-                        expandedMessageId === msg.id ? null : msg.id,
-                      )
-                    }
+                    onClick={() => setExpandedMessageId(expandedMessageId === msg.id ? null : msg.id)}
                     className="flex items-center gap-1 text-xs font-semibold hover:underline"
                     style={{ color: "var(--text-primary)" }}
                   >
-                    <span
-                      className={
-                        "inline-block transition-transform " +
-                        (expandedMessageId === msg.id ? "rotate-180" : "")
-                      }
-                    >
-                      v
-                    </span>
-                    {expandedMessageId === msg.id ? "Ocultar" : "Ver"} detalles
-                    y evidencia
+                    <span className={"inline-block transition-transform " + (expandedMessageId === msg.id ? "rotate-180" : "")}>v</span>
+                    {expandedMessageId === msg.id ? "Ocultar" : "Ver"} detalles y evidencia
                   </button>
                   <div className="flex flex-wrap gap-2">
                     {typeof msg.groundingConfidence === "string" && (
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getGroundingBadgeClass(msg.groundingConfidence)}`}
-                      >
+                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getGroundingBadgeClass(msg.groundingConfidence)}`}>
                         grounding: {msg.groundingConfidence}
                       </span>
                     )}
                     {msg.citations && msg.citations.length > 0 && (
                       <span
                         className="rounded-full border px-2 py-0.5 text-[11px] font-semibold"
-                        style={{
-                          borderColor: "var(--advisor-border)",
-                          background:
-                            "color-mix(in srgb, var(--advisor-panel) 82%, transparent)",
-                          color: "var(--text-primary)",
-                        }}
+                        style={{ borderColor: "var(--advisor-border)", background: "color-mix(in srgb, var(--advisor-panel) 82%, transparent)", color: "var(--text-primary)" }}
                       >
                         {msg.citations.length} fuente(s)
                       </span>
@@ -246,8 +158,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                 style={{
                   borderColor: "var(--advisor-border)",
                   borderTopColor: "var(--advisor-border)",
-                  background:
-                    "color-mix(in srgb, var(--advisor-panel) 86%, transparent)",
+                  background: "color-mix(in srgb, var(--advisor-panel) 86%, transparent)",
                   color: "var(--text-secondary)",
                 }}
               >
@@ -255,31 +166,21 @@ export const MessageList: React.FC<MessageListProps> = ({
                   <strong>ID del Mensaje:</strong> {msg.id}
                 </p>
                 <p>
-                  <strong>Timestamp:</strong>{" "}
-                  {msg.timestamp.toLocaleString("es-ES")}
+                  <strong>Timestamp:</strong> {msg.timestamp.toLocaleString("es-ES")}
                 </p>
                 {msg.routing && (
                   <p>
-                    <strong>Especialista Asignado:</strong>{" "}
-                    {msg.routing.primarySpecialist} (
-                    {(msg.routing.confidence * 100).toFixed(1)}%)
+                    <strong>Especialista Asignado:</strong> {msg.routing.primarySpecialist} ({(msg.routing.confidence * 100).toFixed(1)}%)
                   </p>
                 )}
-                {msg.contexts &&
-                  msg.contexts.length > 0 &&
-                  msg.contexts[0]?.warnings?.length > 0 && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-amber-700">
-                      {msg.contexts[0].warnings.join(" ")}
-                    </div>
-                  )}
+                {msg.contexts && msg.contexts.length > 0 && msg.contexts[0]?.warnings?.length > 0 && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-amber-700">
+                    {msg.contexts[0].warnings.join(" ")}
+                  </div>
+                )}
                 {msg.citations && msg.citations.length > 0 && (
                   <div>
-                    <p
-                      className="font-semibold"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      Fuentes y evidencia
-                    </p>
+                    <p className="font-semibold" style={{ color: "var(--text-primary)" }}>Fuentes y evidencia</p>
                     <div className="mt-2 space-y-2">
                       {msg.citations.map((citation) => {
                         const matchingChunk = msg.contexts
@@ -290,26 +191,15 @@ export const MessageList: React.FC<MessageListProps> = ({
                           <div
                             key={`${msg.id}_citation_${citation.chunk_id}`}
                             className="rounded-lg border p-3"
-                            style={{
-                              borderColor: "var(--advisor-border)",
-                              background:
-                                "color-mix(in srgb, var(--advisor-panel) 90%, transparent)",
-                            }}
+                            style={{ borderColor: "var(--advisor-border)", background: "color-mix(in srgb, var(--advisor-panel) 90%, transparent)" }}
                           >
                             <div className="flex flex-wrap items-start justify-between gap-2">
                               <div>
-                                <p
-                                  className="text-sm font-semibold"
-                                  style={{ color: "var(--text-primary)" }}
-                                >
+                                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                                   [{citation.index}] {citation.title}
                                 </p>
-                                <p
-                                  className="mt-1 text-[11px]"
-                                  style={{ color: "var(--text-secondary)" }}
-                                >
-                                  similitud:{" "}
-                                  {(citation.similarity * 100).toFixed(0)}%
+                                <p className="mt-1 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                                  similitud: {(citation.similarity * 100).toFixed(0)}%
                                 </p>
                               </div>
                               {citation.source_url ? (
@@ -322,22 +212,13 @@ export const MessageList: React.FC<MessageListProps> = ({
                                   Abrir fuente
                                 </a>
                               ) : (
-                                <span
-                                  className="text-[11px]"
-                                  style={{ color: "var(--text-secondary)" }}
-                                >
-                                  Sin URL
-                                </span>
+                                <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>Sin URL</span>
                               )}
                             </div>
                             {matchingChunk && (
                               <div
                                 className="mt-2 rounded-md p-2 text-[12px] leading-relaxed"
-                                style={{
-                                  background:
-                                    "color-mix(in srgb, var(--advisor-panel) 82%, transparent)",
-                                  color: "var(--text-secondary)",
-                                }}
+                                style={{ background: "color-mix(in srgb, var(--advisor-panel) 82%, transparent)", color: "var(--text-secondary)" }}
                               >
                                 {matchingChunk.content}
                               </div>

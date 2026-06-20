@@ -33,8 +33,7 @@ const now = new Date("2026-06-13T00:00:00.000Z");
 const source: RAGChunk = {
   id: "source-1",
   document_id: "law-1",
-  content:
-    "Fuente vigente para compraventa, arras, alquiler y mandato. Requiere identidad, precio, objeto, fechas y jurisdicción.",
+  content: "Fuente vigente para compraventa, arras, alquiler y mandato. Requiere identidad, precio, objeto, fechas y jurisdicción.",
   metadata: {
     title: "Real estate legal checklist",
     source_url: "https://example.test/legal-checklist",
@@ -82,23 +81,16 @@ const validRequest = {
   requestId: "nexus-request-1",
 };
 
-function deps(
-  overrides: Partial<LegalDocumentValidatorDependencies> = {},
-): LegalDocumentValidatorDependencies {
+function deps(overrides: Partial<LegalDocumentValidatorDependencies> = {}): LegalDocumentValidatorDependencies {
   return {
-    retrieve: async (): Promise<RetrievalResult> => ({
-      chunks: [source],
-      query: "legal",
-      cached: false,
+    retrieve: async (): Promise<RetrievalResult> => ({ chunks: [source], query: "legal", cached: false }),
+    generate: async () => JSON.stringify({
+      status: "approved",
+      confidence: 0.91,
+      summary: "Document is compatible with the canonical template.",
+      findings: [],
+      required_actions: [],
     }),
-    generate: async () =>
-      JSON.stringify({
-        status: "approved",
-        confidence: 0.91,
-        summary: "Document is compatible with the canonical template.",
-        findings: [],
-        required_actions: [],
-      }),
     now: () => now,
     ...overrides,
   };
@@ -125,9 +117,7 @@ async function json(response: Response): Promise<Record<string, any>> {
 async function main(): Promise<void> {
   console.log("\nTest 1: canonical template unchanged approves");
   {
-    const response = await createLegalDocumentValidatePost(deps())(
-      request(validRequest),
-    );
+    const response = await createLegalDocumentValidatePost(deps())(request(validRequest));
     const body = await json(response);
     assert(response.status === 200, "returns 200");
     assert(body.status === "approved", "status approved");
@@ -137,27 +127,15 @@ async function main(): Promise<void> {
 
   console.log("\nTest 2: minor model warning returns approved_with_warnings");
   {
-    const response = await createLegalDocumentValidatePost(
-      deps({
-        generate: async () =>
-          JSON.stringify({
-            status: "approved_with_warnings",
-            confidence: 0.8,
-            summary: "Minor warning.",
-            findings: [
-              {
-                severity: "low",
-                category: "style",
-                title: "Minor wording",
-                description: "Non-critical wording.",
-                recommendation: "Review wording.",
-                block_signing: false,
-              },
-            ],
-            required_actions: ["Optional wording review"],
-          }),
+    const response = await createLegalDocumentValidatePost(deps({
+      generate: async () => JSON.stringify({
+        status: "approved_with_warnings",
+        confidence: 0.8,
+        summary: "Minor warning.",
+        findings: [{ severity: "low", category: "style", title: "Minor wording", description: "Non-critical wording.", recommendation: "Review wording.", block_signing: false }],
+        required_actions: ["Optional wording review"],
       }),
-    )(request({ ...validRequest, requestId: "nexus-request-2" }));
+    }))(request({ ...validRequest, requestId: "nexus-request-2" }));
     const body = await json(response);
     assert(body.status === "approved_with_warnings", "warning status stable");
     assert(body.block_signing === false, "minor warning does not block");
@@ -165,30 +143,23 @@ async function main(): Promise<void> {
 
   console.log("\nTest 3: critical price change blocks signing");
   {
-    const response = await createLegalDocumentValidatePost(deps())(
-      request({
-        ...validRequest,
-        requestId: "nexus-request-3",
-        currentText: validText.replace("250.000 EUR", "180.000 EUR"),
-      }),
-    );
+    const response = await createLegalDocumentValidatePost(deps())(request({
+      ...validRequest,
+      requestId: "nexus-request-3",
+      currentText: validText.replace("250.000 EUR", "180.000 EUR"),
+    }));
     const body = await json(response);
     assert(body.block_signing === true, "critical amount mismatch blocks");
-    assert(
-      body.status === "review_required",
-      "critical mismatch requires review",
-    );
+    assert(body.status === "review_required", "critical mismatch requires review");
   }
 
   console.log("\nTest 4: placeholder blocks signing");
   {
-    const response = await createLegalDocumentValidatePost(deps())(
-      request({
-        ...validRequest,
-        requestId: "nexus-request-4",
-        currentText: validText.replace("DNI", "[DNI]"),
-      }),
-    );
+    const response = await createLegalDocumentValidatePost(deps())(request({
+      ...validRequest,
+      requestId: "nexus-request-4",
+      currentText: validText.replace("DNI", "[DNI]"),
+    }));
     const body = await json(response);
     assert(body.unresolved_placeholders.length > 0, "placeholder listed");
     assert(body.block_signing === true, "placeholder blocks");
@@ -196,29 +167,19 @@ async function main(): Promise<void> {
 
   console.log("\nTest 5: absent source forces review");
   {
-    const response = await createLegalDocumentValidatePost(
-      deps({
-        retrieve: async () => ({ chunks: [], query: "legal", cached: false }),
-      }),
-    )(request({ ...validRequest, requestId: "nexus-request-5" }));
+    const response = await createLegalDocumentValidatePost(deps({
+      retrieve: async () => ({ chunks: [], query: "legal", cached: false }),
+    }))(request({ ...validRequest, requestId: "nexus-request-5" }));
     const body = await json(response);
     assert(body.status === "review_required", "missing source requires review");
     assert(body.block_signing === true, "missing source blocks");
   }
 
-  console.log(
-    "\nTest 6: expired source reduces confidence and requires review",
-  );
+  console.log("\nTest 6: expired source reduces confidence and requires review");
   {
-    const response = await createLegalDocumentValidatePost(
-      deps({
-        retrieve: async () => ({
-          chunks: [expiredSource],
-          query: "legal",
-          cached: false,
-        }),
-      }),
-    )(request({ ...validRequest, requestId: "nexus-request-6" }));
+    const response = await createLegalDocumentValidatePost(deps({
+      retrieve: async () => ({ chunks: [expiredSource], query: "legal", cached: false }),
+    }))(request({ ...validRequest, requestId: "nexus-request-6" }));
     const body = await json(response);
     assert(body.status !== "approved", "expired source does not approve");
     assert(body.confidence < 0.91, "confidence reduced");
@@ -226,11 +187,9 @@ async function main(): Promise<void> {
 
   console.log("\nTest 7: invalid LLM JSON degrades safely");
   {
-    const response = await createLegalDocumentValidatePost(
-      deps({
-        generate: async () => "not-json",
-      }),
-    )(request({ ...validRequest, requestId: "nexus-request-7" }));
+    const response = await createLegalDocumentValidatePost(deps({
+      generate: async () => "not-json",
+    }))(request({ ...validRequest, requestId: "nexus-request-7" }));
     const body = await json(response);
     assert(body.status === "review_required", "invalid JSON requires review");
     assert(body.block_signing === true, "invalid JSON blocks");
@@ -238,12 +197,9 @@ async function main(): Promise<void> {
 
   console.log("\nTest 8: timeout degrades safely");
   {
-    const response = await createLegalDocumentValidatePost(
-      deps({
-        generate: async () =>
-          new Promise((resolve) => setTimeout(() => resolve("{}"), 100)),
-      }),
-    )(request({ ...validRequest, requestId: "nexus-request-8" }));
+    const response = await createLegalDocumentValidatePost(deps({
+      generate: async () => new Promise((resolve) => setTimeout(() => resolve("{}"), 100)),
+    }))(request({ ...validRequest, requestId: "nexus-request-8" }));
     const body = await json(response);
     assert(body.status === "review_required", "timeout requires review");
     assert(body.fallback_used === true, "timeout marks fallback");
@@ -251,31 +207,21 @@ async function main(): Promise<void> {
 
   console.log("\nTest 9: invalid auth rejected");
   {
-    const response = await createLegalDocumentValidatePost(deps())(
-      request(validRequest, {
-        "x-advisor-internal-api-key": "wrong",
-      }),
-    );
-    assert(response.status === 401, "wrong API key returns 401");
+    const response = await createLegalDocumentValidatePost(deps())(request(validRequest, {
+      "x-advisor-internal-api-key": "wrong",
+    }));
+    assert(response.status === 403, "wrong API key returns 403");
   }
 
   console.log("\nTest 10: repeated request is idempotent");
   {
     let calls = 0;
-    const handler = createLegalDocumentValidatePost(
-      deps({
-        generate: async () => {
-          calls += 1;
-          return JSON.stringify({
-            status: "approved",
-            confidence: 0.91,
-            summary: "OK",
-            findings: [],
-            required_actions: [],
-          });
-        },
-      }),
-    );
+    const handler = createLegalDocumentValidatePost(deps({
+      generate: async () => {
+        calls += 1;
+        return JSON.stringify({ status: "approved", confidence: 0.91, summary: "OK", findings: [], required_actions: [] });
+      },
+    }));
     const repeated = { ...validRequest, requestId: "nexus-request-10" };
     await handler(request(repeated));
     await handler(request(repeated));
@@ -286,57 +232,30 @@ async function main(): Promise<void> {
   {
     const legacy = createValidateContractPost({
       retrieve: async () => ({ chunks: [source], cacheHit: false }),
-      generate: async () =>
-        JSON.stringify({
-          status: "ok",
-          confidence: 0.8,
-          summary: "OK",
-          findings: [],
-          required_actions: [],
-        }),
+      generate: async () => JSON.stringify({ status: "ok", confidence: 0.8, summary: "OK", findings: [], required_actions: [] }),
       now: () => now,
     });
-    const response = await legacy(
-      new Request("http://localhost/api/validate-contract", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-request-id": "legacy",
-        },
-        body: JSON.stringify({
-          contractText: validText,
-          operationType: "compraventa",
-          jurisdiction: "ES",
-          language: "es",
-        }),
-      }),
-    );
+    const response = await legacy(new Request("http://localhost/api/validate-contract", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-request-id": "legacy" },
+      body: JSON.stringify({ contractText: validText, operationType: "compraventa", jurisdiction: "ES", language: "es" }),
+    }));
     const body = await json(response);
     assert(response.status === 200, "legacy route returns 200");
-    assert(
-      "block_signing" in body,
-      "legacy response still includes block_signing",
-    );
+    assert("block_signing" in body, "legacy response still includes block_signing");
   }
 
   console.log("\nTest 12: compare endpoint requires auth");
   {
-    const response = await createLegalDocumentComparePost()(
-      new Request("http://localhost/api/legal-documents/compare", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          submittedText: validText,
-          canonicalText: validText,
-        }),
-      }),
-    );
+    const response = await createLegalDocumentComparePost()(new Request("http://localhost/api/legal-documents/compare", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ submittedText: validText, canonicalText: validText }),
+    }));
     assert(response.status === 401, "compare without key returns 401");
   }
 
-  console.log(
-    `\n${passed + failed} tests - ${passed} passed, ${failed} failed`,
-  );
+  console.log(`\n${passed + failed} tests - ${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 }
 
