@@ -1,42 +1,84 @@
+<!-- markdownlint-disable MD001 MD013 MD033 MD041 MD060 -->
+
+<div align="center">
+
+<img src="./public/brand/advisor_favicon_192.png" alt="Anclora Advisor AI" width="120" />
+
 # Anclora Advisor AI
 
-Aplicación de asesoría fiscal, laboral y mercado inmobiliario para autónomos pluriactividad.
+### Asesoría fiscal, laboral y mercado para autónomos
 
-## Stack
+**Español** · [English](./README.en.md)
 
-- Next.js 15 + React 19
-- TypeScript
-- Supabase PostgreSQL + pgvector
-- Anthropic Claude + Ollama Mistral
+<br />
 
-## Branding canónico
+![Anclora](https://img.shields.io/badge/Anclora-ecosystem-111827)
+![Documentation](https://img.shields.io/badge/documentation-premium-BFA46A)
+![Languages](https://img.shields.io/badge/languages-ES%20%7C%20EN-047857)
 
-- Familia visual: `Internal` · baseline de referencia interna del ecosistema Anclora
-- Tipografía display: `Cormorant Garamond`
-- Tipografía body: `Source Sans 3`
-- Accent placeholder: `#1dab89` mint · base placeholder: `#162944` navy
-- Prefijo de componentes: `advisor-` · prefijo de assets: `advisor_`
-- Assets finales (icono + paleta): pendientes — se sustituirán cuando el usuario los entregue
-- Módulo de branding: `src/lib/advisor-brand.ts`
+</div>
 
-Lectura mínima antes de tocar interfaz:
+---
 
-1. `docs/standards/ANCLORA_INTERNAL_APP_CONTRACT.md`
-2. `docs/standards/UI_MOTION_CONTRACT.md`
-3. `docs/standards/MODAL_CONTRACT.md`
-4. `docs/standards/LOCALIZATION_CONTRACT.md`
+> [!IMPORTANT]
+> Repositorio interno del ecosistema Anclora. No publicar detalles operativos, credenciales,
+> datos reales ni logica sensible fuera de los canales autorizados.
 
-## Quick Start
+## Vista rapida
+
+| Area | Definicion |
+| --- | --- |
+| Proposito | Asesoría fiscal, laboral y mercado para autónomos |
+| Familia | `internal` |
+| Visibilidad | `private` |
+| Rol | Repositorio de trabajo interno |
+
+## Flujo conceptual
+
+```text
+Contexto interno
+      ↓
+Configuracion y datos controlados
+      ↓
+Logica de producto
+      ↓
+Revision tecnica
+      ↓
+Entrega o soporte operativo
+```
+
+## Arranque local
 
 ```bash
 npm install
 npm run dev
 ```
 
-Accede a: http://localhost:3000
+## Tecnologia
 
-## Próximos pasos
+| Area | Detalle |
+| --- | --- |
+| Next.js | Detectado en el repositorio |
+| React | Detectado en el repositorio |
+| TypeScript | Detectado en el repositorio |
+| Tailwind CSS | Detectado en el repositorio |
+| Zod | Detectado en el repositorio |
 
-1. Editar .env.local con credenciales Supabase
-2. npm install
-3. npm run dev
+## Documentacion
+
+- [Documentacion](./docs)
+
+## Gobernanza
+
+- Producto canonico: `anclora-advisor-ai`
+- Boveda: `/mnt/c/Users/antonio.ballesterosa/Desktop/Proyectos/Boveda-Anclora`
+- Contratos: `contracts/` y `docs/governance/`
+- Asset de marca: `presente`
+
+---
+
+<div align="center">
+
+### Anclora Group · Uso interno
+
+</div>
