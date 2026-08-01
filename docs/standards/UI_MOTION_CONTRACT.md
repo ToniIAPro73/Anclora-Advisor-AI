@@ -15,7 +15,7 @@ La bóveda no define animaciones locales; define qué familias de motion existen
 
 ## Autoridad
 
-- Registro operativo: `docs/governance/contracts-registry.json`
+- Registro operativo: `contracts/governance/contracts-registry.json`
 - Inventario aplicable: `docs/governance/ecosystem-repos.json`
 - Fuente ejecutable relacionada: `anclora-design-system`
 
@@ -83,6 +83,7 @@ Aplicaciones ultra premium:
 - `anclora-command-center`
 - `anclora-synergi`
 - `anclora-data-lab`
+- `anclora-energyscan`
 - `anclora-talent`
 - `anclora-private-estates`
 - `anclora-portfolio`
@@ -94,9 +95,9 @@ Nota:
 
 ## Sincronización con repos consumidores
 
-- Contrato fuente en la bóveda: `docs/standards/UI_MOTION_CONTRACT.md`
+- Contrato fuente en la bóveda: `contracts/components/UI_MOTION_CONTRACT.md`
 - Target normal de propagación: `docs/standards/`
-- Dependencia de auditoría y propagación desde `docs/governance/contracts-registry.json`
+- Dependencia de auditoría y propagación desde `contracts/governance/contracts-registry.json`
 
 ## Gate de aceptación
 
@@ -124,3 +125,4 @@ Una superficie no está lista si:
   - que el comportamiento sigue siendo estable en desktop y mobile
 - Si una surface funciona bien en escritorio pero rompe layout o jerarquía en móvil, no cumple el contrato.
 - Si la verificación visual falla o no puede completarse en ambos viewports obligatorios, el cambio no debe darse por válido ni subirse sin avisarlo explícitamente.
+

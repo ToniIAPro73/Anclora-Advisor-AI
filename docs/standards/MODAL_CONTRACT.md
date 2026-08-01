@@ -15,7 +15,7 @@ Regla:
 
 ## Autoridad
 
-- Registro operativo: `docs/governance/contracts-registry.json`
+- Registro operativo: `contracts/governance/contracts-registry.json`
 - Inventario aplicable: `docs/governance/ecosystem-repos.json`
 - Fuente ejecutable relacionada: `anclora-design-system`
 
@@ -63,9 +63,9 @@ Nota:
 
 ## Sincronización con repos consumidores
 
-- Contrato fuente en la bóveda: `docs/standards/MODAL_CONTRACT.md`
+- Contrato fuente en la bóveda: `contracts/components/MODAL_CONTRACT.md`
 - Target normal de propagación: `docs/standards/`
-- Dependencia de auditoría y propagación desde `docs/governance/contracts-registry.json`
+- Dependencia de auditoría y propagación desde `contracts/governance/contracts-registry.json`
 
 ## Modales densos
 - Formularios complejos: usar modal ancho o casi fullscreen.
@@ -118,3 +118,4 @@ Un modal no está listo si:
 - Si un modal sólo funciona en un viewport, no cumple el contrato.
 - Si para resolver el problema hay que cambiar tamaño, densidad, orden de bloques o navegación interna, eso debe hacerse antes de dar el trabajo por válido.
 - Si la validación visual no puede completarse o el resultado sigue rompiéndose en alguno de los dos viewports obligatorios, el cambio no debe darse por cerrado ni subirse sin avisarlo explícitamente.
+

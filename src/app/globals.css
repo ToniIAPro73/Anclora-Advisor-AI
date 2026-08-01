@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 :root {
+  /* ANCLORA_BRANDING_TYPOGRAPHY (familia Internas): --font-sans/--font-mono los inyecta next/font en <body> (Inter + JetBrains Mono) */
+  --font-advisor-display: var(--font-sans);
+  --font-advisor-body: var(--font-sans);
   --advisor-primary: #162944;
   --advisor-dark: #1c2b3c;
   --advisor-accent: #1dab89;
@@ -104,7 +107,7 @@ html[data-sidebar="collapsed"] {
       radial-gradient(1200px 500px at 100% 0%, rgba(22, 41, 68, 0.35), transparent 70%),
       var(--advisor-canvas);
     color: var(--text-primary);
-    font-family: var(--font-advisor-body), "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font-advisor-body), system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -114,7 +117,7 @@ html[data-sidebar="collapsed"] {
   select,
   textarea,
   button {
-    font-family: var(--font-advisor-body), "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: var(--font-advisor-body), system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
 }
 
@@ -191,8 +194,8 @@ html[data-sidebar="collapsed"] {
   }
 
   .advisor-heading {
-    font-family: var(--font-advisor-display), Georgia, "Times New Roman", serif;
-    letter-spacing: 0.015em;
+    font-family: var(--font-advisor-display), system-ui, -apple-system, sans-serif;
+    letter-spacing: -0.02em;
   }
 
   .advisor-chip {

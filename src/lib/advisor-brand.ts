@@ -4,24 +4,25 @@ export const ADVISOR_BRAND = {
   family: 'Internal',
   role: 'internal-baseline',
 
-  // Typography (Internal contract — do NOT change to DM Sans)
-  displayFont: 'Cormorant Garamond',
-  bodyFont: 'Source Sans 3',
+  // Typography (ANCLORA_BRANDING_TYPOGRAPHY — familia Internas: Inter + JetBrains Mono)
+  displayFont: 'Inter',
+  bodyFont: 'Inter',
+  monoFont: 'JetBrains Mono',
 
-  // Colors — placeholder palette until user delivers new assets
-  primaryColor: '#162944',    // Navy — placeholder
-  accentColor: '#1dab89',     // Mint green — placeholder
-  accentDim: '#17987a',       // Mint dim — placeholder
-  darkCanvas: '#1c2b3c',      // Dark canvas — placeholder
-  lightCanvas: '#f3f6fb',     // Light canvas — placeholder
+  // Colors — ANCLORA_BRANDING_COLOR_TOKENS (advisor)
+  primaryColor: '#162944',    // Navy — interior del icono canónico
+  accentColor: '#1dab89',     // Teal — acento contractual
+  accentDim: '#17987a',       // Teal dim
+  darkCanvas: '#1c2b3c',      // Dark canvas
+  lightCanvas: '#f3f6fb',     // Light canvas
 
   // Assets
   logoPath: '/brand/logo-Advisor.png',
-  faviconPath: '/brand/favicon.ico',
+  faviconPath: '/brand/advisor_favicon.ico',
   faviconPng32: '/brand/advisor_favicon_32.png',
   faviconPng192: '/brand/advisor_favicon_192.png',
   faviconPng512: '/brand/advisor_favicon_512.png',
-  appleTouchIcon: '/brand/apple-touch-icon.png',
+  appleTouchIcon: '/brand/advisor_apple-touch-icon.png',
 
   // App preferences (Internal baseline contract)
   supportedThemes: ['dark', 'light', 'system'] as const,

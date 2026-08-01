@@ -8,7 +8,7 @@ Ruta canónica:
 
 ## Autoridad
 
-- Registro operativo: `docs/governance/contracts-registry.json`
+- Registro operativo: `contracts/governance/contracts-registry.json`
 - Inventario de repos Anclora: `docs/governance/ecosystem-repos.json`
 - Fuente ejecutable de UI: `anclora-design-system`
 
@@ -55,19 +55,33 @@ Regla práctica:
 
 Aplicaciones internas:
 - `anclora-advisor-ai`
+- `anclora-filestudio`
 - `anclora-nexus`
 - `anclora-content-generator-ai`
+- `anclora-fiscal` *(añadida 2026-08, verificada contra código real)*
+- `anclora-visionflow` *(añadida 2026-08, verificada contra código real)*
 
 Aplicaciones premium:
 - `anclora-impulso`
 - `anclora-command-center`
 - `anclora-synergi`
 - `anclora-data-lab`
-- `anclora-talent`
+- `anclora-energyscan`
+- `anclora-talent` *(estado: pausado, fuera de alcance activo desde 2026-08 — ver `docs/governance/ecosystem-repos.json`)*
+- `anclora-syncxml` *(añadida 2026-08, verificada contra código real, estado `pre-mvp`)*
 
 Aplicaciones ultra premium:
 - `anclora-private-estates`
-- landing pública de `anclora-private-estates` (dark-only, ES/EN/DE)
+- `anclora-private-estates-landing` *(nombre de repo confirmado 2026-08; comparte tema completo con `anclora-private-estates`)*
+
+Aplicaciones portfolio / showcase *(sección añadida 2026-08)*:
+- `anclora-portfolio`
+- `anclora-azure-bay-landing-page` *(nombre de repo corregido 2026-08 — `anclora-azure-bay-landing` sin el sufijo `-page` no existe, devuelve 404 en GitHub)*
+- `anclora-portfolio-showcase`
+- `anclora-energyscan-showcase` *(hereda tema completo de `anclora-energyscan`, no el genérico portfolio — es el producto real en fase MVP mostrándose, no una pieza de demo)*
+- `anclora-syncxml-showcase` *(mismo criterio que energyscan-showcase, producto real en fase pre-mvp)*
+- `anclora-fiscal-showcase`
+- `anclora-group-landing` *(identidad propia verificada 2026-08 — usa el brand book completo, navy/signal-blue/command-purple, NO el tema genérico portfolio-gold; ver `ANCLORA_BRANDING_COLOR_TOKENS.md`)*
 
 Fuera de alcance en esta fase:
 - ninguno
@@ -75,9 +89,9 @@ Fuera de alcance en esta fase:
 ## Fuentes auditadas
 
 Contratos documentados detectados:
-- `docs/standards/UI_MOTION_CONTRACT.md` en `anclora-impulso`
-- `docs/standards/MODAL_CONTRACT.md` en `anclora-impulso`
-- `docs/standards/LOCALIZATION_CONTRACT.md` en `anclora-impulso`
+- `contracts/components/UI_MOTION_CONTRACT.md` en `anclora-impulso`
+- `contracts/components/MODAL_CONTRACT.md` en `anclora-impulso`
+- `contracts/logic/LOCALIZATION_CONTRACT.md` en `anclora-impulso`
 - `sdd/contracts/UI-SURFACE-INTERACTION-CONTRACT.md` en `anclora-nexus`
 - `sdd/contracts/UI-PAGE-PRIMITIVES-CONTRACT.md` en `anclora-nexus`
 - `sdd/contracts/UI-EXTERNAL-PORTAL-PREMIUM-CONTRACT.md` en `anclora-nexus`
@@ -94,6 +108,8 @@ Contratos implícitos pero claros en código y UX:
 ## Contratos canónicos del ecosistema
 
 Base transversal:
+- `ANCLORA_GROUP_BRAND_IP_CONTRACT.md`
+- `COOKIES_CONSENT_CONTRACT.md`
 - `UI_MOTION_CONTRACT.md`
 - `MODAL_CONTRACT.md`
 - `LOCALIZATION_CONTRACT.md`
@@ -105,6 +121,7 @@ Por grupo:
 - `ANCLORA_PORTFOLIO_SHOWCASE_CONTRACT.md`
 
 Branding transversal:
+- `ANCLORA_GROUP_BRAND_IP_CONTRACT.md`
 - `ANCLORA_BRANDING_MASTER_CONTRACT.md`
 - `ANCLORA_BRANDING_ICON_SYSTEM.md`
 - `ANCLORA_BRANDING_COLOR_TOKENS.md`
@@ -113,6 +130,7 @@ Branding transversal:
 
 Mapeo obligatorio hacia `anclora-design-system`:
 - contratos de branding -> `assets`, `tokens`, `themes`, `foundations`
+- contrato Brand/IP -> `metadata`, `legal`, `footer`, `docs`, `i18n`, `exportables`
 - contratos de grupo -> `taxonomy`, `themes`, `components`, `patterns`
 - motion -> `tokens`, `foundations`, `components`
 - modales -> `components`, `patterns`
@@ -125,23 +143,52 @@ Documentos de apoyo no normativos:
 
 - `anclora-group`
 - `anclora-advisor-ai`
+- `anclora-filestudio`
 - `anclora-nexus`
 - `anclora-content-generator-ai`
+- `anclora-fiscal`
+- `anclora-visionflow`
 - `anclora-impulso`
 - `anclora-command-center`
 - `anclora-synergi`
 - `anclora-data-lab`
-- `anclora-talent`
+- `anclora-energyscan`
+- `anclora-syncxml`
+- `anclora-talent` *(pausado — ver nota de estado arriba)*
 - `anclora-private-estates`
+- `anclora-private-estates-landing`
 - `anclora-portfolio`
-- `anclora-azure-bay-landing`
+- `anclora-azure-bay-landing-page` *(nombre corregido 2026-08, ver nota arriba)*
+- `anclora-portfolio-showcase`
+- `anclora-energyscan-showcase`
+- `anclora-syncxml-showcase`
+- `anclora-fiscal-showcase`
+- `anclora-group-landing`
 - `anclora-playa-viva-uniestate`
+
+## Ramas operativas por repositorio
+
+Rama operativa principal por defecto: `main`
+
+Excepciones documentadas:
+
+| Repo | Rama operativa | Motivo |
+|---|---|---|
+| `anclora-azure-bay-landing-page` | `development` | Landing en desarrollo activo; no operar sobre `main`. Nombre de repo corregido 2026-08 (el anterior sin `-page` no existe). |
+| `anclora-playa-viva-uniestate` | `development` | Landing en desarrollo activo; no operar sobre `main` |
+| `anclora-data-lab` | `sdd/premium-app-contracts` | Rama de contratos SDD activa; verificar antes de PR a `main` |
+| `anclora-synergi` | `sdd/premium-app-contracts` | Rama de contratos SDD activa; verificar antes de PR a `main` |
+| `anclora-impulso` | `master` | Convención histórica del repo; equivalente a `main` operativo |
+
+> [!warning] Antes de hacer push a cualquier repo
+> Verificar la rama operativa de este mapa. No asumir que todos los repos usan `main`.
+> En repos con `development` como rama activa, nunca hacer push directo a `main`.
 
 ## Sincronización con repos consumidores
 
-- Contrato fuente en la bóveda: `docs/standards/ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`
+- Contrato fuente en la bóveda: `contracts/core/ANCLORA_ECOSYSTEM_CONTRACT_GROUPS.md`
 - Target normal de propagación: `docs/standards/`
-- La auditoría y la propagación se resuelven desde `docs/governance/contracts-registry.json`
+- La auditoría y la propagación se resuelven desde `contracts/governance/contracts-registry.json`
 - Este contrato no aplica a `Independent Products` salvo mención explícita
 
 ## Orden de lectura obligatorio
@@ -180,21 +227,36 @@ Al crear una app nueva:
 | Aplicación | Grupo | Idiomas objetivo | Tema objetivo | Contratos mínimos |
 | --- | --- | --- | --- | --- |
 | `anclora-advisor-ai` | Interna | `es`, `en` | `dark/light/system` | Base + interno |
+| `anclora-filestudio` | Interna | `es`, `en` | Pendiente de auditoría por superficie | Base + interno |
 | `anclora-nexus` | Interna | `es`, `en`, `de`, `ru` | `dark` operativo | Base + interno |
 | `anclora-content-generator-ai` | Interna | `es`, `en` | `dark/light/system` | Base + interno |
 | `anclora-impulso` | Premium | `es`, `en` | `dark/light` | Base + premium |
 | `anclora-command-center` | Premium | `es`, `en`, `de` | `dark/light` | Base + premium |
 | `anclora-synergi` | Premium | `es`, `en`, `de` | tema editorial único | Base + premium |
 | `anclora-data-lab` | Premium | `es`, `en`, `de` | `dark/light/system` | Base + premium |
+| `anclora-energyscan` | Premium / Real Estate + Energy Intelligence | `es`, `en`, `de` | `dark/light/system` | Base + premium |
 | `anclora-talent` | Premium | `es`, `en` | `dark/light` | Base + premium |
-| `anclora-private-estates` | Ultra premium | `es`, `en`, `de`, `fr` | premium multi-theme | Base + ultra premium |
-| landing pública de `anclora-private-estates` | Ultra premium (landing pública) | `es`, `en`, `de` ¹ | `dark-only` ² | Base + ultra premium |
+| `anclora-private-estates` | Ultra premium | `es`, `en`, `de`, `fr` | premium multi-theme (dark, verificado 2026-08 — accent real `#D4AF37` sobre navy `#07252F`, no la variante que se documentaba antes) | Base + ultra premium |
+| `anclora-private-estates-landing` | Ultra premium (landing pública) | `es`, `en`, `de` ¹ | `dark-only` ² — comparte tema completo con `anclora-private-estates` | Base + ultra premium |
+| `anclora-fiscal` | Interna | Pendiente de auditoría de locales | `dark` confirmado (navy `#070C13` + dorado `#D7A957`), `light` no verificado | Base + interno |
+| `anclora-visionflow` | Interna | Pendiente de auditoría de locales | `dark/light` confirmado — ambos modos definidos en el repo real (`.dark { --avf-accent }` y `:root` claro) | Base + interno |
+| `anclora-syncxml` | Premium | Pendiente de auditoría de locales | `dark` confirmado (navy `#070A12` + dorado apagado `#BFA46A`), `light` no verificado en esta sesión | Base + premium |
 | `anclora-portfolio` | Portfolio / showcase | `es`, `en` | tema editorial único o dual diseñado | Base + portfolio |
-| `anclora-azure-bay-landing` | Portfolio / showcase | `es`, `en` | tema editorial único | Base + portfolio |
+| `anclora-azure-bay-landing-page` | Portfolio / showcase | `es`, `en` | tema editorial único — nombre de repo corregido 2026-08, icono comparte lockup de Private Estates (navbar corporativo), acento se queda en portfolio genérico (pieza de demo, no producto) | Base + portfolio |
+| `anclora-portfolio-showcase` | Portfolio / showcase | `es`, `en` | tema editorial único, hereda de `anclora-portfolio` | Base + portfolio |
+| `anclora-energyscan-showcase` | Portfolio / showcase (excepción) | `es`, `en`, `de` | hereda tema completo de `anclora-energyscan` (verde `#00DC82`), NO el editorial genérico — es el producto real en MVP mostrándose | Base + portfolio |
+| `anclora-syncxml-showcase` | Portfolio / showcase (excepción) | Pendiente de auditoría | hereda tema completo de `anclora-syncxml` (dorado `#BFA46A`), mismo criterio que energyscan-showcase | Base + portfolio |
+| `anclora-fiscal-showcase` | Portfolio / showcase | Pendiente de auditoría | tema editorial único genérico | Base + portfolio |
+| `anclora-group-landing` | Portfolio / showcase (excepción) | Pendiente de auditoría de locales | identidad brand-book completa propia (navy `#0A1F3D`, signal-blue `#5FA8FF`, command-purple `#6C63FF`) — NO el editorial genérico, verificado 2026-08 contra `src/styles/tokens.css` real | Base + portfolio |
 | `anclora-playa-viva-uniestate` | Portfolio / showcase | `es`, `en` | tema editorial único | Base + portfolio |
 
 Entidad transversal fuera de familias de app:
 - `anclora-group` se trata como entidad matriz y portal corporativo, con branding propio definido en `ANCLORA_BRANDING_*`, no como app interna del grupo.
+
+Contrato Brand/IP transversal:
+- [[ANCLORA_GROUP_BRAND_IP_CONTRACT]] aplica a Entidad Matriz, Internal, Premium, Ultra Premium, Portfolio / Showcase y superficies Activation cuando existan.
+- En productos independientes, sólo aplica si la Bóveda los reclasifica explícitamente dentro del perímetro de explotación de Anclora Group.
+- La adopción se registra en [[Brand IP Adoption Matrix]].
 
 Regla complementaria:
 - `anclora-group` mantiene contratos universales, pero su branding se gobierna como caso único en la capa `ANCLORA_BRANDING_*`.
@@ -223,3 +285,4 @@ Una app no cumple el contrato si:
 - crea nuevas superficies fuera de la gramática del grupo
 - reintroduce hardcoded strings donde el contrato exige i18n
 - cambia el foreground o el contraste de una familia de botón entre temas sin mantener semántica estable o sin documentar una variante real por tema
+

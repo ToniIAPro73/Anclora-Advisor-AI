@@ -1,4 +1,4 @@
-import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import type { Metadata } from 'next';
 import type { ReactNode } from "react";
 import { AppPreferencesProvider } from "@/components/providers/AppPreferencesProvider";
@@ -7,16 +7,17 @@ import { CookieConsent } from "@/components/legal/CookieConsent";
 import { ADVISOR_BRAND } from "@/lib/advisor-brand";
 import './globals.css';
 
-const displayFont = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-advisor-display",
-});
-
-const bodyFont = Source_Sans_3({
+// ANCLORA_BRANDING_TYPOGRAPHY (Internas): Inter para display/body, JetBrains Mono para monospace.
+const sansFont = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-advisor-body",
+  variable: "--font-sans",
+});
+
+const monoFont = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={`${displayFont.variable} ${bodyFont.variable}`}>
+      <body className={`${sansFont.variable} ${monoFont.variable}`}>
         <AppPreferencesScript />
         <AppPreferencesProvider>
           {children}

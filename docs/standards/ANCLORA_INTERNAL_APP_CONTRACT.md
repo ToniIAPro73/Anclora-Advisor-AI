@@ -5,6 +5,7 @@ Unificar la UX/UI de las aplicaciones internas sin borrar la identidad de cada p
 
 Ámbito:
 - `anclora-advisor-ai`
+- `anclora-filestudio`
 - `anclora-nexus`
 - `anclora-content-generator-ai`
 
@@ -111,6 +112,11 @@ Regla:
   - `dark/light/system`
   - bilingüe `es/en`
 - Las futuras apps internas deben reutilizar este patrón de preferencias cuando no exista una razón fuerte para desviarse.
+
+### `anclora-filestudio`
+- Servicio interno transversal de conversión y procesamiento documental.
+- Debe priorizar privacidad por defecto, clasificación de sensibilidad, retención limitada, scopes claros y trazabilidad de jobs.
+- La integración confirmada pasa por `anclora-nexus`, que conserva identidad, consentimiento, routing y estado visible para usuario.
 
 ### `anclora-nexus`
 - Mantener dark como contrato operativo principal.
