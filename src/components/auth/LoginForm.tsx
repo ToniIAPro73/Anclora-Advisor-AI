@@ -166,7 +166,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
             {/* Logo 50px sin contenedor — igual que Impulso BrandLogo */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 32, paddingBottom: 20 }}>
               <Image
-                src="/brand/logo-Advisor.png"
+                src="/brand/anclora-advisor-ai.png"
                 alt="Logo de Anclora Advisor"
                 width={50}
                 height={50}

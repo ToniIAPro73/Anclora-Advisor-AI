@@ -2,50 +2,63 @@
 
 <div align="center">
 
-<img src="./public/brand/advisor_favicon_192.png" alt="Anclora Advisor AI" width="120" />
+<img src="./public/brand/anclora-advisor-ai.png" alt="Anclora Advisor AI" width="132" />
 
 # Anclora Advisor AI
 
 ### Asesoría fiscal, laboral y mercado para autónomos
+
+Plataforma de inteligencia artificial que proporciona asesoramiento contextualizado en temas fiscales, laborales y de mercado. Procesa documentos legales, evalúa cumplimiento contractual y genera recomendaciones basadas en normativa vigente.
 
 **Español** · [English](./README.en.md)
 
 <br />
 
 ![Anclora](https://img.shields.io/badge/Anclora-ecosystem-111827)
-![Documentation](https://img.shields.io/badge/documentation-premium-BFA46A)
-![Languages](https://img.shields.io/badge/languages-ES%20%7C%20EN-047857)
+![Categoría](https://img.shields.io/badge/categor%C3%ADa-Interna-1DAB89)
+![Idiomas](https://img.shields.io/badge/idiomas-ES%20%7C%20EN-047857)
 
 </div>
 
 ---
 
 > [!IMPORTANT]
-> Repositorio interno del ecosistema Anclora. No publicar detalles operativos, credenciales,
-> datos reales ni logica sensible fuera de los canales autorizados.
+> Repositorio interno del ecosistema Anclora. No publicar detalles operativos, credenciales, datos reales ni lógica sensible fuera de canales autorizados.
 
-## Vista rapida
+## Qué es
 
-| Area | Definicion |
-| --- | --- |
-| Proposito | Asesoría fiscal, laboral y mercado para autónomos |
-| Familia | `internal` |
-| Visibilidad | `private` |
-| Rol | Repositorio de trabajo interno |
+Advisor AI es una herramienta interna que combina procesamiento de lenguaje natural, validación de documentos legales y evaluación de cumplimiento normativo. Proporciona asesoramiento personalizado en materias fiscales, laborales y comerciales para autónomos, integrando fuentes externas de información normativa (legislación vigente, jurisprudencia, casos de prueba).
 
-## Flujo conceptual
+## Categoría en el ecosistema
 
-```text
-Contexto interno
-      ↓
-Configuracion y datos controlados
-      ↓
-Logica de producto
-      ↓
-Revision tecnica
-      ↓
-Entrega o soporte operativo
-```
+| Campo | Valor |
+|---|---|
+| Categoría | Interna |
+| Acento de marca | `#1DAB89` |
+| Tipografía | Inter |
+| Repositorio canónico | `anclora-advisor-ai` |
+
+## Funcionalidades principales
+
+- Validación de documentos legales (contratos, facturas, registros)
+- Evaluación de cumplimiento normativo y contractual
+- Asesoramiento contextualizado fiscal, laboral y mercado
+- Ingesta y procesamiento de documentación (RAG + embeddings)
+- Gestión de alertas y seguimiento de tareas operativas
+- Flujos de mitigación de riesgos para materias laborales e impositivas
+- Auditoría de cambios y trazabilidad de decisiones
+
+## Stack tecnológico
+
+| Área | Tecnología |
+|---|---|
+| Framework | Next.js 15 |
+| Frontend | React 19, TypeScript |
+| IA / LLM | Anthropic Claude, OpenAI, Transformers |
+| Base de datos | Supabase (PostgreSQL) |
+| Utilidades | pdf-lib, nodemailer, zod |
+| Testing | TSX, Playwright |
+| Linting | ESLint 9 |
 
 ## Arranque local
 
@@ -54,31 +67,26 @@ npm install
 npm run dev
 ```
 
-## Tecnologia
+Servidor local: `http://localhost:3000`
 
-| Area | Detalle |
-| --- | --- |
-| Next.js | Detectado en el repositorio |
-| React | Detectado en el repositorio |
-| TypeScript | Detectado en el repositorio |
-| Tailwind CSS | Detectado en el repositorio |
-| Zod | Detectado en el repositorio |
+Variables de entorno requeridas: `.env.local` con credenciales de Anthropic, OpenAI y Supabase.
 
-## Documentacion
+## Idiomas soportados
 
-- [Documentacion](./docs)
+- Español (predeterminado)
+- English
 
-## Gobernanza
+## Documentación y gobernanza
 
-- Producto canonico: `anclora-advisor-ai`
-- Boveda: `/mnt/c/Users/antonio.ballesterosa/Desktop/Proyectos/Boveda-Anclora`
-- Contratos: `contracts/` y `docs/governance/`
-- Asset de marca: `presente`
+- Contratos de marca y gobernanza: [`docs/standards/`](./docs/standards/)
+- Bóveda Anclora (fuente de verdad): `contracts/` y `docs/governance/`
 
 ---
 
 <div align="center">
 
-### Anclora Group · Uso interno
+### Anclora Advisor AI
+
+Uso interno. Plataforma de asesoramiento legal y fiscal impulsada por IA.
 
 </div>

@@ -1194,7 +1194,7 @@ def assemble_docx(
 
     # ── Cover page ───────────────────────────────────────────────────────────
     cover_img = REPO_ROOT / "manual-assets" / "cover.png"
-    logo_path = REPO_ROOT / "public" / "brand" / "logo-Advisor_1.png"
+    logo_path = REPO_ROOT / "public" / "brand" / "anclora-advisor-ai.png"
     _build_cover_image(logo_path, cover_img)
     _add_cover_page(doc, cover_img)
 

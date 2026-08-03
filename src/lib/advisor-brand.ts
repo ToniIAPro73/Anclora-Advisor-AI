@@ -17,12 +17,12 @@ export const ADVISOR_BRAND = {
   lightCanvas: '#f3f6fb',     // Light canvas
 
   // Assets
-  logoPath: '/brand/logo-Advisor.png',
-  faviconPath: '/brand/advisor_favicon.ico',
-  faviconPng32: '/brand/advisor_favicon_32.png',
-  faviconPng192: '/brand/advisor_favicon_192.png',
-  faviconPng512: '/brand/advisor_favicon_512.png',
-  appleTouchIcon: '/brand/advisor_apple-touch-icon.png',
+  logoPath: '/brand/anclora-advisor-ai.png',
+  faviconPath: '/brand/favicon.ico',
+  faviconPng32: '/brand/favicon-32.png',
+  faviconPng192: '/brand/favicon-192.png',
+  faviconPng512: '/brand/favicon-512.png',
+  appleTouchIcon: '/brand/apple-touch-icon.png',
 
   // App preferences (Internal baseline contract)
   supportedThemes: ['dark', 'light', 'system'] as const,

@@ -410,7 +410,7 @@ def build_manual_cover(cover_path: Path) -> Path:
     subtitle_font = ImageFont.truetype(body_font_path, 46) if body_font_path else ImageFont.load_default()
     tag_font = ImageFont.truetype(body_font_path, 52) if body_font_path else ImageFont.load_default()
 
-    logo_path = ROOT / "public" / "brand" / "logo-Advisor_1.png"
+    logo_path = ROOT / "public" / "brand" / "anclora-advisor-ai.png"
     if logo_path.exists():
         logo = Image.open(logo_path).convert("RGBA")
         logo.thumbnail((330, 330))
