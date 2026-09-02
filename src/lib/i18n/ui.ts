@@ -106,6 +106,9 @@ const ES: UiDict = {
   "auth.legalSuffix": ".",
   "auth.socialAccess": "Acceso social",
   "auth.socialComingSoon": "Próximamente",
+  "auth.placeholder.password": "Tu contraseña",
+  "auth.placeholder.newPassword": "Mínimo 6 caracteres",
+  "auth.placeholder.confirmPassword": "Repite tu nueva contraseña",
 };
 
 const EN: UiDict = {
@@ -212,6 +215,9 @@ const EN: UiDict = {
   "auth.legalSuffix": ".",
   "auth.socialAccess": "Social access",
   "auth.socialComingSoon": "Coming soon",
+  "auth.placeholder.password": "Your password",
+  "auth.placeholder.newPassword": "Minimum 6 characters",
+  "auth.placeholder.confirmPassword": "Repeat your new password",
 };
 
 const UI_MESSAGES: Record<LocaleCode, UiDict> = { es: ES, en: EN };

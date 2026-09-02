@@ -218,7 +218,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="advisor-input login-auth-input"
-                    placeholder={mode === "login" ? "Tu contraseña" : "Mínimo 6 caracteres"}
+                    placeholder={mode === "login" ? ui("auth.placeholder.password") : ui("auth.placeholder.newPassword")}
                     required
                     minLength={6}
                     style={{ ...styles.passwordInput, ...(isLight ? styles.loginInputLight : styles.loginInputDark), height: 40, padding: '0 44px 0 14px' }}
@@ -280,7 +280,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="advisor-input login-auth-input"
-                    placeholder="Repite tu nueva contraseña"
+                    placeholder={ui("auth.placeholder.confirmPassword")}
                     required
                     minLength={6}
                     style={isLight ? styles.loginInputLight : styles.loginInputDark}
