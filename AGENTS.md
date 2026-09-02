@@ -10,7 +10,7 @@ Antes de modificar este repositorio, todo agente debe leer:
 
 La arquitectura estable del ecosistema se define en:
 
-`Boveda-Anclora/contracts/core/ANCLORA_ECOSYSTEM_ARCHITECTURE_CONTRACT.md`
+`anclora-vault/00-governance/contracts/core/ANCLORA_ECOSYSTEM_ARCHITECTURE_CONTRACT.md` (renombrado desde `Boveda-Anclora`)
 
 No asumir infraestructura compartida entre productos. Validar siempre hosting, backend, base de datos, auth, variables y ramas.
 <!-- ANCLORA-ECOSYSTEM-CONTEXT-END -->
